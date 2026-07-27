@@ -1,0 +1,22 @@
+{
+  "name": "Northline",
+  "short_name": "Northline",
+  "description": "Marketplace Northline",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#DF414F",
+  "theme_color": "#DF414F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://nl.hostinesia.my.id/public/icons/Favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://nl.hostinesia.my.id/public/icons/Favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

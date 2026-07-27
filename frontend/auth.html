@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png" type="image/x-icon">
+    <title>Northline - Autentikasi</title>
+    <link rel="stylesheet" href="/css/tailwind.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        *{ font-family: 'DM Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .loader-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .loader-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background: #DF414F;
+            animation: loaderBounce 1s infinite ease-in-out;
+        }
+        .loader-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+        .loader-dots span:nth-child(3) {
+            animation-delay: .3s;
+        }
+        @keyframes loaderBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: .5;
+            }
+            40% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="md:min-h-screen bg-gray-100 font-sans overflow-y-auto overflow-x-hidden">
+    <div class="flex flex-col md:flex-row min-h-screen w-full items-center justify-center">
+
+        <div id="carousel-container" class="hidden md:flex w-full md:w-3/5 items-center justify-center md:h-screen relative overflow-hidden transition-colors duration-500 bg-stone-50">
+            <div class="w-full h-full relative flex items-center justify-center">
+                <img id="carousel-img" 
+                    src="" 
+                    alt="Northline E-commerce Visual" 
+                    class="w-full h-full object-cover opacity-70 transition-all duration-500 ease-in-out">
+                <div class="absolute inset-0 bg-black/5 pointer-events-none"></div>
+                
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 z-10">
+                    <div class="w-full max-w-[340px]">
+                        <div class="mb-[10px] mt-[-20px] items-center justify-center hidden md:flex">
+                            <a href="https://nl.hostinesia.my.id" class="inline-block hover:opacity-70 transition-opacity active:scale-95 transform duration-200">
+                                <img src="/public/icons/nliconblack.png" alt="Northline Logo" style="height: 120px; object-fit: contain;">
+                            </a>
+                        </div>
+                    </div>
+                    <p class="text-[10px] sm:text-xs tracking-widest font-semibold text-zinc-700 uppercase mb-2 px-2.5 py-0.5 rounded-full bg-gray-50">Northline Exclusive</p>
+                    <h2 id="carousel-desc" class="text-3xl lg:text-4xl font-extrabold text-black leading-tight tracking-tighter mb-4 max-w-lg drop-shadow-sm"></h2>
+                    
+                    <a href="https://nl.hostinesia.my.id" class="group inline-flex items-center gap-2 text-black text-xs font-bold border-b-2 border-black pb-1 hover:text-zinc-600 hover:border-zinc-600 transition duration-300">
+                        Explore Now
+                        <svg class="w-3.5 h-3.5 transform transition-transform duration-300 ease-out group-hover:translate-x-1" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            stroke-width="2.5" 
+                            viewBox="0 0 24 24" 
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            <div id="carousel-dots" class="absolute bottom-6 flex gap-2 z-20"></div>
+        </div>
+
+        <div class="w-full md:w-2/5 bg-gray-100 flex items-center justify-center p-2 md:p-10 py-12 md:h-screen order-2 overflow-y-auto">
+            
+
+        <div id="panel-login-classic" class="bg-white p-5 md:w-[400px] shadow-md">
+            <div class="flex items-start justify-between mb-8">
+                <div>
+                    <h1 class="text-[20px] font-medium text-black leading-none">
+                        Log In
+                    </h1>
+                </div>
+                <div
+                    onclick="openQrLoginModal()"
+                    class="flex items-center gap-3 cursor-pointer group">
+                    <div class="relative bg-[#fff7e6] border border-[#f5c26b] px-4 py-2 rounded-sm">
+                        <p class="text-[13px] leading-4 font-medium text-[#d99b00]">
+                            Log in dengan <br> QR
+                        </p>
+                        <div class="absolute top-1/2 -right-[7px] -translate-y-1/2
+                            w-3 h-3 bg-[#fff7e6]
+                            border-r border-t border-[#f5c26b]
+                            rotate-45">
+                        </div>
+                    </div>
+                    <div class="relative w-10 h-10">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=zXSWCwWtxBKr&format=png&color=DF414F"
+                            class="w-10 h-10 object-contain"
+                            style="clip-path: polygon(0 0,100% 0,100% 100%,0 50%);">
+                    </div>
+                </div>
+            </div>
+            <div id="qr-login-modal"
+                class="hidden fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 md:p-5">
+                <div class="relative bg-white w-full max-w-[900px]
+                    h-[90vh] md:h-auto
+                    flex flex-col md:flex-row
+                    overflow-y-auto md:overflow-hidden
+                    rounded-sm shadow-2xl">
+                    <button
+                        onclick="closeQrLoginModal()"
+                        class="absolute top-3 right-3 md:top-4 md:right-4
+                        w-9 h-9 flex items-center justify-center
+                        rounded-full hover:bg-gray-100 transition z-10">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=46&format=png&color=DF414F"
+                            class="w-4 h-4 md:w-5 md:h-5">
+                    </button>
+                    <div class="w-full md:w-[45%]
+                        bg-[#fafafa]
+                        border-b md:border-b-0 md:border-r
+                        px-6 md:px-10
+                        py-8 md:py-12
+                        flex flex-col">
+                        <h2 class="text-[22px] md:text-[28px] font-semibold text-gray-900 mb-3">
+                            Login dengan QR
+                        </h2>
+                        <p class="text-[14px] md:text-[15px] text-gray-500 leading-6 md:leading-7 mb-8 md:mb-10">
+                            Gunakan akun Northline yang sudah login
+                            untuk memindai kode QR ini.
+                        </p>
+                        <div class="space-y-5">
+                            <div class="flex gap-4">
+                                <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#DF414F]
+                                    text-white flex items-center justify-center
+                                    text-xs md:text-sm font-semibold">
+                                    1
+                                </div>
+                                <p class="text-[14px] md:text-[15px] text-gray-700">
+                                    Buka akun Northline di perangkat lain
+                                </p>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#DF414F]
+                                    text-white flex items-center justify-center
+                                    text-xs md:text-sm font-semibold">
+                                    2
+                                </div>
+                                <p class="text-[14px] md:text-[15px] text-gray-700">
+                                    Masuk ke menu
+                                    <b>Scan QR Login</b>
+                                </p>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#DF414F]
+                                    text-white flex items-center justify-center
+                                    text-xs md:text-sm font-semibold">
+                                    3
+                                </div>
+                                <p class="text-[14px] md:text-[15px] text-gray-700">
+                                    Arahkan kamera ke QR di bawah ini
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-8 md:mt-auto pt-4 md:pt-8">
+                            <button
+                                onclick="backToPasswordLogin()"
+                                class="text-[#DF414F] font-medium hover:underline text-sm md:text-base">
+                                Login dengan Email / Nomor HP
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-center px-5 md:px-8 py-8">
+                        <div class="border mt-5 border-gray-200 p-4 md:p-5 bg-white">
+                            <div
+                                id="qr-login-code"
+                                class="w-[220px] h-[220px] md:w-[260px] md:h-[260px]
+                                flex items-center justify-center">
+                            </div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <p class="text-gray-500 text-[13px] md:text-[14px]">
+                                QR akan diperbarui dalam
+                            </p>
+                            <p class="text-[#DF414F] text-[18px] md:text-[22px] font-semibold mt-1">
+                                <span id="qr-countdown">
+                                    60
+                                </span>
+                                detik
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <form onsubmit="handleClassicLogin(event)" id="form-login-classic" oninput="updateButtonState('btn-login-classic', document.getElementById('login-identifier').value.trim()!=='' && document.getElementById('login-password').value.trim()!=='')" class="space-y-5">
+                <div class="border border-gray-300 h-[40px] px-4 flex items-center focus-within:border-gray-500 transition-all">
+                    <input 
+                        type="text" 
+                        id="login-identifier" 
+                        placeholder="No. Handphone/Email"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                </div>
+                <div class="border border-gray-300 h-[40px] px-4 flex items-center justify-between focus-within:border-gray-500 transition-all">
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        placeholder="Password"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                    <button 
+                        type="button"
+                        id="toggle-password"
+                        class="ml-2 opacity-60 hover:opacity-100 transition flex items-center justify-center"
+                    >
+                        <img 
+                            id="eye-icon"
+                            src="https://img.icons8.com/material-outlined/24/666666/visible--v1.png"
+                            class="w-5 h-5 object-contain"
+                         loading="lazy">
+                    </button>
+                </div>
+                <button 
+                    type="submit" 
+                    id="btn-login-classic"
+                    class="w-full h-[40px] bg-[#DF414F] hover:bg-[#df414ede] opacity-40
+                        text-white md:text-[14px] text-[13px] font-semibold transition-all mt-2">
+                    LOG IN
+                </button>
+            </form>
+            <!-- <div class="mt-4">
+                <button class="text-[13px] text-[#0055aa] hover:underline">
+                    Lupa Password
+                </button>
+            </div> -->
+            <div class="flex items-center gap-4 my-7">
+                <div class="flex-1 h-px bg-gray-300"></div>
+                <span class="text-[12px] text-gray-400 font-medium">
+                    ATAU
+                </span>
+                <div class="flex-1 h-px bg-gray-300"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button 
+                    type="button"
+                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    
+                    <img 
+                        src="https://img.icons8.com/color/48/facebook-new.png"
+                        class="w-5 h-5"
+                     loading="lazy">
+
+                    <span class="text-[14px] text-gray-700">
+                        Facebook
+                    </span>
+                </button>
+                <button
+                    id="googleLogin1"
+                    type="button"
+                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    <img 
+                        src="https://img.icons8.com/color/48/google-logo.png"
+                        class="w-5 h-5"
+                    >
+                    <span class="text-[14px] text-gray-700">
+                        Google
+                    </span>
+                </button>
+            </div>
+            <p class="text-[12px] text-center text-gray-500 leading-5 mt-7 px-4">
+                Dengan login, kamu menyetujui 
+                <span onclick="openLegalModal('terms')" class="text-[#DF414F] cursor-pointer hover:underline">
+                    Syarat, Ketentuan
+                </span>
+                dan
+                <span onclick="openLegalModal('privacy')" class="text-[#DF414F] cursor-pointer hover:underline">
+                    Kebijakan Privasi
+                </span>
+                Northline.
+            </p>
+            <div class="text-center mt-8 text-[15px]">
+                <span class="text-gray-400">
+                    Baru di Northline?
+                </span>
+                <button 
+                    type="button" 
+                    onclick="switchAuthPanel('register-phone')" 
+                    class="text-[#DF414F] hover:opacity-80 transition-all ml-1">
+                    Daftar
+                </button>
+            </div>
+        </div>
+
+        <div id="panel-register-phone" class="hidden bg-white p-5 md:w-[400px] shadow-md">
+            <div class="mb-10 text-left">
+                <h1 class="text-[20px] font-medium text-black leading-none">
+                    Daftar
+                </h1>
+            </div>
+            <form onsubmit="handleSendOtp(event)" id="form-register-phone" class="space-y-6 mt-10">
+                <div class="border border-gray-300 h-[40px] px-4 flex items-center focus-within:border-gray-500 transition-all">
+                    
+                    <input 
+                        type="tel" 
+                        id="auth-phone" 
+                        placeholder="Nomor Telepon"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    id="btn-register-phone"
+                    disabled
+                    class="w-full h-[40px] bg-[#DF414F] hover:bg-[#df414ede] 
+                        disabled:opacity-60 text-white md:text-[14px] text-[13px] 
+                        font-semibold transition-all tracking-wide">
+                    BERIKUTNYA
+                </button>
+            </form>
+            <div class="flex items-center gap-4 my-10">
+                <div class="flex-1 h-px bg-gray-300"></div>
+                <span class="text-[12px] text-gray-400 font-medium">
+                    ATAU
+                </span>
+                <div class="flex-1 h-px bg-gray-300"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button 
+                    type="button"
+                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    
+                    <img 
+                        src="https://img.icons8.com/color/48/facebook-new.png"
+                        class="w-5 h-5"
+                     loading="lazy">
+
+                    <span class="text-[14px] text-gray-700">
+                        Facebook
+                    </span>
+                </button>
+                <button
+                    id="googleLogin2"
+                    type="button"
+                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    <img 
+                        src="https://img.icons8.com/color/48/google-logo.png"
+                        class="w-5 h-5"
+                    >
+                    <span class="text-[14px] text-gray-700">
+                        Google
+                    </span>
+                </button>
+            </div>
+            <p class="text-[12px] text-center text-gray-500 leading-5 mt-7 px-4">
+                Dengan login, kamu menyetujui 
+                <span onclick="openLegalModal('terms')" class="text-[#DF414F] cursor-pointer hover:underline">
+                    Syarat, Ketentuan
+                </span>
+                dan
+                <span onclick="openLegalModal('privacy')" class="text-[#DF414F] cursor-pointer hover:underline">
+                    Kebijakan Privasi
+                </span>
+                Northline.
+            </p>
+            <div class="text-center mt-12 text-[16px]">
+                <span class="text-gray-400">
+                    Punya akun?
+                </span>
+                <button 
+                    type="button" 
+                    onclick="switchAuthPanel('login-classic')" 
+                    class="text-[#DF414F] hover:opacity-80 transition-all ml-1">
+                    Log In
+                </button>
+            </div>
+        </div>
+
+        <div id="panel-otp" class="hidden bg-white p-5 md:w-[400px] shadow-md">
+            <button 
+                type="button"
+                onclick="switchAuthPanel('register-phone')"
+                class="absolute top-12 left-10 text-[#DF414F] hover:opacity-70 transition-all"
+            >
+                <i class="ri-arrow-left-line text-[32px]"></i>
+            </button>
+            <div class="mb-10 text-center">
+                <h1 class="text-[18px] text-gray-700 mb-5">
+                    Masukkan Kode OTP
+                </h1>
+                <p class="text-[16px] text-gray-700">
+                    Kode OTP telah dikirim via WhatsApp ke
+                </p>
+                <div class="flex items-center justify-center gap-3 mt-2">
+                    <img 
+                        src="https://img.icons8.com/color/48/whatsapp--v1.png"
+                        class="w-8 h-8"
+                     loading="lazy">
+                    <p id="display-phone" class="text-[20px] font-semibold text-gray-800">
+                    </p>
+                </div>
+            </div>
+            <div class="flex justify-center w-full gap-2 mb-14 px-8" id="otp-inputs">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-400 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 0)"
+                    onkeydown="handleOtpDelete(event, 0)">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-300 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 1)"
+                    onkeydown="handleOtpDelete(event, 1)">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-300 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 2)"
+                    onkeydown="handleOtpDelete(event, 2)">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-300 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 3)"
+                    onkeydown="handleOtpDelete(event, 3)">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-300 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 4)"
+                    onkeydown="handleOtpDelete(event, 4)">
+                <input type="text" maxlength="1"
+                    class="otp-box flex-1 max-w-[40px] h-[58px] border-b border-gray-300 bg-transparent 
+                    text-center text-[26px] font-semibold text-black outline-none
+                    focus:border-black transition-all"
+                    oninput="moveOtpFocus(this, 5)"
+                    onkeydown="handleOtpDelete(event, 5)">
+            </div>
+            <div class="text-center mb-5">
+                <div id="otp-timer-wrapper"
+                    class="text-[14px] text-gray-300">
+                    Mohon tunggu 
+                    <span id="timer" class="font-medium text-gray-400">
+                        60
+                    </span> 
+                    detik untuk mengirim ulang.
+                </div>
+                <div 
+                    id="resend-otp-btn"
+                    class="hidden text-[14px] leading-6"
+                >
+                    <p class="text-black">
+                        Tidak menerima Kode OTP?
+                    </p>
+                    <button 
+                        onclick="handleResendOtp()"
+                        class="text-[#5b6dff] hover:underline"
+                    >
+                        Kirim Ulang
+                    </button>
+                    <span class="text-black">
+                        atau coba
+                    </span>
+                    <button 
+                        type="button"
+                        class="text-[#5b6dff] hover:underline"
+                    >
+                        Metode Lain
+                    </button>
+                </div>
+            </div>
+            <button 
+                onclick="handleVerifyOtp()" 
+                id="btn-otp-submit" 
+                disabled
+                class="w-full h-[42px] bg-[#DF414F] hover:bg-[#df414ede]
+                disabled:opacity-60 text-white text-[14px] font-semibold 
+                transition-all tracking-wide">
+                LANJUT
+            </button>
+        </div>
+
+        <div id="panel-confirm-account" class="hidden text-center bg-white p-5 md:w-[400px] shadow-md">
+            <h1 class="text-[18px] text-gray-700 mb-6 tracking-tight">Is This Your Account?</h1>
+            <div class="flex flex-col items-center mb-6">
+                <img id="db-avatar" src="/public/icons/default.png" class="w-20 h-20 rounded-full object-cover border border-gray-200 mb-3 shadow-sm" loading="lazy">
+                <h3 id="db-username" class="font-semibold text-black text-lg"></h3>
+                <p id="db-phone" class="text-sm text-gray-500"></p>
+            </div>
+            <p class="text-xs text-gray-400 px-4 mb-8">This phone number is already registered with an account. Would you like to log in to this account or register another new one?</p>
+            <div class="space-y-3">
+                <button onclick="loginVerifiedUser()" class="w-full h-[42px] bg-[#DF414F] hover:bg-[#df414ede]
+                disabled:opacity-60 text-white text-[14px] font-semibold 
+                transition-all tracking-wide">
+                    Yes, Log In Now
+                </button>
+                <button type="button" onclick="switchAuthPanel('register-fields')" class="w-full bg-white border border-[#DF414F] text-gray-600 py-3 font-medium text-sm">
+                    No, Register New Brand Account
+                </button>
+            </div>
+        </div>
+
+        <div id="panel-register-fields" class="hidden bg-white p-5 md:w-[400px] shadow-md">
+            <div class="mb-10 text-left">
+                <h1 class="text-3xl font-semibold text-black tracking-tight mb-2">
+                    Lengkapi Profil
+                </h1>
+                <p class="text-sm text-gray-800">
+                    Lengkapi detail akun kamu untuk mendaftar
+                </p>
+            </div>
+            <form 
+                onsubmit="handleFinalRegister(event)" 
+                id="form-register-fields" 
+                class="space-y-5"
+            >
+                <div class="border border-gray-300 h-[46px] px-4 flex items-center focus-within:border-gray-500 transition-all">
+                    <input 
+                        type="text"
+                        id="reg-username"
+                        placeholder="Nama Lengkap"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                </div>
+                <div class="border border-gray-300 h-[46px] px-4 flex items-center focus-within:border-gray-500 transition-all">
+                    <input 
+                        type="email"
+                        id="reg-email"
+                        placeholder="Alamat Email"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                </div>
+                <div class="border border-gray-300 h-[46px] px-4 flex items-center justify-between focus-within:border-gray-500 transition-all">
+                    <input 
+                        type="password"
+                        id="reg-password"
+                        placeholder="Password"
+                        required
+                        class="w-full text-[14px] outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
+                    >
+                    <button 
+                        type="button"
+                        id="toggle-register-password"
+                        class="ml-2 opacity-60 hover:opacity-100 transition flex items-center justify-center"
+                    >
+                        <img 
+                            id="register-eye-icon"
+                            src="https://img.icons8.com/material-outlined/24/666666/visible--v1.png"
+                            class="w-5 h-5 object-contain"
+                         loading="lazy">
+                    </button>
+                </div>
+                <button 
+                    type="submit"
+                    id="btn-register-complete"
+                    disabled
+                    class="w-full h-[42px] bg-[#DF414F] hover:bg-[#df414ede] disabled:opacity-60 
+                        text-white text-[14px] font-semibold transition-all mt-2"
+                >
+                    BUAT AKUN
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+    <div id="ios-warning-modal"
+        class="fixed top-0 left-1/2 -translate-x-1/2 z-[9999]
+        translate-y-[-120%] opacity-0
+        transition-all duration-500 ease-out">
+
+        <div id="notif-card"
+            class="w-[346px] mt-3 px-4 py-3
+            bg-white backdrop-blur-md shadow-xl
+            flex items-center gap-3
+            cursor-grab active:cursor-grabbing">
+            <img 
+                src="https://nl.hostinesia.my.id/public/icons/Favicon.png"
+                class="w-8 h-8" loading="lazy">
+            <div class="flex-1 min-w-0 text-white">
+                <div class="flex justify-between items-center">
+                    <h3 id="ios-modal-title"
+                        class="text-[13px] text-black">
+                        Northline
+                    </h3>
+                    <span id="notif-time"
+                        class="text-[11px] text-gray-300 cursor-pointer flex items-center gap-1">
+                        Just now 
+                        <img id="arrow"
+                            src="https://img.icons8.com/?size=100&id=40021&format=png&color=000000"
+                            class="w-2 h-2 transition-transform duration-200" loading="lazy">
+                    </span>
+                </div>
+                <p id="ios-modal-message"
+                    class="text-[11px] text-gray-500 truncate w-full">
+                    Message...
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <div
+      id="legal-modal"
+      class="hidden fixed inset-0 z-[100] bg-white flex flex-col"
+    >
+      <div class="h-14 border-b flex items-center px-4 shrink-0">
+        <button onclick="closeLegalModal()" class="mr-4">
+          <img
+            src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F"
+            style="height: 20px"
+           loading="lazy" />
+        </button>
+        <img
+          src="https://nl.hostinesia.my.id/public/icons/nliconblack.png"
+          class="h-10 mr-2"
+          alt="Northline"
+         loading="lazy" />
+        <h2 id="modal-title" class="font-bold text-lg">Syarat & Ketentuan</h2>
+      </div>
+
+      <div
+        id="modal-content"
+        class="flex-1 bg-[#f2f2f7] overflow-y-auto p-4 text-sm text-gray-700 space-y-4"
+      ></div>
+    </div>
+
+    <div id="global-loader"
+        class="hidden fixed inset-0 z-[99999] md:hidden flex items-center justify-center bg-white/10 backdrop-blur-lg">
+        <div class="loader-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <script src="/src/services/storage-config.js?v=27072026"></script>
+    <script src="/java/auth.js?v=27072026"></script>
+    <script src="/java/global_loader.js?v=27072026"></script>
+    <script src="src/services/global.js?v=27072026"></script>
+    <script src="/src/services/global_notif.js?v=27072026"></script>
+    <script type="module">
+        import {
+            auth,
+            provider,
+            signInWithPopup
+        } from "/public/firebase.js";
+        document
+        .querySelectorAll("[id^='googleLogin']")
+        .forEach(btn => {
+            btn.addEventListener("click", async () => {
+                try {
+                    const result = await signInWithPopup(
+                        auth,
+                        provider
+                    );
+                    const user = result.user;
+                    const response = await fetch(
+                        "/api/google-login",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                uid: user.uid,
+                                name: user.displayName,
+                                email: user.email,
+                                avatar: user.photoURL
+                            })
+                        }
+                    );
+                    const data = await response.json();
+                    showGlobalModal("Login berhasil");
+                } catch(err) {
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
+

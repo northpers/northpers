@@ -1,0 +1,282 @@
+<!-- <div id="product-modal" class="fixed inset-0 z-50 hidden bg-gray-50 backdrop-blur-sm items-center justify-center md:p-0 md:items-stretch">
+    <div class="bg-white w-full h-full md:h-[85%] md:max-h-none md:w-[60%] md:border md:mt-10 md:rounded-none flex flex-col md:flex-row relative overflow-hidden md:shadow-none animate-fade-in md:items-start">
+        
+        <button onclick="closeModal()" class="absolute hidden md:block top-4 right-4 z-[110] bg-white/80 shadow-sm text-gray-500 hover:text-black transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+        <nav class="absolute md:hidden w-auto top-4 z-[110] text-gray-500 cursor-pointer">
+            <div class="flex items-center ml-4 gap-3 w-full">
+    
+                <button onclick="closeModal()" class="shrink-0">
+                    <img
+                        src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F"
+                        class="h-[20px]">
+                </button>
+                <div class="flex-1">
+                    <div class="h-8 bg-gray-100 rounded-sm flex items-center px-3 w-full">
+                        <img
+                            src="https://img.icons8.com/ios-glyphs/30/999999/search--v1.png"
+                            class="w-4 h-4 shrink-0">
+
+                        <input
+                            id="modal-product-search"
+                            type="text"
+                            placeholder=""
+                            class="w-[180px] flex-1 bg-transparent outline-none px-2 text-[13px] text-gray-700 placeholder:text-gray-400">
+                    </div>
+                    <div
+                        id="modal-search-result"
+                        class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-[99999] max-h-64 overflow-y-auto">
+                    </div>
+                </div>
+                <button onclick="shareProduct()" class="shrink-0">
+                    <img
+                        src="https://img.icons8.com/material-outlined/24/DF414F/share.png"
+                        class="h-[20px]">
+                </button>
+                <div class="relative group shrink-0">
+                    <button onclick="toggleProductMenu()" class="cursor-pointer">
+                        <img
+                            src="https://img.icons8.com/ios-glyphs/30/DF414F/menu-2.png"
+                            class="h-[20px] mt-2">
+                    </button>
+
+                    <div class="absolute top-full right-0 mt-1 w-[180px] bg-white border border-gray-200 shadow-xl p-2
+                                invisible opacity-0 translate-y-2
+                                group-hover:visible group-hover:opacity-100 group-hover:translate-y-0
+                                transition-all duration-200 z-[9999]">
+
+                        <div class="absolute -top-1.5 right-2 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
+
+                        <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                            <img src="https://img.icons8.com/?size=100&id=Z8pPm6xPETVy&format=png&color=000000"
+                                class="w-5 h-5 opacity-50">
+                            <span class="text-xs text-gray-700">
+                                Chat Seller
+                            </span>
+                        </button>
+
+                        <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                            <img src="https://img.icons8.com/?size=100&id=5342&format=png&color=000000"
+                                class="w-5 h-5 opacity-50">
+                            <span class="text-xs text-gray-700">
+                                Laporkan Produk
+                            </span>
+                        </button>
+
+                        <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                            <img src="https://img.icons8.com/?size=100&id=14093&format=png&color=000000"
+                                class="w-5 h-5 opacity-50">
+                            <span class="text-xs text-gray-700">
+                                Informasi Produk
+                            </span>
+                        </button>
+
+                    </div>
+                </div>
+
+            </div>
+        </nav>
+        
+        <div class="w-full md:w-[42%] flex flex-col bg-white shrink-0 pt-14 md:pt-6">
+            <div id="thumb-container"
+                class="order-2 flex flex-row justify-center items-center gap-2 overflow-x-auto pt-3 w-full max-w-[500px] mx-auto">
+            </div>
+            <div class="order-1 sm:order-2 md:order-1 pl-4 pr-4 flex-1 flex items-center justify-center">
+                <div class="relative aspect-square w-full max-w-[500px] max-h-[250px] md:max-h-[500px] bg-white border border-gray-200 shadow-sm overflow-hidden">
+                    <div id="dynamic-bg"
+                        class="absolute inset-0 transition-all duration-700 scale-150 blur-[40px] opacity-15">
+                    </div>
+                    <div id="slide-counter"
+                        class="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-2 py-0.5 select-none tracking-wider">
+                        1 / 1
+                    </div>
+                    <img id="main-preview"
+                        src="..."
+                        class="absolute inset-0 w-full h-full object-cover z-10 transition-all duration-200"
+                        alt="Product Preview">
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full md:w-[58%] p-5 md:p-8 flex flex-col gap-4 md:gap-5 overflow-y-auto min-h-0 pb-28 md:pb-8">
+            
+            <div class="space-y-3">
+                <div class="flex flex-col gap-y-0.5 w-full">
+                    <div class="block w-full leading-tight">
+                        <span id="detail-store-name" class="inline-flex items-center gap-1 bg-red-600 text-white font-bold px-1.5 py-[2px] text-[10px] tracking-wider shadow-sm whitespace-nowrap mr-1 align-middle select-none"
+                            style="
+                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                                font-weight: 500;
+                                letter-spacing: .2px;
+                            ">
+                            Mall | Ori
+                        </span>
+                        <h3 id="detail-name" class="inline text-[20px] md:text-2xl text-gray-800 tracking-tighter break-words align-middle"></h3>
+                    </div>
+                </div>
+
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2 md:gap-4 border-b pb-3 md:pb-4 text-[11px] md:text-sm">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs md:text-sm font-medium">
+                                4.9
+                            </span>
+                            <span id="detail-rating-stars"
+                                class="text-amber-400 text-xs md:text-sm">
+                            </span>
+                        </div>
+                        <div class="border-l h-3 md:h-4"></div>
+                        <span class="text-[11px] md:text-sm">
+                            <span id="detail-review-count"></span>
+                            Penilaian
+                        </span>
+                        <div class="border-l h-3 md:h-4"></div>
+                        <span class="text-[11px] md:text-sm">
+                            Pre Order
+                        </span>
+                    </div>
+
+                    <div class="bg-gray-50 p-3 md:p-4 mt-3 md:mt-4">
+                        <div class="flex items-center gap-2 md:gap-3 flex-wrap">
+                            <span id="detail-price"
+                                class="text-xl md:text-3xl text-[#DF414F]">
+                            </span>
+                            <span id="detail-old-price"
+                                class="text-xs md:text-[15px] line-through text-gray-400">
+                            </span>
+                            <span class="bg-[#fff1ee] text-[#DF414F] px-1 text-[10px] md:text-xs">
+                                -5%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-gray-100 my-1.5">
+
+                <div class="space-y-2">
+                    <div class="space-y-1">
+                        <div class="text-[9px] font-bold uppercase text-gray-400 tracking-widest">
+                            Colours: <span id="selected-color-text" class="text-gray-800 normal-case ml-1 font-medium"></span>
+                        </div>
+                        <div id="color-options" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                    
+                    <div id="product-size-section" class="space-y-1">
+                        <div class="text-[9px] font-bold uppercase text-gray-400 tracking-widest select-none">
+                            Size: <span id="selected-size-text" class="text-gray-800 ml-1 font-medium"></span>
+                        </div>
+                        <div id="size-options" class="flex flex-wrap gap-1.5"></div>
+                        
+                        <details class="group w-full block md:hidden mt-1.5">
+                            <summary class="flex items-center justify-between text-[9px] font-bold uppercase border px-2 py-1 select-none list-none [&::-webkit-details-marker]:hidden cursor-pointer">
+                                <span class="text-gray-500">View Size Chart</span>
+                                <img src="https://img.icons8.com/?size=100&id=9149&format=png&color=" 
+                                    class="h-[12px] w-auto transition-transform duration-300 -rotate-90 group-open:rotate-90" 
+                                    alt="arrow">
+                            </summary>
+
+                            <div class="pt-1 w-full flex items-center justify-center mt-0.5 px-2 py-1 select-none list-none [&::-webkit-details-marker]:hidden cursor-pointer">
+                                <img src="/public/image/Size.webp" class="w-full h-auto max-h-[100px] object-contain" alt="Size Chart Mobile">
+                            </div>
+                        </details>
+
+                        <div id="size-guide-section" class="hidden md:block mt-3 space-y-1">
+                            <div class="text-[9px] font-bold uppercase text-gray-400 tracking-widest select-none mb-1">
+                                Size Guide Table:
+                            </div>
+                            
+                            <div class="w-full flex flex-col md:flex-row items-center md:items-start justify-start gap-4 pt-0.5">
+                                
+                                <div class="w-full shrink-0">
+                                    <img src="/public/image/Size.webp" class="w-full h-auto max-h-[120px] md:h-[100px] object-contain object-left" alt="Size Chart Desktop">
+                                    <div class="w-full text-[11px] text-gray-500 leading-relaxed font-normal">
+                                        <span>*All measurements are in centimeters. Structured boxy fit standard.</span>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <hr class="border-gray-100 my-1.5">
+
+                <div class="space-y-3 pt-0.5">
+                    <h3 class="text-[10px] font-black uppercase text-gray-400 tracking-widest select-none">
+                        Customer Reviews
+                    </h3>
+
+                    <div id="add-comment-box" class="space-y-2 p-3 border border-gray-200 bg-white">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-gray-500 uppercase">Rate Product:</span>
+                            <select id="input-comment-rating" class="text-[11px] font-black bg-gray-50 border border-gray-200 px-1.5 py-0.5 text-[#DF414F] outline-none">
+                                <option value="5">★★★★★ (5)</option>
+                                <option value="4">★★★★☆ (4)</option>
+                                <option value="3">★★★☆☆ (3)</option>
+                                <option value="2">★★☆☆☆ (2)</option>
+                                <option value="1">★☆☆☆☆ (1)</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-comment-text" placeholder="Give a review here..." 
+                                class="flex-1 bg-gray-50 text-[11px] md:text-xs px-3 py-2 border border-gray-200 outline-none focus:border-[#DF414F] font-medium text-gray-700">
+                            <button onclick="submitProductComment()" class="bg-[#DF414F] text-white text-[10px] font-black uppercase px-4 transition-all active:scale-95 shadow-sm">
+                                Send
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="product-comments-list" class="space-y-2"></div>
+                </div>
+
+                <div class="flex flex-col-reverse md:flex-col gap-4">
+
+                <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] z-40 
+                            md:relative md:bottom-auto md:left-auto md:right-auto md:p-0 md:bg-transparent md:backdrop-blur-none md:border-t-0 md:shadow-none md:z-auto
+                            flex flex-wrap items-center gap-1.5 pt-1">
+                    
+                    <div class="flex items-center border border-gray-200 overflow-hidden h-8 md:h-9 bg-gray-50 shadow-sm">
+                        <button onclick="alterQty(-1)" class="px-2.5 py-1 hover:bg-gray-200 text-[10px] md:text-xs font-black cursor-pointer focus:outline-none">-</button>
+                        <input id="modal-qty-input" type="number" value="1" min="1" readonly class="w-7 text-center bg-transparent focus:outline-none text-[10px] md:text-xs font-bold">
+                        <button onclick="alterQty(1)" class="px-2.5 py-1 hover:bg-gray-200 text-[10px] md:text-xs font-black cursor-pointer focus:outline-none">+</button>
+                    </div>
+                    
+                    <button id="btn-checkout" onclick="triggerCheckout()" class="flex-1 bg-[#DF414F] text-white h-8 md:h-9 font-bold hover:bg-red-700 transition-all active:scale-95 text-[9px] md:text-[10px] uppercase tracking-widest cursor-pointer">
+                        Check Out
+                    </button>
+                    
+                    <button onclick="window.WishlistManager.save(event)" class="p-2 border border-[gray-200] hover:bg-gray-50 active:scale-90 transition flex items-center justify-center cursor-pointer h-8 w-8 md:h-9 md:w-9 flex-shrink-0">
+                        <img src="https://img.icons8.com/?size=100&id=85038&format=png&color=000000" class="w-3.5 h-3.5" alt="wishlist" loading="lazy">
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .custom-modal-scroll, ::-webkit-scrollbar {
+    width: 5px !important;
+    height: 5px !important;
+    }
+    ::-webkit-scrollbar-track {
+    background: transparent !important;
+    }
+    ::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.4) !important;
+    border-radius: 9999px !important;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.7) !important;
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+    }
+    input[type=number] {
+    -moz-appearance: textfield;
+}</style>
+<script src="/src/services/wishlist.js?v=27072026"></script> -->

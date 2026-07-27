@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png" type="image/x-icon">
+    <title>Northline | Pengembalian Dana</title>
+    <link rel="stylesheet" href="/css/tailwind.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#DF414F" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Northline">
+    <style>body{font-family:'DM Sans',sans-serif}</style>
+</head>
+<body class="bg-gray-100 text-black">
+    <script>fetch("https://nl.hostinesia.my.id/html/SCTONRT.html").then(r=>r.text()).then(d=>document.getElementById("SCTONRT").innerHTML=d);</script>
+    <header class="sticky top-0 z-50 bg-[#DF414F] text-white text-[11px] hidden md:block">
+        <div class="max-w-6xl mx-auto px-4 py-1.5 flex justify-between items-center">
+            <div class="flex gap-4 font-medium">
+                <div class="relative group cursor-pointer">
+                    <a href="public/seller/register.html" data-i18n="seller_centre">Seller Centre</a>
+                    <div class="absolute top-full left-0 mt-2 w-48 bg-white border text-black text-xs shadow-md p-3 invisible group-hover:visible opacity-0 group-hover:opacity-100 z-[9999]">
+                        <div class="absolute -top-1.5 left-4 w-3 h-3 bg-white border-l border-t rotate-45"></div>
+                        <p class="font-bold mb-1" data-i18n="seller_centre_tooltip_title">Pusat Penjual</p>
+                        <p class="text-[10px] text-gray-500 leading-tight" data-i18n="seller_centre_tooltip_desc">Kelola toko, pantau pesanan, dan lihat statistik penjualan Anda di sini.</p>
+                    </div>
+                </div>
+                <div class="relative group cursor-pointer">
+                    <span data-i18n="download">Download</span>
+                    <div class="fixed mt-2 w-40 bg-white border border-gray-300 text-black text-xs shadow-xl p-4 rounded-sm invisible group-hover:visible opacity-0 group-hover:opacity-100 z-[9999]">
+                        <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
+                        <div class="w-full h-24 mx-auto flex items-center justify-center mb-3"><img src="https://nl.hostinesia.my.id/public/image/20260608_171756.png" style="height:100px;object-fit:contain;"></div>
+                        <p class="text-[9px] text-gray-500 text-center leading-tight" data-i18n="download_tooltip_desc">Scan QR Code untuk download aplikasi Northline di App Store & Play Store.</p>
+                    </div>
+                </div>
+                <span class="flex items-center gap-1 hover:opacity-90" data-i18n="follow_us">Ikuti kami di <img src="https://img.icons8.com/ios-filled/20/ffffff/facebook-f.png" class="w-3 h-3"><img src="https://img.icons8.com/ios-filled/20/ffffff/instagram-new.png" class="w-3 h-3"></span>
+            </div>
+            <div class="flex gap-4 font-medium items-center">
+                <span class="flex items-center gap-1 hover:opacity-90"><img src="https://img.icons8.com/ios/20/ffffff/notification.png" class="w-3 h-3"> <span data-i18n="notification">Notifikasi</span></span>
+                <span class="flex items-center gap-1 hover:opacity-90"><img src="https://img.icons8.com/ios/20/ffffff/help.png" class="w-3 h-3"> <span data-i18n="help">Bantuan</span></span>
+                <div class="relative cursor-pointer" id="lang-wrapper">
+                    <span id="current-lang" class="flex items-center gap-1 hover:opacity-90"><img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">Bahasa Indonesia</span>
+                    <div id="lang-dropdown" class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
+                        <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
+                        <div class="py-2">
+                            <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full">Bahasa Indonesia</button>
+                            <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full">Bahasa Malaysia</button>
+                            <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full">English (Singapore)</button>
+                            <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full">ไทย</button>
+                            <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full">Tiếng Việt</button>
+                            <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2"><img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full">English</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group cursor-pointer">
+                    <a href="auth.html" id="auth-menu-btn" class="font-bold hover:opacity-90" data-i18n="sign_up">Sign Up</a>
+                    <a href="account.html" id="account-tooltip" class="absolute top-full right-0 mt-2 w-32 bg-white border border-gray-200 text-black text-xs shadow-xl p-2 rounded-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible z-[9999] text-center no-underline hover:bg-gray-50">
+                        <div class="absolute -top-1.5 right-4 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                        <p class="font-bold" data-i18n="my_account">My Account</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-6xl mx-auto px-4 pb-4 pt-2 flex items-center gap-8">
+            <div class="w-32 h-12 flex items-center"><img src="https://nl.hostinesia.my.id/public/icons/nlicon.png" style="height:110px;"></div>
+            <a href="/" class="text-white text-sm font-medium hover:underline">Kembali ke Beranda</a>
+        </div>
+    </header>
+    <nav class="sticky top-0 bg-[#DF414F] text-white z-50">
+        <div class="md:hidden relative overflow-hidden bg-[#DF414F] px-2 pt-5 pb-2">
+            <div class="absolute inset-0 opacity-[0.20]" style="background-image:url('https://nl.hostinesia.my.id/public/image/batik.png');background-repeat:repeat;background-size:300px;"></div>
+            <div class="absolute inset-y-0 left-0 w-16 z-[1]" style="background:linear-gradient(to right,#DF414F 0%,rgba(223,65,79,0.95) 30%,rgba(223,65,79,0) 100%);"></div>
+            <div class="absolute inset-y-0 right-0 w-16 z-[1]" style="background:linear-gradient(to left,#DF414F 0%,rgba(223,65,79,0.95) 30%,rgba(223,65,79,0) 100%);"></div>
+            <div class="relative z-10"><div class="flex items-center gap-3"><div class="flex-1"><div class="h-8 bg-white flex items-center px-3"><img src="https://img.icons8.com/?size=100&id=59878&format=png&color=DF414F" class="w-4 h-4"><a href="/" class="text-[#DF414F] text-[13px] ml-2 font-medium">Beranda</a></div></div><div class="shrink-0"><a href="nrtStore"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=ffffff" class="w-6 h-6"></a></div><div class="shrink-0"><a href="nrtChatStore"><img src="https://img.icons8.com/?size=100&id=38977&format=png&color=ffffff" class="w-6 h-6"><span id="chat-notification-store" class="hidden absolute top-1 right-0 w-2 h-2 bg-white rounded-full"></span></a></div></div></div>
+        </div>
+        <div class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200/80 z-[60] md:hidden pb-safe" style="background-image:url('https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5d - Diedit.jpg');background-size:contain;background-position:center;">
+            <div class="flex items-center justify-around py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <a href="/" class="flex flex-col items-center gap-1 flex-1 text-center hover:text-black nav-active transition-colors"><img src="https://img.icons8.com/?size=100&id=YF1V1hzbOOHk&format=png&color=737373" class="w-5 h-5"><span data-i18n="shop">Shop</span></a>
+                <button onclick="window.WishlistManager.togglePopup()" class="flex uppercase flex-col items-center gap-1 flex-1 text-center hover:text-black transition-colors cursor-pointer"><div class="relative w-5 h-5"><img src="https://img.icons8.com/?size=100&id=3686&format=png&color=737373" class="w-5 h-5"><span id="wishlist-badge-mobile" class="absolute top-0 -right-1.5 bg-[#DF414F] text-white text-[8px] font-black w-4 h-4 flex items-center border border-white justify-center rounded-full scale-90 hidden">0</span></div><span data-i18n="wishlist">Wishlist</span></button>
+                <a href="northMall" class="flex flex-col items-center gap-1 flex-1 text-center hover:text-black transition-colors"><img src="https://img.icons8.com/?size=100&id=8386&format=png&color=737373" class="w-5 h-5"><span data-i18n="mall">MALL</span></a>
+                <a id="nav-orders-btn" onclick="window.OrderManager.openSpaOrders()" class="relative flex flex-col items-center gap-1 flex-1 text-center hover:text-black transition-colors"><img src="https://img.icons8.com/?size=100&id=Ot2P5D5MPltM&format=png&color=737373" class="w-5 h-5"><span id="main-orders-badge" class="absolute bottom-7 right-1/4 bg-[#DF414F] text-white text-[8px] font-bold h-3 w-3 rounded-full flex items-center justify-center border border-white scale-0">0</span><span data-i18n="orders">Orders</span></a>
+                <a href="auth.html" id="auth-nav-link-mobile" class="flex flex-col items-center gap-1 flex-1 text-center hover:text-black transition-colors"><img src="https://img.icons8.com/?size=100&id=qBbhsiAagGNX&format=png&color=737373" class="w-5 h-5"><span id="auth-nav-text-mobile" data-i18n="sign_up">Sign Up</span></a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Pengembalian Dana</h1>
+        <p class="text-sm text-gray-500 mb-8">Informasi syarat dan prosedur pengembalian dana di Northline</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                <div class="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3"><span class="text-[#DF414F] text-xl font-bold">1</span></div>
+                <h3 class="font-semibold text-sm text-gray-800 mb-1">Ajukan Pengembalian</h3>
+                <p class="text-xs text-gray-500">Ajukan melalui halaman pesanan dalam 7 hari</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                <div class="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3"><span class="text-[#DF414F] text-xl font-bold">2</span></div>
+                <h3 class="font-semibold text-sm text-gray-800 mb-1">Verifikasi</h3>
+                <p class="text-xs text-gray-500">Tim kami akan memverifikasi pengajuan Anda</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                <div class="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3"><span class="text-[#DF414F] text-xl font-bold">3</span></div>
+                <h3 class="font-semibold text-sm text-gray-800 mb-1">Dana Dikembalikan</h3>
+                <p class="text-xs text-gray-500">Dana masuk ke akun Anda dalam 3-5 hari</p>
+            </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <h2 class="font-semibold text-base text-gray-800 mb-4">Syarat Pengembalian Dana</h2>
+            <ul class="space-y-3 text-sm text-gray-600">
+                <li class="flex items-start gap-2"><span class="text-[#DF414F] mt-0.5">•</span>Barang diterima dalam kondisi tidak sesuai pesanan (salah ukuran/warna/jenis)</li>
+                <li class="flex items-start gap-2"><span class="text-[#DF414F] mt-0.5">•</span>Barang mengalami kerusakan atau cacat produksi</li>
+                <li class="flex items-start gap-2"><span class="text-[#DF414F] mt-0.5">•</span>Barang tidak sampai dalam waktu maksimal 30 hari setelah pemesanan</li>
+                <li class="flex items-start gap-2"><span class="text-[#DF414F] mt-0.5">•</span>Pengajuan dilakukan maksimal 7 hari setelah barang diterima</li>
+                <li class="flex items-start gap-2"><span class="text-[#DF414F] mt-0.5">•</span>Barang dalam kondisi lengkap dan belum digunakan</li>
+            </ul>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 class="font-semibold text-base text-gray-800 mb-3">Butuh Bantuan?</h2>
+            <p class="text-sm text-gray-500 mb-4">Hubungi tim customer service kami untuk informasi lebih lanjut</p>
+            <a href="contact.html" class="inline-block h-10 px-6 bg-[#DF414F] text-white text-sm font-medium rounded-lg hover:brightness-95 transition leading-10">Hubungi Kami</a>
+        </div>
+    </section>
+
+    <div id="SCTONRT"></div>
+    <footer class="bg-gray-100 border-t border-gray-300">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <div><h3 class="font-semibold text-xs md:text-sm mb-3 uppercase" data-i18n="footer_customer_service">Layanan Pelanggan</h3><ul class="space-y-1.5 text-xs text-gray-600"><li><a href="bantuan.html" class="hover:text-blue-600" data-i18n="help">Bantuan</a></li><li><a href="metode-pembayaran.html">Metode Pembayaran</a></li><li><a href="lacak-pesanan.html">Lacak Pesanan</a></li><li><a href="pengembalian-dana.html">Pengembalian Dana</a></li><li><a href="contact.html">Hubungi Kami</a></li></ul></div>
+                <div><h3 class="font-semibold text-xs md:text-sm mb-3 uppercase" data-i18n="footer_about">Jelajahi Northline</h3><ul class="space-y-1.5 text-xs text-gray-600"><li><a href="tentang-kami.html">Tentang Kami</a></li><li><a href="karir.html">Karir</a></li><li><a href="blog.html">Blog</a></li><li><a href="public/seller/register.html" data-i18n="seller_centre">Seller Centre</a></li><li><a href="affiliate.html">Affiliate</a></li></ul></div>
+                <div><h3 class="font-semibold text-xs md:text-sm mb-3 uppercase" data-i18n="footer_payment">Pembayaran</h3><div class="grid grid-cols-3 gap-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170210.png" class="h-7 object-contain bg-white shadow-md rounded p-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170641.png" class="h-7 object-contain bg-white shadow-md rounded p-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170039.png" class="h-7 object-contain bg-white shadow-md rounded p-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170426.png" class="h-7 object-contain bg-white shadow-md rounded p-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170346.png" class="h-7 object-contain bg-white shadow-md rounded p-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170517.png" class="h-7 object-contain bg-white shadow-md rounded p-1"></div><h3 class="font-semibold text-xs md:text-sm mt-5 mb-3 uppercase" data-i18n="footer_shipping">Pengiriman</h3><div class="grid grid-cols-3 gap-1"><img src="https://nl.hostinesia.my.id/public/image/20260608_170722.png" class="h-7"><img src="https://nl.hostinesia.my.id/public/image/20260608_170607.png" class="h-7"><img src="https://nl.hostinesia.my.id/public/image/20260608_170305.png" class="h-7"></div></div>
+                <div><h3 class="font-semibold text-xs md:text-sm mb-3 uppercase" data-i18n="footer_follow">Ikuti Kami</h3><ul class="space-y-2 text-xs text-gray-600"><li class="flex items-center gap-2"><img src="https://img.icons8.com/fluency/20/facebook-new.png" class="w-4 h-4">Facebook</li><li class="flex items-center gap-2"><img src="https://img.icons8.com/fluency/20/instagram-new.png" class="w-4 h-4">Instagram</li></ul></div>
+            </div>
+            <div class="border-t border-gray-300 mt-6 pt-4 text-xs text-gray-500"><p data-i18n="copyright">© 2026 Northline. Hak Cipta Dilindungi.</p></div>
+        </div>
+    </footer>
+    <div id="wishlist-popup" class="fixed inset-0 z-50 pointer-events-none hidden"><div onclick="toggleWishlistPopup()" class="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"></div><div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl pointer-events-auto flex flex-col z-10 border-l border-gray-100"><div class="px-4 h-[50px] border-b border-gray-100 flex justify-between items-center"><div class="flex items-center gap-4"><button onclick="window.WishlistManager.togglePopup()"><img src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F" style="height:20px;"></button><span class="text-[13px] uppercase tracking-wider text-gray-950">Saved Wishlist</span></div></div><div id="popup-items-container" class="flex-1 bg-gray-100 p-2 overflow-y-auto"><div id="popup-empty-state" class="text-center py-20"><p class="text-gray-400 text-xs">Your wishlist is empty.</p></div></div><div class="p-6 border-t border-gray-100"><button class="w-full bg-[#DF414F] text-white py-2 font-bold text-[11px] uppercase cursor-pointer">Move All To Bag</button></div></div></div>
+    <div id="spa-orders-popup-wrapper" class="fixed inset-0 z-50 bg-[#f2f2f7] translate-y-full hidden flex flex-col"></div>
+    <div id="payment-root"></div>
+    <button id="chat-toggle-dekstop" class="fixed z-40 bottom-20 right-4 md:bottom-5 md:right-5 w-8 h-8 md:w-10 md:h-10 bg-[#DF414F] text-white shadow-lg hidden md:block"><img src="https://nl.hostinesia.my.id/public/icons/nlicon.png" class="w-6 h-6 md:w-10 md:h-10"></button>
+    <div id="chat-widget" class="fixed z-[999] bg-white md:border shadow-2xl flex flex-col scale-0 opacity-0 pointer-events-none transition-all w-full h-[100dvh] top-0 left-0 md:w-[380px] md:h-[600px] md:bottom-20 md:right-5"><div class="h-[60px] bg-[#DF414F] text-white flex items-center px-4"><div class="flex items-center gap-2"><img src="https://nl.hostinesia.my.id/public/icons/nlicon.png" class="w-8 h-8"><div><div class="font-medium text-sm">Northline Support</div><div class="text-[11px] text-white/80"><span data-i18n="support_center">24/7 Support Center</span></div></div></div><button id="chat-close" class="ml-auto"><img src="https://img.icons8.com/?size=100&id=b8rKT75QG14x&format=png&color=ffffff" class="w-5 h-5"></button></div></div>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/src/services/storage-config.js?v=27072026"></script>
+    <script src="/java/script.js?v=27072026"></script>
+    <script src="/java/language.js?v=27072026"></script>
+    <script src="/src/services/search.js?v=27072026"></script>
+    <script src="/src/services/orders.js?v=27072026"></script>
+    <script src="/src/services/wishlist.js?v=27072026"></script>
+    <script src="/seller-products/seller-card.js?v=27072026"></script>
+    <script src="/src/services/ai-service.js?v=27072026"></script>
+    <script>
+        const c=document.getElementById('chat-toggle-dekstop'),w=document.getElementById('chat-widget'),x=document.getElementById('chat-close');
+        c&&(c.onclick=()=>{w&&(w.classList.remove('scale-0','opacity-0','pointer-events-none'),w.classList.add('scale-100','opacity-100'))});
+        x&&(x.onclick=()=>{w&&(w.classList.remove('scale-100','opacity-100'),w.classList.add('scale-0','opacity-0','pointer-events-none'))});
+        'serviceWorker'in navigator&&window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js')});
+    </script>
+</body>
+</html>
