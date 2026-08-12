@@ -110,6 +110,7 @@ let selectedColor = "";
 let selectedSize = "";
 let selectedSizeGroup = "ADULT";
 let selectedModel = "";
+let selectedModelStyle = "";
 let currentProductId = null;
 let currentProductCode = null;
 
@@ -762,19 +763,30 @@ async function openProductDetail(productId) {
   sizeContainer.innerHTML = renderSizeOptions(product);
 
   const modelStyleSection = document.getElementById("model-style-section");
-  const modelStyleSelect = document.getElementById("model-style-select");
-  if (modelStyleSection && modelStyleSelect) {
+  const modelStyleContainer = document.getElementById("model-style-options");
+  const modelStyleLabel = document.getElementById("selected-model-style-text");
+  if (modelStyleSection && modelStyleContainer) {
     const styles = product.modelStyle || [];
     if (styles.length > 0) {
-      modelStyleSelect.innerHTML = styles
+      selectedModelStyle = styles[0];
+      modelStyleContainer.innerHTML = styles
         .map(
-          (s) =>
-            `<option value="${String(s).replace(/"/g, "&quot;")}">${String(s).replace(/"/g, "&quot;")}</option>`,
+          (s, i) => `
+            <button onclick="selectModelStyle('${String(s).replace(/'/g, "\\'")}', this)"
+                    class="model-style-btn px-2 py-1 md:px-3 md:py-1.5 border text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none ${
+                      i === 0
+                        ? "border-[#DF414F] bg-[#fff1ee] text-[#DF414F] font-black shadow-sm"
+                        : "border-gray-200 bg-white text-gray-800 hover:border-[#DF414F] font-bold"
+                    }">
+              ${s}
+            </button>
+        `,
         )
         .join("");
+      if (modelStyleLabel) modelStyleLabel.innerText = selectedModelStyle;
       modelStyleSection.classList.remove("hidden");
     } else {
-      modelStyleSelect.innerHTML = "";
+      modelStyleContainer.innerHTML = "";
       modelStyleSection.classList.add("hidden");
     }
   }
@@ -832,6 +844,7 @@ function updateSelectedLabels() {
   const colorLabel = document.getElementById("selected-color-text");
   const sizeLabel = document.getElementById("selected-size-text");
   const modelLabel = document.getElementById("selected-model-text");
+  const modelStyleLabel = document.getElementById("selected-model-style-text");
 
   if (colorLabel)
     colorLabel.innerText =
@@ -840,6 +853,8 @@ function updateSelectedLabels() {
   if (sizeLabel) sizeLabel.innerText = selectedSize;
 
   if (modelLabel) modelLabel.innerText = selectedModel;
+
+  if (modelStyleLabel) modelStyleLabel.innerText = selectedModelStyle;
 }
 
 function selectColor(color, element) {
@@ -853,6 +868,19 @@ function selectColor(color, element) {
 
   element.className =
     "color-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
+}
+
+function selectModelStyle(style, element) {
+  selectedModelStyle = style;
+  updateSelectedLabels();
+
+  document.querySelectorAll(".model-style-btn").forEach((btn) => {
+    btn.className =
+      "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[11px] md:text-xs font-bold transition-all uppercase cursor-pointer select-none";
+  });
+
+  element.className =
+    "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
 }
 
 function selectSize(size, element) {
