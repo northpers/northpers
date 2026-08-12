@@ -179,9 +179,11 @@ function renderSliderProductCard(product) {
   const img = product.thumbs && product.thumbs[0] ? product.thumbs[0] : (product.images && product.images[0] ? product.images[0] : '/public/icons/default.png');
   const discount = product.oldPrice && product.oldPrice > product.price
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
-  return '<div class="group bg-white min-w-[170px] max-w-[170px] flex-shrink-0 shadow-sm border border-gray-200 hover:border-[#DF414F] cursor-pointer" onclick="openProductDetail(\'' + ref + '\')">'
+  const soldOut = !product.stock || product.stock <= 0;
+  return '<div class="group bg-white min-w-[170px] max-w-[170px] flex-shrink-0 shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
+    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'
     + '<img src="https://down-id.img.susercontent.com/file/id-11134258-8224q-mkvvibsp8oowa6.webp" style="height: 180px;" loading="lazy">'
@@ -491,9 +493,11 @@ function renderProductCard(product) {
   const img = product.thumbs && product.thumbs[0] ? product.thumbs[0] : (product.images && product.images[0] ? product.images[0] : '/public/icons/default.png');
   const discount = product.oldPrice && product.oldPrice > product.price
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
-  return '<div class="hover-bottom group bg-white w-full md:w-[200px] shadow-sm border border-gray-200 hover:border-[#DF414F] cursor-pointer" onclick="openProductDetail(\'' + ref + '\')">'
+  const soldOut = !product.stock || product.stock <= 0;
+  return '<div class="hover-bottom group bg-white w-full md:w-[200px] shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
+    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'
     + '<img src="https://down-id.img.susercontent.com/file/id-11134258-8224q-mkvvibsp8oowa6.webp" style="height: 180px;" loading="lazy">'
@@ -983,6 +987,10 @@ function alterQty(amount) {
   let currentVal = parseInt(input.value) || 1;
   currentVal += amount;
   if (currentVal < 1) currentVal = 1;
+  const product = window.currentProduct;
+  if (product && product.stock && currentVal > product.stock) {
+    currentVal = product.stock;
+  }
   input.value = currentVal;
 }
 
