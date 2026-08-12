@@ -180,9 +180,13 @@ function renderSliderProductCard(product) {
   const discount = product.oldPrice && product.oldPrice > product.price
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
   const soldOut = !product.stock || product.stock <= 0;
+  const aiPickBadge = product.aiPick
+    ? '<span class="absolute top-1 left-1 z-10 flex items-center gap-0.5 bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm">✨ AI Pick</span>'
+    : '';
   return '<div class="group bg-white min-w-[170px] max-w-[170px] flex-shrink-0 shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
+    + aiPickBadge
     + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'
@@ -494,9 +498,13 @@ function renderProductCard(product) {
   const discount = product.oldPrice && product.oldPrice > product.price
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
   const soldOut = !product.stock || product.stock <= 0;
+  const aiPickBadge = product.aiPick
+    ? '<span class="absolute top-1 left-1 z-10 flex items-center gap-0.5 bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm">✨ AI Pick</span>'
+    : '';
   return '<div class="hover-bottom group bg-white w-full md:w-[200px] shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
+    + aiPickBadge
     + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'

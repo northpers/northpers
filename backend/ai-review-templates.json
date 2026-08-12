@@ -1,0 +1,82 @@
+{
+  "generatedAt": 1786523355894,
+  "recommended": [
+    8,
+    10,
+    1
+  ],
+  "stores": {
+    "shortsleeve": [
+      {
+        "username": "Dimas Saputra",
+        "rating": 5,
+        "text": "Bahannya 24s cotton combed beneran adem dan jatuhnya rapi, potongan boxy-nya pas di bahu. Worth it banget buat harga segini."
+      },
+      {
+        "username": "Rina Wijaya",
+        "rating": 4,
+        "text": "Kaosnya nyaman dipakai seharian, model boxy-nya ada ruang jadi nggak gerah. Sayang warnanya agak cepat pudar setelah beberapa kali dicuci."
+      }
+    ],
+    "longsleeve": [
+      {
+        "username": "Andre Pratama",
+        "rating": 5,
+        "text": "Longsleeve-nya tebal tapi tetap adem, potongan boxy bikin penampilan makin rapi. Bahan cotton combed-nya juga awet setelah dicuci berulang."
+      },
+      {
+        "username": "Sari Dewi",
+        "rating": 4,
+        "text": "Nyaman dipakai dan bahannya adem walau siang hari. Ukurannya agak longgar, tapi memang modelnya emang boxy."
+      }
+    ],
+    "hoodie": [
+      {
+        "username": "Fajar Ramadhan",
+        "rating": 5,
+        "text": "Hoodie double zipper-nya premium banget, bahan tebal dan jahitannya rapi. Kesan streetwear-nya langsung dapet saat dipakai."
+      },
+      {
+        "username": "Adinda Putri",
+        "rating": 4,
+        "text": "Hoodie-nya hangat dan bahannya tebal, double zipper-nya beneran fungsional. Warna pink-nya juga lebih cantik dari di foto."
+      }
+    ],
+    "workshirt": [
+      {
+        "username": "Bagus Setiawan",
+        "rating": 5,
+        "text": "Workshirt zipper-nya kualitas mantap, bahannya tebal dan jahitannya presisi. Model boxy-nya bikin tampilan jadi lebih premium."
+      },
+      {
+        "username": "Nadia Rahma",
+        "rating": 4,
+        "text": "Material workshirt-nya bagus dan masuk di badan, resletingnya halus saat dipakai. Harga agak tinggi tapi kualitasnya sebanding."
+      }
+    ],
+    "kids": [
+      {
+        "username": "Rudi Hartono",
+        "rating": 5,
+        "text": "Kaos anaknya adem dan potongannya pas, anak saya nyaman makai seharian. Jahitannya kuat walau dipakai intesitas main anak."
+      },
+      {
+        "username": "Lia Anggraini",
+        "rating": 4,
+        "text": "Kaos anaknya ukurannya sesuai dan bahannya enak di kulit. Harganya terjangkau buat kualitas seperti ini."
+      }
+    ],
+    "default": [
+      {
+        "username": "Yoga Kurniawan",
+        "rating": 5,
+        "text": "Produknya sesuai deskripsi, kualitas bahannya di atas ekspektasi. Pengiriman cepat dan packing-nya rapi banget."
+      },
+      {
+        "username": "Maya Sari",
+        "rating": 4,
+        "text": "Barangnya bagus dan sesuai foto, bahan terasa berkualitas. Ukurannya sedikit beda dari bayangan tapi masih oke."
+      }
+    ]
+  }
+}

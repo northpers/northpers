@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 const { cachedQuery, invalidateByPrefix } = require("../config/redis");
+const fs = require("fs");
+const path = require("path");
+const axios = require("axios");
 
 const SIZE_EXTRA = { S: 0, M: 1000, L: 2000, XL: 3000 };
 
@@ -22,7 +25,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 120,
+    stock: 10,
     deskripsi:
       "Kaos boxy Longsleeve & Shortsleeve 919 NRT dengan bahan 24s Cotton Combed yang nyaman dan adem. Potongan boxy, cocok untuk daily wear. Tersedia model panjang dan pendek.",
   },
@@ -44,7 +47,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Kaos boxy Longsleeve & Shortsleeve dengan bahan 24s Cotton Combed premium. Nyaman dipakai sehari-hari dengan potongan boxy oversize. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
@@ -66,7 +69,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Kaos boxy Longsleeve & Shortsleeve dengan bahan 24s Cotton Combed premium. Nyaman dipakai sehari-hari dengan potongan boxy oversize. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
@@ -88,7 +91,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Kaos boxy Longsleeve & Shortsleeve Arabic dengan bahan 24s Cotton Combed premium. Desain tulisan arab, potongan boxy. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
@@ -105,7 +108,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 80,
+    stock: 10,
     deskripsi:
       "Workshirt Zipper boxy hitam dengan bahan premium. Desain work shirt modern dengan resleting, cocok untuk gaya kasual hingga semi formal. Tersedia ukuran M, L, XL.",
   },
@@ -125,7 +128,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 120,
+    stock: 10,
     deskripsi:
       "Longsleeve 111 putih boxy dengan bahan 24s Cotton Combed. Adem dan nyaman untuk aktivitas harian. Tersedia model panjang dan pendek.",
   },
@@ -145,7 +148,7 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
-    stock: 120,
+    stock: 10,
     deskripsi:
       "Shortsleeve NORTNL putih boxy dengan bahan 24s Cotton Combed. Desain simple dan bersih, nyaman dipakai sehari-hari. Tersedia model panjang dan pendek.",
   },
@@ -162,7 +165,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 60,
+    stock: 10,
     deskripsi:
       "Afterall Boxy Work Shirt Zipper dengan bahan premium. Kemeja kerja boxy dengan resleting, tampilan modern dan rapi. Tersedia ukuran M, L, XL.",
   },
@@ -179,7 +182,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 75,
+    stock: 10,
     deskripsi:
       "Hoodie NORTNL boxy double zipper Vintage Club. Desain hoodie kekinian dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
@@ -194,7 +197,7 @@ const NORTHLINE_CATALOG = [
     images: ["https://nl.hostinesia.my.id/public/image/nrtHoodieNRTStyle.webp"],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 75,
+    stock: 10,
     deskripsi:
       "Hoodie NRT boxy double zipper Vintage Club. Desain hoodie kekinian dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
@@ -211,7 +214,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 75,
+    stock: 10,
     deskripsi:
       "Hoodie North American boxy double zipper Vintage Club. Desain hoodie bergaya North American dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
@@ -228,7 +231,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Shortsleeve North American hitam dengan bahan 24s Cotton Combed. Desain bergaya North American, potongan boxy. Tersedia ukuran M, L, XL.",
   },
@@ -248,7 +251,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PINK"],
     sizes: ["M", "L", "XL"],
-    stock: 60,
+    stock: 10,
     deskripsi:
       "Hoodie Pink Style boxy double zipper Vintage Club. Desain hoodie dengan nuansa pink, double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
@@ -268,7 +271,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PINK", "ABU-ABU", "BIRU", "MERAH"],
     sizes: ["M", "L", "XL"],
-    stock: 90,
+    stock: 10,
     deskripsi:
       "Hoodie NRL Style boxy double zipper Vintage Club. Desain hoodie eksklusif dengan double zipper. Tersedia warna pink, abu-abu, biru, dan merah. Ukuran M, L, XL.",
   },
@@ -286,7 +289,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Shortsleeve NRL putih boxy dengan bahan 24s Cotton Combed. Desain bersih dan simple, nyaman dipakai sehari-hari. Tersedia ukuran M, L, XL.",
   },
@@ -304,7 +307,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
-    stock: 100,
+    stock: 10,
     deskripsi:
       "Shortsleeve NL putih boxy dengan bahan 24s Cotton Combed. Desain simple, nyaman dipakai sehari-hari. Tersedia ukuran M, L, XL.",
   },
@@ -321,7 +324,7 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
-    stock: 80,
+    stock: 10,
     deskripsi:
       "Shortsleeve New Article 2026 putih boxy dengan bahan 24s Cotton Combed. Artikel terbaru dengan desain fresh. Tersedia ukuran M, L, XL.",
   },
@@ -339,7 +342,7 @@ const NORTHLINE_CATALOG = [
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
     sizesChildren: ["S", "M", "L", "XL", "XXL"],
-    stock: 110,
+    stock: 10,
     deskripsi:
       "Shortsleeve NORTHLINE hitam boxy dengan bahan 24s Cotton Combed. Desain statement dengan tulisan NORTHLINE. Tersedia ukuran dewasa dan anak.",
     childrenPrice: 88000,
@@ -358,7 +361,7 @@ const NORTHLINE_CATALOG = [
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
     sizesChildren: ["S", "M", "L", "XL", "XXL"],
-    stock: 110,
+    stock: 10,
     deskripsi:
       "Shortsleeve NORTHLINE INDONESIA hitam boxy dengan bahan 24s Cotton Combed. Desain statement dengan tulisan NORTHLINE INDONESIA. Tersedia ukuran dewasa dan anak.",
     childrenPrice: 88000,
@@ -372,15 +375,18 @@ const NORTHLINE_CATALOG = [
     avgRating: 4.9,
     totalReviews: 9800,
     images: [
+      "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthlineKids.webp?=v2",
       "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline2.webp?=v2",
       "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline1.webp?=v2",
     ],
     colors: ["HITAM"],
     modelStyle: ["NORTHLINE INDONESIA", "NORTHLINE"],
     sizes: ["S", "M", "L", "XL", "XXL"],
-    stock: 150,
+    sizesChildren: ["S", "M", "L", "XL", "XXL"],
+    childrenPrice: 88000,
+    stock: 10,
     deskripsi:
-      "Northline – Shortsleeve Boxy Tshirt Archive Article – Black Statement.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Shortsleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  },
+      "Northline Shortsleeve Kids Boxy Tshirt NORTHLINE INDONESIA -  24s Cotton Combed Shortsleeve Black Statement.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Shortsleeve Kids Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  },
 ];
 
 const crypto = require("crypto");
@@ -472,6 +478,7 @@ function withCode(product) {
     avgRating: merged.avgRating,
     totalReviews: merged.totalReviews,
     code: getProductCode(product.id),
+    aiPick: aiPickIds().has(product.id),
     thumbs,
     categories: getCategories(product),
   };
@@ -612,6 +619,25 @@ router.get("/reviews", async (req, res) => {
         reviewMap.get(id).ratingCounts = byProduct[id];
       });
 
+      // Produk id baru tanpa review DB -> isi otomatis dari template AI
+      NORTHLINE_CATALOG.forEach((p) => {
+        const meta = reviewMap.get(p.id);
+        if (!meta || meta.totalReviews > 0) return;
+        const tpl = aiReviewsForProduct(p.id);
+        if (!tpl.length) return;
+        const groups = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        tpl.forEach((r) => {
+          groups[Math.min(5, Math.max(1, r.rating || 5))]++;
+        });
+        meta.totalReviews = 16 + tpl.length;
+        meta.avgRating =
+          Math.round(
+            (tpl.reduce((s, r) => s + (r.rating || 5), 0) / tpl.length) * 10,
+          ) / 10;
+        meta.ratingCounts = groups;
+        meta.aiGenerated = true;
+      });
+
       const totalReviews = rows.length;
       const avg =
         totalReviews > 0
@@ -621,37 +647,84 @@ router.get("/reviews", async (req, res) => {
             ) / 10
           : 0;
 
+      const reviews = rows.map((r) => ({
+        id: r.id,
+        productId: r.product_id,
+        productName: (reviewMap.get(Number(r.product_id)) || {}).name || null,
+        productImage:
+          (reviewMap.get(Number(r.product_id)) || {}).image || null,
+        userName: r.username,
+        userAvatar: r.user_avatar,
+        rating: r.rating,
+        ratingBahan: r.rating_bahan,
+        ratingUkuran: r.rating_ukuran,
+        ratingWarna: r.rating_warna,
+        variantColor: r.variant_color,
+        variantSize: r.variant_size,
+        variantModel: r.variant_model,
+        images: r.images ? JSON.parse(r.images) : [],
+        verified: !!r.verified_purchase,
+        replyText: r.reply_text,
+        replyAt: r.reply_at,
+        replyBy: r.reply_by,
+        text: r.review_text,
+        createdAt: r.created_at,
+      }));
+
+      // Review virtual dari template AI untuk produk baru (tanpa review DB)
+      if ((!productId || reviews.length === 0) && aiReviewTemplates.generatedAt) {
+        const virtualTargets =
+          productId && reviews.length === 0
+            ? [String(productId)]
+            : NORTHLINE_CATALOG.map((p) => String(p.id));
+        const aiCreatedAt = new Date(aiReviewTemplates.generatedAt)
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
+        virtualTargets.forEach((pid) => {
+          if (reviews.some((r) => String(r.productId) === pid)) return;
+          const tpl = aiReviewsForProduct(pid);
+          if (!tpl.length) return;
+          tpl.forEach((r, i) => {
+            reviews.push({
+              id: -pid - 1 - i,
+              productId: Number(pid),
+              productName:
+                (reviewMap.get(Number(pid)) || {}).name || null,
+              productImage:
+                (reviewMap.get(Number(pid)) || {}).image || null,
+              userName: r.username || "Pembeli Northline",
+              userAvatar: null,
+              rating: Math.min(5, Math.max(1, r.rating || 5)),
+              ratingBahan: null,
+              ratingUkuran: null,
+              ratingWarna: null,
+              variantColor: null,
+              variantSize: null,
+              variantModel: null,
+              images: [],
+              verified: true,
+              replyText: null,
+              replyAt: null,
+              replyBy: null,
+              text: r.text || "",
+              createdAt: aiCreatedAt,
+              aiGenerated: true,
+            });
+          });
+        });
+      }
+
       return {
         success: true,
         totalReviews,
         avgRating: avg,
         ratingCounts: allCounts,
+        aiGenerated: aiReviewTemplates.generatedAt > 0,
         products: Array.from(reviewMap.values()).filter(
           (p) => p.totalReviews > 0,
         ),
-        reviews: rows.map((r) => ({
-          id: r.id,
-          productId: r.product_id,
-          productName: (reviewMap.get(Number(r.product_id)) || {}).name || null,
-          productImage:
-            (reviewMap.get(Number(r.product_id)) || {}).image || null,
-          userName: r.username,
-          userAvatar: r.user_avatar,
-          rating: r.rating,
-          ratingBahan: r.rating_bahan,
-          ratingUkuran: r.rating_ukuran,
-          ratingWarna: r.rating_warna,
-          variantColor: r.variant_color,
-          variantSize: r.variant_size,
-          variantModel: r.variant_model,
-          images: r.images ? JSON.parse(r.images) : [],
-          verified: !!r.verified_purchase,
-          replyText: r.reply_text,
-          replyAt: r.reply_at,
-          replyBy: r.reply_by,
-          text: r.review_text,
-          createdAt: r.created_at,
-        })),
+        reviews,
       };
     });
 
@@ -659,6 +732,156 @@ router.get("/reviews", async (req, res) => {
   } catch (err) {
     console.error("catalog reviews error:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// =========================================
+// AI Reviews otomatis (generate SEKALI, hemat token)
+// =========================================
+const AI_TEMPLATES_FILE = path.join(__dirname, "../ai-review-templates.json");
+const AI_GEN_KEY = process.env.AI_GEN_KEY || "nl-ai-reviews-2026";
+const OPENCODE_SERVER = "http://127.0.0.1:11436";
+
+function loadAiReviewTemplates() {
+  try {
+    return JSON.parse(fs.readFileSync(AI_TEMPLATES_FILE, "utf8"));
+  } catch (e) {
+    return { generatedAt: 0, recommended: [], stores: {} };
+  }
+}
+
+function saveAiReviewTemplates(tpl) {
+  fs.writeFileSync(AI_TEMPLATES_FILE, JSON.stringify(tpl, null, 2), "utf8");
+}
+
+const aiReviewTemplates = loadAiReviewTemplates();
+
+function aiPickIds() {
+  return Array.isArray(aiReviewTemplates.recommended)
+    ? new Set(aiReviewTemplates.recommended.map(Number))
+    : new Set();
+}
+
+function aiReviewsForProduct(productId) {
+  const tpl = aiReviewTemplates;
+  if (!tpl || !tpl.generatedAt) return [];
+  const product = NORTHLINE_CATALOG.find(
+    (p) => p.id === Number(productId) || p.id === parseInt(productId) || String(p.id) === String(productId),
+  );
+  if (!product) return [];
+  const isKids = product.sizesChildren && product.sizesChildren.length;
+  if (
+    isKids &&
+    Array.isArray(tpl.stores.kids) &&
+    tpl.stores.kids.length
+  ) {
+    return tpl.stores.kids.slice(0, 2);
+  }
+  const cats = getCategories(product);
+  let list = null;
+  for (const cat of cats) {
+    if (Array.isArray(tpl.stores[cat]) && tpl.stores[cat].length) {
+      list = tpl.stores[cat];
+      break;
+    }
+  }
+  if (!list) {
+    list = tpl.stores.default || [];
+  }
+  return Array.isArray(list) ? list.slice(0, 2) : [];
+}
+
+router.get("/ai-reviews", (req, res) => {
+  res.json({
+    success: true,
+    generatedAt: aiReviewTemplates.generatedAt || 0,
+    recommended: aiReviewTemplates.recommended || [],
+    stores: Object.keys(aiReviewTemplates.stores || {}),
+  });
+});
+
+router.post("/ai-reviews/generate", async (req, res) => {
+  try {
+    if (req.query.key !== AI_GEN_KEY) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized: key salah" });
+    }
+    if (aiReviewTemplates.generatedAt && req.query.force !== "1") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Template AI sudah di-generate. Gunakan ?force=1 untuk generate ulang (memakai token lagi).",
+        generatedAt: aiReviewTemplates.generatedAt,
+      });
+    }
+
+    const lines = NORTHLINE_CATALOG.map((p) => {
+      const cats = getCategories(p).join("/") || "default";
+      const kids = p.sizesChildren && p.sizesChildren.length ? "/kids" : "";
+      return [
+        p.id,
+        p.name,
+        `kategori:${cats}${kids}`,
+        `warna:${(p.colors || []).join("/")}`,
+        `harga:${p.priceShort || p.price}${p.oldPrice ? "|old:" + p.oldPrice : ""}`,
+        `modelStyle:${(p.modelStyle || []).join("/") || "-"}`,
+        `stock:${p.stock || "-"}`,
+      ].join("|");
+    }).join("\n");
+
+    const prompt = `Analisis data katalog brand fashion Northline berikut (format: id|nama|kategori|warna|harga|modelStyle|stock):\n\n${lines}\n\nInstruksi:\n1. Bandingkan SEMUA produk, lalu pilih 3 id TERBAIK untuk direkomendasikan AI (pertimbangkan desain, nilai harga, kesan premium, non-kids).\n2. Buat template review konsumen realistis per kategori yang relevan: shortsleeve, longsleeve, hoodie, workshirt, kids, default. Tiap kategori maksimal 2 review.\n3. Username: nama orang Indonesia (variasi). Rating: 4 atau 5. Teks: 1-2 kalimat, bahasa Indonesia natural, PUJI bahan/kualitas/boxy/kenyamanan sesuai kategori (shortsleeve=kaos, hoodie=hoodie, dll), TANPA emoji, TANPA hashtag.\n4. Kategori yang tidak mewakili produk apa pun: isi [] (default WAJIB diisi 2 review, kids WAJIB diisi bila ada ukuran anak).\n\nJAWAB HANYA SATU JSON VALID (tanpa markdown, tanpa teks lain):\n{"recommended":[3 id terbaik],"stores":{"shortsleeve":[{"username":"...","rating":5,"text":"..."},{"username":"...","rating":4,"text":"..."}],"longsleeve":[...],"hoodie":[...],"workshirt":[...],"kids":[...],"default":[...]}}`;
+
+    const session = await axios.post(
+      `${OPENCODE_SERVER}/session`,
+      {},
+      { timeout: 5000 },
+    );
+    const sessionId = session.data.id;
+    const { data } = await axios.post(
+      `${OPENCODE_SERVER}/session/${sessionId}/message`,
+      {
+        model: { providerID: "opencode", modelID: "deepseek-v4-flash-free" },
+        parts: [{ type: "text", text: prompt }],
+        system:
+          "Kamu asisten analis data e-commerce. Sampaikan JSON valid saja, tanpa kata pengantar.",
+      },
+      { timeout: 180000 },
+    );
+
+    const raw =
+      data.parts?.find((p) => p.type === "text")?.text ||
+      "Maaf, tidak ada respon.";
+    const fenced = raw.match(/```json\s*([\s\S]*?)```/i);
+    const plain = raw.match(/\{[\s\S]*\}/);
+    const jsonText = (fenced ? fenced[1] : plain ? plain[0] : "").trim();
+    if (!jsonText) throw new Error("AI tidak mengembalikan JSON");
+    const parsed = JSON.parse(jsonText);
+    if (!parsed.stores || !Array.isArray(parsed.recommended)) {
+      throw new Error("Format JSON hasil AI tidak sesuai");
+    }
+
+    aiReviewTemplates.generatedAt = Date.now();
+    aiReviewTemplates.recommended = parsed.recommended
+      .slice(0, 5)
+      .map(Number)
+      .filter((n) => Number.isFinite(n));
+    aiReviewTemplates.stores = parsed.stores;
+    saveAiReviewTemplates(aiReviewTemplates);
+
+    setTimeout(() => invalidateByPrefix("catalog:").catch?.(() => {}), 0);
+    res.json({
+      success: true,
+      generatedAt: aiReviewTemplates.generatedAt,
+      recommended: aiReviewTemplates.recommended,
+      stores: Object.keys(aiReviewTemplates.stores),
+    });
+  } catch (err) {
+    console.error("AI reviews generate error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Gagal generate template AI review",
+    });
   }
 });
 
