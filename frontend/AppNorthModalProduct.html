@@ -207,6 +207,16 @@
                     </div>
                 </div>
 
+                <details class="group w-full border-t border-gray-100 pt-2 mt-1">
+                    <summary class="flex items-center justify-between text-[11px] md:text-sm font-bold text-gray-800 uppercase tracking-widest select-none list-none [&::-webkit-details-marker]:hidden cursor-pointer py-1">
+                        <span>Deskripsi</span>
+                        <svg class="w-4 h-4 text-gray-500 transition-transform duration-300 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </summary>
+                    <div id="detail-description" class="pt-2 pb-1 text-[11px] md:text-[13px] text-gray-600 leading-relaxed whitespace-pre-line"></div>
+                </details>
+
                 <div class="space-y-2">
                     <div class="space-y-1">
                         <div class="text-[9px] font-bold uppercase text-gray-400 tracking-widest">
@@ -225,6 +235,15 @@
                             </span>
                         </div>
                         <div id="model-options" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+
+                    <div class="space-y-1 hidden" id="model-style-section">
+                        <div class="text-[9px] font-bold uppercase text-gray-400 tracking-widest">
+                            Model Style:
+                        </div>
+                        <select id="model-style-select"
+                            class="w-full border border-gray-200 bg-white text-[11px] md:text-xs font-bold uppercase tracking-wider text-gray-800 px-2 py-1.5 outline-none cursor-pointer focus:border-[#DF414F]">
+                        </select>
                     </div>
                     
                     <div class="space-y-1">

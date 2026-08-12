@@ -676,6 +676,11 @@ async function openProductDetail(productId) {
     reviewCountEl.innerText = formatReviewCount(currentTotalReviews);
   }
 
+  const descEl = document.getElementById("detail-description");
+  if (descEl) {
+    descEl.innerText = product.deskripsi || "Deskripsi produk belum tersedia.";
+  }
+
   updateSelectedLabels();
 
   const readyPeriodEl = document.getElementById("ready-period");
@@ -755,6 +760,24 @@ async function openProductDetail(productId) {
 
   const sizeContainer = document.getElementById("size-options");
   sizeContainer.innerHTML = renderSizeOptions(product);
+
+  const modelStyleSection = document.getElementById("model-style-section");
+  const modelStyleSelect = document.getElementById("model-style-select");
+  if (modelStyleSection && modelStyleSelect) {
+    const styles = product.modelStyle || [];
+    if (styles.length > 0) {
+      modelStyleSelect.innerHTML = styles
+        .map(
+          (s) =>
+            `<option value="${String(s).replace(/"/g, "&quot;")}">${String(s).replace(/"/g, "&quot;")}</option>`,
+        )
+        .join("");
+      modelStyleSection.classList.remove("hidden");
+    } else {
+      modelStyleSelect.innerHTML = "";
+      modelStyleSection.classList.add("hidden");
+    }
+  }
 
   if (typeof loadProductComments === "function") {
     loadProductComments(productId);
