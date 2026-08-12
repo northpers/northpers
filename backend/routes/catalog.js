@@ -380,8 +380,7 @@ const NORTHLINE_CATALOG = [
     sizes: ["S", "M", "L", "XL", "XXL"],
     stock: 150,
     deskripsi:
-      "Shortsleeve Kids Boxy Tshirt NORTHLINE INDONESIA dengan bahan 24s Cotton Combed. Desain statement black untuk anak-anak. Ukuran anak S hingga XXL dengan harga khusus anak.",
-  },
+      "Northline – Shortsleeve Boxy Tshirt Archive Article – Black Statement\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Shortsleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  },
 ];
 
 const crypto = require("crypto");
