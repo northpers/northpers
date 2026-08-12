@@ -1,0 +1,343 @@
+const knownStores = [
+  { name: "Northline", url: "/AppNorthStore" },
+];
+
+if (typeof _d !== 'function') {
+  window._d = function (s) { let r = ""; for (let i = 0; i < s.length; i++) { r += String.fromCharCode(((s.charCodeAt(i) - 32 - 10 + 95) % 95) + 32); } return r; };
+}
+
+window.northlineProducts = window.northlineProducts || [];
+
+const northlineCatalogPromise = window.northlineCatalog
+  ? window.northlineCatalog
+  : (async () => {
+      try {
+        const res = await fetch(_d('9kzs9mk~kvyq9z|yn m~}'));
+        if (!res.ok) return [];
+        const data = await res.json();
+        const products = (data && data.products) || [];
+        window.northlineProducts = products;
+        return products;
+      } catch (e) {
+        return [];
+      }
+    })();
+
+function renderSearchItem(product) {
+  const name = product.name || product.product_name || "";
+  return `
+    <div class="search-result-item px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 truncate"
+      data-id="${product.id}"
+      data-code="${product.code || ''}"
+      data-source="${product.source || 'local'}">
+      ${name} ...
+    </div>
+  `;
+}
+
+function renderStoreItem(store) {
+  return `
+    <a href="${store.url}"
+      class="search-store-item flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700">
+      <img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F" class="w-4 h-4 flex-shrink-0">
+      <span class="text-sm">${store.name}</span>
+    </a>
+  `;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("main-search");
+  const dropdown = document.getElementById("search-results-dropdown");
+  const resultsList = document.getElementById("search-results-list");
+
+  const mobileSearchInput = document.getElementById("mobile-search");
+  const mobileDropdown = document.getElementById("mobile-search-dropdown");
+  const mobileResultsList = document.getElementById("mobile-search-list");
+
+  async function fetchApiProducts(keyword) {
+    try {
+      const res = await fetch(`/api/products/search?q=${encodeURIComponent(keyword)}`);
+      const data = await res.json();
+      let apiProducts = [], apiSellers = [];
+      if (Array.isArray(data)) {
+        apiProducts = data;
+      } else {
+        if (Array.isArray(data.products)) apiProducts = data.products;
+        if (Array.isArray(data.sellers)) apiSellers = data.sellers;
+      }
+      return {
+        products: apiProducts.filter(p => p.id).map(p => ({
+          id: p.id,
+          name: p.name || p.product_name,
+          code: p.code || "",
+          source: p.source === "catalog" ? "catalog" : "database",
+        })),
+        sellers: apiSellers,
+      };
+    } catch {
+      return { products: [], sellers: [] };
+    }
+  }
+
+  async function getLocalProducts(keyword) {
+    await northlineCatalogPromise;
+    return (window.northlineProducts || [])
+      .filter(p => p.name && p.name.toLowerCase().includes(keyword.toLowerCase()))
+      .map(p => ({ ...p, source: "local" }));
+  }
+
+  function getMatchingStores(keyword, apiSellers = []) {
+    const kw = keyword.toLowerCase();
+    const matches = [];
+    knownStores.forEach(s => {
+      if (s.name.toLowerCase().includes(kw)) matches.push(s);
+    });
+    apiSellers.forEach(s => {
+      if (s.store_name && s.store_name.toLowerCase().includes(kw)) {
+        if (!matches.find(m => m.name === s.store_name)) {
+          matches.push({ name: s.store_name, url: `/public/seller/${s.id}` });
+        }
+      }
+    });
+    return matches;
+  }
+
+  function renderResults(container, products, stores) {
+    container.innerHTML = "";
+    let hasAny = false;
+
+    stores.forEach(s => {
+      container.insertAdjacentHTML("beforeend", renderStoreItem(s));
+      hasAny = true;
+    });
+
+    if (products.length === 0 && !hasAny) {
+      container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Produk tidak ditemukan</div>';
+      return;
+    }
+
+    products.forEach(p => {
+      container.insertAdjacentHTML("beforeend", renderSearchItem(p));
+    });
+  }
+
+  function handleItemClick(e) {
+    const storeLink = e.target.closest(".search-store-item");
+    if (storeLink) return;
+
+    const item = e.target.closest(".search-result-item");
+    if (!item) return;
+    const id = item.dataset.id;
+    const code = item.dataset.code;
+    const source = item.dataset.source;
+    const ref = code || id;
+    if ((source === "local" || source === "catalog") && typeof openProductDetail === "function") {
+      openProductDetail(ref);
+    } else if (typeof openProduct === "function") {
+      openProduct(ref, source || "database");
+    }
+  }
+
+  let searchTimeout;
+
+  async function doSearch(keyword) {
+    const local = await getLocalProducts(keyword);
+    const api = await fetchApiProducts(keyword);
+    const merged = mergeProducts(local, api.products);
+    const stores = getMatchingStores(keyword, api.sellers);
+    return { products: merged, stores };
+  }
+
+  function mergeProducts(local, api) {
+    const map = new Map();
+    local.forEach(p => map.set(`local-${p.id}`, p));
+    api.forEach(p => map.set(`api-${p.id}`, p));
+    const seen = new Set();
+    const out = [];
+    Array.from(map.values()).forEach(p => {
+      const key = String(p.id);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(p);
+    });
+    return out;
+  }
+
+  function handleSearch(input, dropdownEl, resultsContainer, isMobile) {
+    return async (e) => {
+      const keyword = e.target.value.trim();
+      clearTimeout(searchTimeout);
+
+      if (!keyword) {
+        dropdownEl.classList.add("hidden");
+        return;
+      }
+
+      if (isMobile) {
+        searchTimeout = setTimeout(async () => {
+          dropdownEl.classList.remove("hidden");
+          const { products, stores } = await doSearch(keyword);
+          renderResults(resultsContainer, products, stores);
+        }, 300);
+      } else {
+        dropdownEl.classList.remove("hidden");
+        const { products, stores } = await doSearch(keyword);
+        renderResults(resultsContainer, products, stores);
+      }
+    };
+  }
+
+  if (searchInput && dropdown && resultsList) {
+    searchInput.addEventListener("input", handleSearch(searchInput, dropdown, resultsList, false));
+    resultsList.addEventListener("click", handleItemClick);
+
+    document.addEventListener("click", (e) => {
+      if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+  }
+
+  if (mobileSearchInput && mobileDropdown && mobileResultsList) {
+    mobileSearchInput.addEventListener("input", handleSearch(mobileSearchInput, mobileDropdown, mobileResultsList, true));
+    mobileResultsList.addEventListener("click", handleItemClick);
+  }
+
+  document.querySelectorAll(".mobile-search-camera, .desktop-search-camera").forEach(btn => {
+    const input = btn.classList.contains("mobile-search-camera")
+      ? document.getElementById("mobile-search-camera-input")
+      : document.getElementById("desktop-search-camera-input");
+    btn.addEventListener("click", () => input?.click());
+  });
+
+  document.getElementById("mobile-search-camera-input")?.addEventListener("change", handleCameraSearch);
+  document.getElementById("desktop-search-camera-input")?.addEventListener("change", handleCameraSearch);
+});
+
+async function handleCameraSearch(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch("/api/upload-search-image", { method: "POST", body: formData });
+    const data = await res.json();
+    if (data.success) {
+      const fullUrl = window.location.origin + data.url;
+      window.open(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(fullUrl)}`, "_blank");
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  e.target.value = "";
+}
+
+const placeholders = [
+  "Northline Longsleeve & Shortsleeve Boxy 919 NRT - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Workshirt Zipper Black Boxy -  Workshirt Zipper Boxy",
+  "Northline Longsleeve 111 White Boxy -  24s Cotton Combed Longsleeve White Boxy",
+  "Northline Shortsleeve NORTNL White Boxy -  24s Cotton Combed Shortsleeve White Boxy",
+  "Northline Afterall Boxy Work Shirt Zipper -  NORTNL Afterall Boxy Work Shirt Zipper",
+  "Northline HOODIE NORTNL BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
+  "Northline HOODIE NRT BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
+  "Northline HOODIE NORTH AMERICAN BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
+  "Northline ShortSleeve NORTH AMERICAN Style -  24s Cotton Combed Shortsleeve Black Boxy",
+  "Northline HOODIE PINK STYLE BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
+  "Northline HOODIE NRL STYLE BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
+  "Northline Shortsleeve NRL White Boxy -  24s Cotton Combed Shortsleeve White Boxy",
+  "Northline Shortsleeve NL White Boxy -  24s Cotton Combed Shortsleeve White Boxy"
+];
+
+const searchInput = document.getElementById("mobile-search");
+const searchWrapper = document.getElementById("search-placeholder-wrapper");
+const searchText = document.getElementById("search-placeholder-text");
+
+if (searchWrapper) searchWrapper.classList.add("truncate", "max-w-full", "overflow-hidden", "pr-3");
+if (searchText) searchText.classList.add("truncate");
+
+let currentPlaceholder = 0;
+
+setInterval(() => {
+  if (!searchInput || !searchWrapper || !searchText) return;
+  if (searchInput.value.trim() !== "") return;
+
+  searchWrapper.style.transition = "all .25s ease";
+  searchWrapper.style.transform = "translateY(-12px)";
+  searchWrapper.style.opacity = "0";
+
+  setTimeout(() => {
+    currentPlaceholder = (currentPlaceholder + 1) % placeholders.length;
+    searchText.textContent = placeholders[currentPlaceholder];
+    searchWrapper.style.transition = "none";
+    searchWrapper.style.transform = "translateY(12px)";
+    searchWrapper.style.opacity = "0";
+
+    requestAnimationFrame(() => {
+      searchWrapper.style.transition = "all .25s ease";
+      searchWrapper.style.transform = "translateY(0)";
+      searchWrapper.style.opacity = "1";
+    });
+  }, 250);
+}, 2500);
+
+searchInput.addEventListener("input", () => {
+  searchWrapper.style.display = searchInput.value.trim() ? "none" : "flex";
+});
+
+const desktopPlaceholders = [
+  "Northline Longsleeve & Shortsleeve Boxy 919 NRT - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
+  "Northline Workshirt Zipper Black Boxy -  Workshirt Zipper Boxy",
+  "Northline Longsleeve 111 White Boxy -  24s Cotton Combed Longsleeve White Boxy",
+  "Northline Shortsleeve NORTNL White Boxy -  24s Cotton Combed Shortsleeve White Boxy",
+  "Northline Afterall Boxy Work Shirt Zipper -  NORTNL Afterall Boxy Work Shirt Zipper",
+  "Northline HOODIE NORTNL BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY ...",
+  "Northline HOODIE NRT BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ...",
+  "Northline HOODIE NORTH AMERICAN BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY ...",
+  "Northline ShortSleeve NORTH AMERICAN Style -  24s Cotton Combed Shortsleeve Black Boxy",
+  "Northline HOODIE PINK STYLE BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ...",
+  "Northline HOODIE NRL STYLE BOXY DOUBLE ZIPPER VINTAGECLUB -  NORTNL HOODIE BOXY DOUBLE ...",
+  "Northline Shortsleeve NRL White Boxy -  24s Cotton Combed Shortsleeve White Boxy",
+  "Northline Shortsleeve NL White Boxy -  24s Cotton Combed Shortsleeve White Boxy"
+];
+
+const desktopInput = document.getElementById("main-search");
+const desktopWrapper = document.getElementById("desktop-placeholder-wrapper");
+const desktopText = document.getElementById("desktop-placeholder-text");
+
+if (desktopWrapper) desktopWrapper.classList.add("truncate", "max-w-full", "overflow-hidden", "pr-10");
+if (desktopText) desktopText.classList.add("truncate");
+
+let desktopIndex = 0;
+
+setInterval(() => {
+  if (!desktopInput || !desktopWrapper || !desktopText) return;
+  if (desktopInput.value.trim() !== "") return;
+
+  desktopWrapper.style.transition = "all .25s ease";
+  desktopWrapper.style.transform = "translateY(-12px)";
+  desktopWrapper.style.opacity = "0";
+
+  setTimeout(() => {
+    desktopIndex = (desktopIndex + 1) % desktopPlaceholders.length;
+    desktopText.textContent = desktopPlaceholders[desktopIndex];
+    desktopWrapper.style.transition = "none";
+    desktopWrapper.style.transform = "translateY(12px)";
+    desktopWrapper.style.opacity = "0";
+
+    requestAnimationFrame(() => {
+      desktopWrapper.style.transition = "all .25s ease";
+      desktopWrapper.style.transform = "translateY(0)";
+      desktopWrapper.style.opacity = "1";
+    });
+  }, 250);
+}, 2500);
+
+desktopInput.addEventListener("input", () => {
+  desktopWrapper.style.display = desktopInput.value.trim() ? "none" : "flex";
+});

@@ -1,7 +1,7 @@
 {
   "name": "Northline",
   "short_name": "Northline",
-  "description": "Marketplace Northline",
+  "description": "Northline Indonesia Brand - Produk UMKM Indonesia terbaik. Bangga pakai produk dalam negeri bersama Northline.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#DF414F",
@@ -9,12 +9,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://nl.hostinesia.my.id/public/icons/Favicon.png",
+      "src": "https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png?=v3",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://nl.hostinesia.my.id/public/icons/Favicon.png",
+      "src": "https://nl.hostinesia.my.id/public/icons/Favicon.png?=v4",
       "sizes": "512x512",
       "type": "image/png"
     }

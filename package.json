@@ -1,6 +1,9 @@
 {
   "dependencies": {
     "@google/genai": "^2.13.0",
-    "axios": "^1.16.1"
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.2",
+    "axios": "^1.16.1",
+    "dotenv": "^17.4.2"
   }
 }

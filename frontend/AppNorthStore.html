@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+    <title>Northline Official Store</title>
+    <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
+    <link rel="stylesheet" href="/css/style.css?v=0000v1css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .nav-active {color: black !important;}
+                @keyframes shine {
+            0% {
+                left: -150%;
+            }
+            100% {
+                left: 200%;
+            }
+        }
+        .loader-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .loader-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background: #DF414F;
+            animation: loaderBounce 1s infinite ease-in-out;
+        }
+        .loader-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+        .loader-dots span:nth-child(3) {
+            animation-delay: .3s;
+        }
+        @keyframes loaderBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: .5;
+            }
+            40% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+        #page-slider{
+            display:flex;
+            transition:transform .35s ease;
+        }
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #6b7280;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .filter-chip.active {
+            background: #DF414F;
+            border-color: #DF414F;
+            color: #fff;
+            font-weight: 500;
+        }
+        .rv-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            width: 100%;
+            transition: background .15s ease;
+        }
+        .rv-bar-row:hover {
+            background: #f9fafb;
+        }
+        .rv-bar-row.active {
+            background: #fff1ee;
+            border-color: #f5c6c3;
+        }
+        .rv-bar-label {
+            width: 34px;
+            font-size: 12px;
+            color: #4b5563;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        .rv-bar-track {
+            flex: 1;
+            height: 6px;
+            background: #f3f4f6;
+            overflow: hidden;
+        }
+        .rv-bar-fill {
+            display: block;
+            height: 100%;
+            background: #f59e0b;
+            transition: width .3s ease;
+        }
+        .rv-bar-count {
+            width: 24px;
+            text-align: right;
+            font-size: 12px;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+        .rv-chip-count {
+            color: #9ca3af;
+            font-weight: 400;
+        }
+        .rv-chip-count-on {
+            color: rgba(255,255,255,.85);
+            font-weight: 400;
+        }
+        .rv-clear {
+            font-size: 12px;
+            color: #DF414F;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+        .rv-clear:hover {
+            text-decoration: underline;
+        }
+        .nrt-scroll-x {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .nrt-scroll-x::-webkit-scrollbar {
+            display: none;
+        }
+        .nrt-scroll-x {
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-black">
+
+<div class="w-full z-[99999] bg-gray-100 min-h-screen">
+
+    <div class="sticky top-0 h-[250px] overflow-hidden z-10">
+
+        <img
+            src="https://nl.hostinesia.my.id/public/image/Model 18.jpeg"
+            class="absolute inset-0 w-full h-full object-cover">
+        <div class="absolute inset-0 bg-black/20"></div>
+
+        <div class="absolute top-4 left-1 right-4 flex items-center gap-2">
+            <a href="/">
+                <img src="https://img.icons8.com/?size=100&id=357&format=png&color=ffffff" class="w-8 h-8">
+            </a>
+            <div
+                class="flex-1 h-[30px] bg-white/20 backdrop-blur-sm flex gap-1 items-center px-3">
+                <img src="https://img.icons8.com/?size=100&id=HNqs6ySvgu0d&format=png&color=ffffff" class="w-4 h-4">
+                <input
+                    type="text"
+                    placeholder="Cari di Toko"
+                    class="w-full bg-transparent text-white placeholder-white/70 outline-none text-sm">
+            </div>
+            <button id="btn-share">
+                <img src="https://img.icons8.com/?size=100&id=TDCU7KRViM2Q&format=png&color=ffffff"
+                    class="w-5 h-5">
+            </button>
+        </div>
+
+        <div class="absolute top-[85px] left-4 right-4">
+
+            <div class="flex justify-between">
+                <div class="flex">
+                    <div class="relative">
+                        <img
+                            src="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png"
+                            class="w-[65px] h-[65px] rounded-full border-[1px] object-cover">
+                        <div
+                            class="absolute -bottom-0 left-1/2 -translate-x-1/2
+                            bg-[#DF414F]
+                            text-white
+                            text-[11px]
+                            font-semibold
+                            h-[18px]
+                            px-2
+                            badge-name
+                            flex items-center
+                            whitespace-nowrap" style="box-shadow: 0 -8px 5px rgba(99, 28, 34, 0.103);">
+                            Mall | ORI
+                        </div>
+                    </div>
+                    <div class="ml-3 mt-2 text-white">
+                        <h2 class="text-[18px]">
+                            Northline Official
+                        </h2>
+                        <div class="flex items-center text-sm">
+                            <div class="flex items-center gap-1">
+                                <img
+                                    src="https://img.icons8.com/?size=100&id=8ggStxqyboK5&format=png&color=000000"
+                                    class="w-3.5 h-3.5">
+                                <span>4.9</span>
+                            </div>
+                            <span class="mx-2 opacity-70">|</span>
+                            <span id="followers-count">10Rb+ Pengikut</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <button id="follow-btn"
+                        class="h-[30px] px-3 border border-white text-white text-[12px] flex items-center justify-center gap-2">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=11153&format=png&color=ffffff"
+                            class="w-3.5 h-3.5">
+                        <span>Ikuti</span>
+                    </button>
+                    <button onclick="window.location.href='/AppNorthChatStore'"
+                        class="h-[30px] px-3 border border-white text-white text-[12px] flex items-center justify-center gap-2">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=38977&format=png&color=ffffff"
+                            class="w-3.5 h-3.5">
+                        <span>Chat</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="bg-white rounded-t-[10px] -mt-10 relative z-30">
+        <div class="flex h-[56px] border-b">
+            <button
+                onclick="showToko(this)"
+                class="tab-btn flex-1 text-[#DF414F] relative font-medium">
+                Toko
+                <div class="tab-indicator absolute bottom-0 left-0 w-full h-[2px] bg-[#DF414F]"></div>
+            </button>
+
+            <button
+                onclick="showProduk(this)"
+                class="tab-btn flex-1 text-gray-600 relative">
+                Produk
+            </button>
+
+            <button
+                onclick="showKategori(this)"
+                class="tab-btn flex-1 text-gray-600 relative">
+                Kategori
+            </button>
+
+            <button
+                onclick="showUlasan(this)"
+                class="tab-btn flex-1 text-gray-600 relative">
+                Ulasan
+            </button>
+        </div>
+
+        <div id="page-slider" class="flex overflow-hidden p-1 bg-gray-100 gap-1 w-full">
+
+            <div id="toko" class="w-full flex-shrink-0 p-3 bg-white rounded-xl">
+                <div class="flex justify-between mb-7">
+                    <h3 class="text-[18px] font-medium">
+                        Kamu Mungkin Suka
+                    </h3>
+                    <button onclick="window.location.href='/AppNorthMall'"
+                        class="text-[#DF414F] text-sm flex items-center gap-1">
+                        <span>Lihat Semua</span>
+                        <img
+                            src="https://img.icons8.com/?size=100&id=AgsBKswRnV1i&format=png&color=DF414F"
+                            class="w-3 h-3">
+                    </button>
+                </div>
+
+                <section class="md:max-w-7xl md:bg-white -mt-8 md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
+
+                    <div class="py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+
+                        <div class="relative">
+
+                            <div id="product-grid-recom" class="flex gap-1 overflow-x-auto scroll-smooth scrollbar-hide py-2">
+
+                            </div>
+
+                            <button id="slide-left"
+                                class="flex absolute left-0 top-1/2 -translate-y-1/2 z-999 w-10 h-10 bg-white shadow-lg border items-center justify-center hover:bg-gray-50">
+                                <img src="https://img.icons8.com/?size=100&id=1806&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                            </button>
+
+                            <button id="slide-right"
+                                class="flex absolute right-0 top-1/2 -translate-y-1/2 z-999 w-10 h-10 bg-white shadow-lg border items-center justify-center hover:bg-gray-50">
+                                <img src="https://img.icons8.com/?size=100&id=61&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                            </button>
+
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1">
+
+                        <div class="col-span-2">
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5e - Diedit.png"
+                                class="w-full h-full object-cover border"
+                                alt="Banner 1">
+                        </div>
+                        <div>
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5f - Diedit.png"
+                                class="w-full h-full object-cover border"
+                                alt="Banner 2">
+                        </div>
+                        <div>
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5g - Diedit.png"
+                                class="w-full h-full object-cover border"
+                                alt="Banner 3">
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1 mt-1">
+
+                        <div>
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/file_00000000ef208207976d7142cfb265d1.png"
+                                class="w-full h-full object-cover"
+                                alt="Banner 2">
+                        </div>
+                        <div>
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/file_000000006d9482079c09b978b8dee8d3.png"
+                                class="w-full h-full object-cover"
+                                alt="Banner 3">
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-1 mt-1">
+
+                        <div>
+                            <img
+                                src="https://nl.hostinesia.my.id/public/image/Tak berjudul11_20260806235905.jpg"
+                                class="w-full h-full object-cover"
+                                alt="Banner 2">
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+            <div id="produk" class="hidden w-full flex-shrink-0 p-3 bg-white rounded-xl">
+                <section class="md:max-w-7xl md:bg-white md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
+
+                    <div class="py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+
+                        <div id="product-grid" class="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-1 md:p-0 justify-center md:justify-start">
+
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="kategori" class="hidden w-full flex-shrink-0 p-3 bg-white rounded-xl">
+                <section class="md:max-w-7xl md:bg-white md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
+
+                    <div class="py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+
+                        <div id="kategori-grids" class="w-full"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="ulasan" class="hidden w-full flex-shrink-0 p-3 bg-white rounded-xl">
+                <section class="md:max-w-7xl md:bg-white md:mt-5 mx-auto md:px-6 py-6 md:mb-4">
+
+                    <div class="py-4 -mt-[45px] md:mt-0 md:px-0 md:py-0">
+
+                        <div id="ulasan-reviews" class="w-full">
+                            <div class="text-center text-gray-400 text-sm py-10">Memuat ulasan...</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div id="global-loader"
+        class="hidden fixed inset-0 z-[99999] md:hidden flex items-center justify-center bg-white/10 backdrop-blur-lg">
+        <div class="loader-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <div
+        id="modal-search-result"
+        class="hidden absolute top-full left-0 right-0 bg-white border border-gray-200 shadow-lg z-[9999] max-h-72 overflow-y-auto">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
+    <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
+    <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
+    <script src="/java/AppNorthCatalog.js?v=0000v34cat"></script>
+    <script src="/java/AppNorthStore.js?v=0000v11sec"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof window.renderNorthlineGridsAll === 'function') window.renderNorthlineGridsAll();
+        });
+        const chatToggleMobile = document.getElementById('chat-toggle-mobile');
+        const chatToggleDekstop = document.getElementById('chat-toggle-dekstop');
+        const chatWidget = document.getElementById('chat-widget');
+        const chatClose = document.getElementById('chat-close');
+
+        if (chatToggleMobile) {
+            chatToggleMobile.onclick = function () {
+                if (typeof hideChatNotification === 'function') hideChatNotification();
+                if (!chatWidget) return;
+                chatWidget.classList.remove('scale-0', 'opacity-0', 'pointer-events-none');
+                chatWidget.classList.add('scale-100', 'opacity-100');
+            };
+        }
+
+        if (chatToggleDekstop) {
+            chatToggleDekstop.onclick = function () {
+                if (typeof hideChatNotification === 'function') hideChatNotification();
+                if (!chatWidget) return;
+                chatWidget.classList.remove('scale-0', 'opacity-0', 'pointer-events-none');
+                chatWidget.classList.add('scale-100', 'opacity-100');
+            };
+        }
+
+        if (chatClose) {
+            chatClose.onclick = function () {
+                if (!chatWidget) return;
+                chatWidget.classList.remove('scale-100', 'opacity-100');
+                chatWidget.classList.add('scale-0', 'opacity-0', 'pointer-events-none');
+            };
+        }
+        function animateButton() {
+            chatToggle.animate([
+                {
+                    transform: 'scale(1) rotate(0deg)'
+                },
+                {
+                    transform: 'scale(.85) rotate(-15deg)'
+                },
+                {
+                    transform: 'scale(1) rotate(0deg)'
+                }
+            ], {
+                duration: 250,
+                easing: 'ease-out'
+            });
+        }
+        function showChatNotification() {
+            const dot = document.getElementById('chat-notification') || document.getElementById('chat-notification-store');
+            if (dot && !chatWidget.classList.contains('scale-100')) {
+                dot.classList.remove('hidden');
+            }
+        }
+        function hideChatNotification() {
+            const dot = document.getElementById('chat-notification') || document.getElementById('chat-notification-store');
+            if (dot) dot.classList.add('hidden');
+        }
+        const slider = document.getElementById("product-grid-recom") || document.getElementById("product-grid");
+        document.getElementById("slide-right").onclick = () => {
+            slider.scrollBy({
+                left: 200,
+                behavior: "smooth"
+            });
+        };
+        document.getElementById("slide-left").onclick = () => {
+            slider.scrollBy({
+                left: -200,
+                behavior: "smooth"
+            });
+        };
+        function showProduk(button) {
+            document.getElementById("produk").classList.remove("hidden");
+            const kategori = document.getElementById("kategori");
+            if (kategori) kategori.classList.add("hidden");
+            scrollToSection("produk", button);
+        }
+        function showKategori(button) {
+            document.getElementById("kategori").classList.remove("hidden");
+            const produk = document.getElementById("produk");
+            if (produk) produk.classList.add("hidden");
+            const ulasan = document.getElementById("ulasan");
+            if (ulasan) ulasan.classList.add("hidden");
+            if (typeof window.renderNorthlineCategoryGrids === 'function') window.renderNorthlineCategoryGrids();
+            scrollToSection("kategori", button);
+        }
+        function showUlasan(button) {
+            document.getElementById("ulasan").classList.remove("hidden");
+            const produk = document.getElementById("produk");
+            if (produk) produk.classList.add("hidden");
+            const kategori = document.getElementById("kategori");
+            if (kategori) kategori.classList.add("hidden");
+            if (typeof window.renderNorthlineReviews === 'function') window.renderNorthlineReviews();
+            scrollToSection("ulasan", button);
+        }
+        function showToko(button) {
+            document.getElementById("produk").classList.add("hidden");
+            const kategori = document.getElementById("kategori");
+            if (kategori) kategori.classList.add("hidden");
+            const ulasan = document.getElementById("ulasan");
+            if (ulasan) ulasan.classList.add("hidden");
+            scrollToSection("toko", button);
+        }
+    </script>
+</body>
+</html>

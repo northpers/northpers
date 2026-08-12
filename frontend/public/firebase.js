@@ -12,13 +12,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBzlqsP3XvmMYdDAwPMOb2oUfCx1U5K3rs",
-    authDomain: "hostinesia-3a427.firebaseapp.com",
-    projectId: "hostinesia-3a427",
-    storageBucket: "hostinesia-3a427.firebasestorage.app",
-    messagingSenderId: "250828889711",
-    appId: "1:250828889711:web:11f0dc4771db39ab2ff79a",
-    measurementId: "G-X3Y1TJQYZ3"
+    apiKey: "AIzaSyBxx6XQ0yvtRfqaqxjvLmL_sLURZWpCZ7w",
+    authDomain: "auth.hostinesia.my.id",
+    projectId: "hostinesia-72662",
+    storageBucket: "hostinesia-72662.firebasestorage.app",
+    messagingSenderId: "746228981526",
+    appId: "1:746228981526:web:b641ece55b7ae5bd157a37",
+    measurementId: "G-PMG0GHLCZN"
 };
 
 const app = initializeApp(firebaseConfig);

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+<title>Wishlist - Northline</title>
+<link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
+<link rel="stylesheet" href="/css/style.css?v=0000v1css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#DF414F">
+<style>
+body { font-family: 'DM Sans', sans-serif; }
+</style>
+</head>
+<body style="background:#f9fafb;margin:0;">
+
+<header style="position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #f3f4f6;">
+  <div style="max-width:640px;margin:0 auto;height:52px;padding:0 16px;display:flex;align-items:center;gap:12px;">
+    <a href="/" style="display:flex;align-items:center;" aria-label="Kembali">
+      <img src="https://img.icons8.com/?size=100&id=85459&format=png&color=DF414F" style="width:20px;height:20px;" alt="back">
+    </a>
+    <h1 style="font-size:15px;font-weight:500;color:#374151;">Wishlist</h1>
+    <span id="popup-wishlist-count" class="hidden" style="background:#DF414F;color:#fff;font-size:8px;width:14px;height:14px;align-items:center;justify-content:center;border-radius:50%;">0</span>
+  </div>
+</header>
+
+<main style="max-width:640px;margin:0 auto;min-height:70vh;">
+  <div id="wl-page-guest" class="hidden" style="text-align:center;padding:80px 24px;">
+    <img src="https://img.icons8.com/?size=100&id=87397&format=png&color=9CA3AF" style="width:64px;height:64px;margin:0 auto 16px;" alt="wishlist">
+    <h2 style="font-size:16px;font-weight:600;color:#1f2937;">Masuk dulu yuk!</h2>
+    <p style="font-size:12px;color:#6b7280;margin:8px 0 20px;">Masuk akun untuk menyimpan &amp; mengelola wishlistmu</p>
+    <a href="/AppNorthAuth" style="display:inline-block;padding:10px 28px;background:#DF414F;color:#fff;font-size:12px;font-weight:700;text-decoration:none;">MASUK</a>
+  </div>
+
+  <div id="wl-page-list" class="hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #f3f4f6;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#374151;cursor:pointer;">
+        <input type="checkbox" id="wl-select-all" style="accent-color:#DF414F;width:16px;height:16px;cursor:pointer;">
+        Pilih Semua
+      </label>
+    </div>
+    <div id="popup-items-container" style="background:#f3f4f6;padding:8px;min-height:40vh;">
+      <div id="popup-empty-state" class="text-center py-20 space-y-2">
+        <p class="text-gray-400 text-xs font-medium">Your wishlist is empty.</p>
+        <p class="text-gray-400 text-[10px]">Items loved from catalog will appear here.</p>
+        <a href="/" class="inline-block mt-4 px-5 py-2 bg-[#DF414F] text-white text-[11px] font-bold uppercase tracking-widest text-decoration-none">Jelajahi Produk</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="wl-page-footer" class="hidden" style="position:sticky;bottom:0;z-index:50;background:#f9fafb;border-top:1px solid #f3f4f6;">
+  <div style="max-width:640px;margin:0 auto;">
+    <div id="wishlist-checkout-bar" class="p-4"></div>
+  </div>
+</footer>
+
+<script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
+<script src="/java/AppNorthPayment.js?v=0000v13pay" defer></script>
+<script src="/src/services/AppNorthWishlist.js?v=0000v19wl" defer></script>
+<script>
+  function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.charCodeAt(i)-32-10+95)%95)+32);}return r;}
+
+  function showIosModal(message) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:14px;padding:20px 24px;max-width:300px;width:calc(100% - 48px);text-align:center;';
+    const p = document.createElement('p');
+    p.style.cssText = 'font-size:13px;color:#1f2937;line-height:1.5;word-wrap:break-word;';
+    p.textContent = message;
+    const btn = document.createElement('button');
+    btn.textContent = 'OK';
+    btn.style.cssText = 'margin-top:14px;width:100%;padding:9px;background:#DF414F;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;border-radius:8px;';
+    btn.onclick = () => overlay.remove();
+    card.appendChild(p);
+    card.appendChild(btn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const guest = document.getElementById('wl-page-guest');
+    const list = document.getElementById('wl-page-list');
+    const footer = document.getElementById('wl-page-footer');
+    const countEl = document.getElementById('popup-wishlist-count');
+
+    if (typeof isLoggedIn !== 'function' || !isLoggedIn()) {
+      guest.classList.remove('hidden');
+      list.classList.add('hidden');
+      footer.classList.add('hidden');
+      return;
+    }
+
+    guest.classList.add('hidden');
+    list.classList.remove('hidden');
+    footer.classList.remove('hidden');
+
+    if (window.WishlistManager) {
+      WishlistManager.updateNavbarBadge();
+      WishlistManager.renderPopupItems();
+      if (countEl) countEl.style.display = 'flex';
+    }
+  });
+</script>
+</body>
+</html>

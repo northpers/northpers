@@ -5,13 +5,7 @@ const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const knowledge = fs.readFileSync(
-    path.join(__dirname, '../knowlage.txt'),
-    'utf8'
-);
+const { grantCommission } = require('./affiliate');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -69,8 +63,17 @@ router.post('/login', async (req, res) => {
             ]
         );
 
+        const csrfToken = crypto.randomBytes(32).toString('hex');
+        const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.connection?.remoteAddress || 'unknown';
+        const ua = req.headers['user-agent'] || '';
+
+        await db.execute(
+            'UPDATE user_northline SET csrf_token=?, last_login_ip=?, last_login_ua=? WHERE id=?',
+            [csrfToken, ip, ua, user.id]
+        );
+
         const token = jwt.sign(
-            { id: user.id, username: user.username }, 
+            { id: user.id, username: user.username, authVersion: user.auth_version || 0 }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
@@ -81,65 +84,73 @@ router.post('/login', async (req, res) => {
             email: user.email,
             phone: user.phone,
             created_at: user.created_at,
-            address: user.address
+            address: user.address,
+            last_login_ip: ip,
+            last_login_ua: ua
         };
 
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
 
         return res.status(200).json({
             message: "Login sukses!",
             token,
+            csrfToken,
             qrToken,
             user: userPayload
         });
 
     } catch (error) {
         console.error("Error saat login:", error);
-        return res.status(500).json({ message: "Terjadi kesalahan pada server, Der." });
+return res.status(500).json({ message: "Terjadi kesalahan pada server, Der." });
     }
 });
 
-const qrLoginSessions = {};
 router.get('/create-login-qr', async (req, res) => {
-    const sessionId =
-        crypto.randomUUID();
-    qrLoginSessions[sessionId] = {
+    const sessionId = crypto.randomUUID();
+    qrLoginSessions.set(sessionId, {
         approved: false,
         createdAt: Date.now()
-    };
+    });
     res.json({
         success: true,
         sessionId
     });
-
 });
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
     let bearerToken = null;
     const bearerHeader = req.headers['authorization'];
     if (typeof bearerHeader !== 'undefined') {
         bearerToken = bearerHeader.split(' ')[1];
     } else {
-        bearerToken = getCookie(req, 'token');
+        bearerToken = getCookie(req, 'nl_jwt');
     }
 
     if (bearerToken) {
-        jwt.verify(bearerToken, JWT_SECRET, (err, authData) => {
-            if (err) {
-                return res.status(403).json({ error: "Token tidak valid / expired" });
+        try {
+            const authData = jwt.verify(bearerToken, JWT_SECRET);
+            const [[user]] = await db.execute('SELECT auth_version FROM user_northline WHERE id = ?', [authData.id]);
+            if (!user || (authData.authVersion || 0) !== user.auth_version) {
+                return res.status(401).json({ error: "Sesi berakhir, silakan login ulang" });
             }
-            req.user = authData; 
+            req.user = authData;
             next();
-        });
+        } catch (err) {
+            return res.status(403).json({ error: "Token tidak valid / expired" });
+        }
     } else {
         res.status(401).json({ error: "Sesi login tidak ditemukan, token kosong" });
     }
 };
 
 router.post('/logout', (req, res) => {
-    res.clearCookie('token', { path: '/' });
+    res.clearCookie('nl_jwt', { path: '/' });
     res.clearCookie('session', { path: '/' });
     res.clearCookie('user_session', { path: '/' });
+    res.clearCookie('logged_in', { path: '/' });
+    res.clearCookie('nrt_aff', { path: '/' });
+    res.clearCookie('nl_aff', { path: '/' });
     res.json({ success: true, message: "Logout berhasil" });
 });
 
@@ -148,7 +159,7 @@ router.get('/northpay/balance', verifyToken, async (req, res) => {
         const userId = req.user.id; 
         
         const [rows] = await db.execute(
-            'SELECT name, northpay_balance FROM user_northline WHERE id = ?',
+            'SELECT name, northpay_balance, northpay_enabled FROM user_northline WHERE id = ?',
             [userId]
         );
 
@@ -159,7 +170,8 @@ router.get('/northpay/balance', verifyToken, async (req, res) => {
         return res.status(200).json({
             success: true,
             name: rows[0].name, 
-            balance: rows[0].northpay_balance
+            balance: rows[0].northpay_balance,
+            enabled: rows[0].northpay_enabled !== 0
         });
 
     } catch (error) {
@@ -167,7 +179,474 @@ router.get('/northpay/balance', verifyToken, async (req, res) => {
     }
 });
 
-router.get('/api/user/profile', verifyToken, (req, res) => {
+async function csrfProtection(req, res, next) {
+  const headerToken = req.headers['x-csrf-token'];
+  if (!headerToken) return res.status(403).json({ success: false, message: 'CSRF token required' });
+  try {
+    const [rows] = await db.execute('SELECT csrf_token FROM user_northline WHERE id=?', [req.user.id]);
+    if (rows.length === 0 || rows[0].csrf_token !== headerToken) {
+      return res.status(403).json({ success: false, message: 'Invalid CSRF token' });
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'CSRF validation error' });
+  }
+}
+
+router.get('/csrf-token', verifyToken, async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT csrf_token FROM user_northline WHERE id=?', [req.user.id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
+    let token = rows[0].csrf_token;
+    if (!token) {
+      token = crypto.randomBytes(32).toString('hex');
+      await db.execute('UPDATE user_northline SET csrf_token=? WHERE id=?', [token, req.user.id]);
+    }
+    res.json({ success: true, csrfToken: token });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+const topupLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    keyGenerator: (req) => 'topup_' + req.user.id,
+    message: { success: false, message: "Terlalu banyak permintaan top-up. Maksimal 5 kali per jam." }
+});
+
+router.post('/northpay/topup', verifyToken, csrfProtection, topupLimiter, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const userId = req.user.id;
+        if (!amount || amount < 10000 || amount > 500000) {
+            return res.status(400).json({ success: false, message: "Nominal top-up harus Rp 10.000 - Rp 500.000" });
+        }
+        const [statusRows] = await db.execute('SELECT northpay_enabled FROM user_northline WHERE id=?', [userId]);
+        if (statusRows.length > 0 && statusRows[0].northpay_enabled === 0) {
+            return res.status(400).json({ success: false, message: 'NorthPay sedang dinonaktifkan. Aktifkan kembali di Pengaturan.' });
+        }
+        const ip = req.ip || req.connection.remoteAddress || 'unknown';
+        const ua = req.headers['user-agent'] || '';
+        const [insertResult] = await db.execute(
+            'INSERT INTO northpay_requests (user_id, amount, ip_address, user_agent, status) VALUES (?, ?, ?, ?, ?)',
+            [userId, amount, ip, ua, 'pending']
+        );
+        const requestId = insertResult.insertId;
+        await logNotification(userId, "Top Up NorthPay", "Permintaan top-up NorthPay sebesar Rp " + parseInt(amount).toLocaleString('id-ID') + " sedang diproses.");
+        res.json({ success: true, requestId, message: "Permintaan top-up berhasil dikirim. Silakan transfer ke QRIS Northline dan admin akan mengkonfirmasi." });
+    } catch (err) {
+        console.error("Topup error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/cancel', verifyToken, async (req, res) => {
+    try {
+        const { requestId } = req.body;
+        if (!requestId) return res.status(400).json({ success: false, message: "ID permintaan diperlukan" });
+        const [rows] = await db.execute(
+            'SELECT id, user_id, status FROM northpay_requests WHERE id=?', [requestId]
+        );
+        if (rows.length === 0) return res.status(404).json({ success: false, message: "Permintaan tidak ditemukan" });
+        if (rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: "Bukan permintaan kamu" });
+        if (rows[0].status !== 'pending') return res.status(400).json({ success: false, message: "Permintaan sudah diproses" });
+        await db.execute("DELETE FROM northpay_requests WHERE id=?", [requestId]);
+        res.json({ success: true, message: "Permintaan top-up dibatalkan" });
+    } catch (err) {
+        console.error("Cancel topup error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/northpay/request/:id', verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await db.execute(
+            'SELECT nr.id, nr.amount, nr.status, nr.created_at, u.name as user_name FROM northpay_requests nr JOIN user_northline u ON nr.user_id=u.id WHERE nr.id=? AND nr.user_id=?',
+            [id, req.user.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'Request tidak ditemukan' });
+        res.json({ success: true, request: rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/northpay/history', verifyToken, async (req, res) => {
+    try {
+        const all = req.query.all === 'true';
+        const limit = all ? 100 : 5;
+        const [rows] = await db.execute(
+            'SELECT id, amount, status, created_at FROM northpay_requests WHERE user_id=? ORDER BY id DESC LIMIT ?',
+            [req.user.id, limit]
+        );
+        const [[{ total }]] = await db.execute(
+            'SELECT COUNT(*) as total FROM northpay_requests WHERE user_id=?',
+            [req.user.id]
+        );
+        res.json({ success: true, history: rows, total });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/northpay/transfer/methods', verifyToken, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            'SELECT id, method_name, method_type, logo, admin_fee, min_amount, max_amount FROM northpay_transfer_methods WHERE is_active=1 ORDER BY sort_order ASC'
+        );
+        res.json({ success: true, methods: rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/transfer', verifyToken, csrfProtection, async (req, res) => {
+    try {
+        const { methodId, accountNumber, accountName, amount } = req.body;
+        const userId = req.user.id;
+
+        if (!methodId || !accountNumber || !accountName || !amount) {
+            return res.status(400).json({ success: false, message: "Data transfer tidak lengkap" });
+        }
+        const [methods] = await db.execute(
+            'SELECT method_name, method_type, admin_fee, min_amount, max_amount FROM northpay_transfer_methods WHERE id=? AND is_active=1',
+            [methodId]
+        );
+        if (methods.length === 0) {
+            return res.status(400).json({ success: false, message: "Metode transfer tidak ditemukan" });
+        }
+        const method = methods[0];
+        const nominal = parseInt(amount);
+        if (!nominal || nominal < method.min_amount || nominal > method.max_amount) {
+            return res.status(400).json({ success: false, message: `Nominal harus Rp ${parseInt(method.min_amount).toLocaleString('id-ID')} - Rp ${parseInt(method.max_amount).toLocaleString('id-ID')}` });
+        }
+        if (!/^[A-Za-z0-9 -]{3,40}$/.test(accountNumber)) {
+            return res.status(400).json({ success: false, message: "Nomor rekening/e-wallet tidak valid" });
+        }
+        if (!accountName.trim() || accountName.trim().length < 3) {
+            return res.status(400).json({ success: false, message: "Nama pemilik akun tidak valid" });
+        }
+        const adminFee = parseInt(method.admin_fee);
+        const total = nominal + adminFee;
+
+        const [balRows] = await db.execute(
+            'SELECT northpay_balance, northpay_pin, northpay_enabled FROM user_northline WHERE id=?',
+            [userId]
+        );
+        if (balRows.length === 0) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+        if (balRows[0].northpay_enabled === 0) return res.status(400).json({ success: false, message: 'NorthPay sedang dinonaktifkan. Aktifkan kembali di Pengaturan.' });
+        if (!balRows[0].northpay_pin) return res.status(400).json({ success: false, message: 'Atur PIN NorthPay terlebih dahulu di Pengaturan' });
+        const balance = parseFloat(balRows[0].northpay_balance || 0);
+        if (balance < total) {
+            return res.status(400).json({ success: false, message: `Saldo tidak mencukupi. Total dibutuhkan Rp ${total.toLocaleString('id-ID')} (termasuk biaya admin)` });
+        }
+
+        const ip = req.ip || req.connection.remoteAddress || 'unknown';
+        const ua = req.headers['user-agent'] || '';
+
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            await conn.execute(
+                'UPDATE user_northline SET northpay_balance = northpay_balance - ? WHERE id=?',
+                [total, userId]
+            );
+            const [ins] = await conn.execute(
+                `INSERT INTO northpay_transfers
+                   (user_id, method_name, method_type, account_number, account_name, amount, admin_fee, total, status, ip_address, user_agent)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
+                [userId, method.method_name, method.method_type, accountNumber, accountName.trim(), nominal, adminFee, total, ip, ua]
+            );
+            await conn.commit();
+            conn.release();
+            await logNotification(userId, "Transfer NorthPay", `Permintaan transfer ke ${method.method_name} sebesar Rp ${nominal.toLocaleString('id-ID')} (biaya admin Rp ${adminFee.toLocaleString('id-ID')}) sedang diproses.`);
+            res.json({ success: true, transferId: ins.insertId, message: "Permintaan transfer berhasil dikirim. Admin akan memproses." });
+        } catch (txErr) {
+            await conn.rollback();
+            conn.release();
+            throw txErr;
+        }
+    } catch (err) {
+        console.error("Transfer error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/northpay/transfer/history', verifyToken, async (req, res) => {
+    try {
+        const all = req.query.all === 'true';
+        const limit = all ? 100 : 5;
+        const [rows] = await db.execute(
+            'SELECT id, method_name, method_type, account_number, account_name, amount, admin_fee, total, status, created_at FROM northpay_transfers WHERE user_id=? ORDER BY id DESC LIMIT ?',
+            [req.user.id, limit]
+        );
+        const [[{ total }]] = await db.execute(
+            'SELECT COUNT(*) as total FROM northpay_transfers WHERE user_id=?',
+            [req.user.id]
+        );
+        res.json({ success: true, history: rows, total });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/transfer/cancel', verifyToken, async (req, res) => {
+    try {
+        const { transferId } = req.body;
+        if (!transferId) return res.status(400).json({ success: false, message: "ID transfer diperlukan" });
+        const [rows] = await db.execute(
+            'SELECT id, user_id, status, total FROM northpay_transfers WHERE id=?',
+            [transferId]
+        );
+        if (rows.length === 0) return res.status(404).json({ success: false, message: "Transfer tidak ditemukan" });
+        if (rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: "Bukan transfer kamu" });
+        if (rows[0].status !== 'pending') return res.status(400).json({ success: false, message: "Transfer sudah diproses" });
+
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            await conn.execute('UPDATE user_northline SET northpay_balance = northpay_balance + ? WHERE id=?', [rows[0].total, req.user.id]);
+            await conn.execute("UPDATE northpay_transfers SET status='cancelled' WHERE id=?", [transferId]);
+            await conn.commit();
+            conn.release();
+            res.json({ success: true, message: "Transfer dibatalkan, dana dikembalikan" });
+        } catch (txErr) {
+            await conn.rollback();
+            conn.release();
+            throw txErr;
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+
+router.get('/northpay/settings', verifyToken, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT northpay_balance, northpay_pin, northpay_pin_set_at, northpay_security_question,
+                    northpay_auto_topup_enabled, northpay_auto_topup_amount, northpay_auto_topup_threshold,
+                    northpay_daily_limit, northpay_biometric_enabled, northpay_last_security_change,
+                    northpay_enabled
+             FROM user_northline WHERE id=?`,
+            [req.user.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+        const u = rows[0];
+        res.json({
+            success: true,
+            settings: {
+                enabled: u.northpay_enabled !== 0,
+                hasPin: !!u.northpay_pin,
+                pinSetAt: u.northpay_pin_set_at,
+                hasSecurityQuestion: !!u.northpay_security_question,
+                securityQuestion: u.northpay_security_question || null,
+                autoTopupEnabled: !!u.northpay_auto_topup_enabled,
+                autoTopupAmount: parseFloat(u.northpay_auto_topup_amount || 0),
+                autoTopupThreshold: parseFloat(u.northpay_auto_topup_threshold || 0),
+                dailyLimit: parseFloat(u.northpay_daily_limit || 5000000),
+                biometricEnabled: !!u.northpay_biometric_enabled,
+                lastSecurityChange: u.northpay_last_security_change
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/pin', verifyToken, async (req, res) => {
+    try {
+        const { currentPin, newPin } = req.body;
+        if (!newPin || !/^\d{6}$/.test(newPin)) return res.status(400).json({ success: false, message: 'PIN harus 6 digit angka' });
+        if (/^(\d)\1{5}$/.test(newPin)) return res.status(400).json({ success: false, message: 'PIN tidak boleh sama semua' });
+        if (/^012345|^123456|^234567|^345678|^456789|^567890|^678901|^789012|^890123|^901234/.test(newPin)) return res.status(400).json({ success: false, message: 'PIN tidak boleh berurutan' });
+
+        const [rows] = await db.execute('SELECT northpay_pin FROM user_northline WHERE id=?', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+        const bcrypt = require('bcrypt');
+        const hasPin = !!rows[0].northpay_pin;
+
+        if (hasPin) {
+            if (!currentPin) return res.status(400).json({ success: false, message: 'PIN saat ini diperlukan' });
+            const match = await bcrypt.compare(currentPin, rows[0].northpay_pin);
+            if (!match) return res.status(400).json({ success: false, message: 'PIN saat ini salah' });
+        }
+
+        const hash = await bcrypt.hash(newPin, 12);
+        await db.execute('UPDATE user_northline SET northpay_pin=?, northpay_pin_set_at=NOW(), northpay_last_security_change=NOW() WHERE id=?', [hash, req.user.id]);
+        res.json({ success: true, message: hasPin ? 'PIN berhasil diubah' : 'PIN berhasil dibuat' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/pin/verify', verifyToken, async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin || !/^\d{6}$/.test(pin)) return res.status(400).json({ success: false, message: 'PIN tidak valid' });
+        const [rows] = await db.execute('SELECT northpay_pin FROM user_northline WHERE id=?', [req.user.id]);
+        if (rows.length === 0 || !rows[0].northpay_pin) return res.status(400).json({ success: false, message: 'PIN belum diset' });
+        const bcrypt = require('bcrypt');
+        const match = await bcrypt.compare(pin, rows[0].northpay_pin);
+        if (!match) return res.status(400).json({ success: false, message: 'PIN salah' });
+        res.json({ success: true, message: 'PIN valid' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/pin/forgot', verifyToken, async (req, res) => {
+    try {
+        const { securityAnswer, newPin } = req.body;
+        if (!securityAnswer) return res.status(400).json({ success: false, message: 'Jawaban keamanan diperlukan' });
+        if (!newPin || !/^\d{6}$/.test(newPin)) return res.status(400).json({ success: false, message: 'PIN baru harus 6 digit angka' });
+
+        const [rows] = await db.execute('SELECT northpay_security_answer, northpay_security_question FROM user_northline WHERE id=?', [req.user.id]);
+        if (rows.length === 0 || !rows[0].northpay_security_answer) return res.status(400).json({ success: false, message: 'Pertanyaan keamanan belum diset' });
+
+        const bcrypt = require('bcrypt');
+        const match = await bcrypt.compare(securityAnswer, rows[0].northpay_security_answer);
+        if (!match) return res.status(400).json({ success: false, message: 'Jawaban keamanan salah' });
+
+        const hash = await bcrypt.hash(newPin, 12);
+        await db.execute('UPDATE user_northline SET northpay_pin=?, northpay_pin_set_at=NOW(), northpay_last_security_change=NOW() WHERE id=?', [hash, req.user.id]);
+        res.json({ success: true, message: 'PIN berhasil direset' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/security-question', verifyToken, async (req, res) => {
+    try {
+        const { question, answer } = req.body;
+        if (!question || !answer) return res.status(400).json({ success: false, message: 'Pertanyaan dan jawaban wajib diisi' });
+        if (question.length > 255 || answer.length > 255) return res.status(400).json({ success: false, message: 'Input terlalu panjang' });
+
+        const bcrypt = require('bcrypt');
+        const answerHash = await bcrypt.hash(answer, 12);
+        await db.execute('UPDATE user_northline SET northpay_security_question=?, northpay_security_answer=?, northpay_last_security_change=NOW() WHERE id=?', [question, answerHash, req.user.id]);
+        res.json({ success: true, message: 'Pertanyaan keamanan berhasil disimpan' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/auto-topup', verifyToken, async (req, res) => {
+    try {
+        const { enabled, amount, threshold } = req.body;
+        if (typeof enabled !== 'boolean') return res.status(400).json({ success: false, message: 'Enabled harus boolean' });
+        if (enabled) {
+            if (!amount || amount < 10000 || amount > 500000) return res.status(400).json({ success: false, message: 'Jumlah auto topup 10.000 - 500.000' });
+            if (!threshold || threshold < 1000 || threshold >= amount) return res.status(400).json({ success: false, message: 'Ambang batas minimal 1.000 dan kurang dari jumlah topup' });
+        }
+        await db.execute('UPDATE user_northline SET northpay_auto_topup_enabled=?, northpay_auto_topup_amount=?, northpay_auto_topup_threshold=? WHERE id=?', [enabled, amount || 0, threshold || 0, req.user.id]);
+        res.json({ success: true, message: 'Auto topup ' + (enabled ? 'diaktifkan' : 'dinonaktifkan') });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/daily-limit', verifyToken, async (req, res) => {
+    try {
+        const { limit } = req.body;
+        const lim = parseInt(limit);
+        if (isNaN(lim) || lim < 100000 || lim > 50000000) return res.status(400).json({ success: false, message: 'Limit harian 100.000 - 50.000.000' });
+        await db.execute('UPDATE user_northline SET northpay_daily_limit=? WHERE id=?', [lim, req.user.id]);
+        res.json({ success: true, message: 'Limit harian diperbarui' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/biometric', verifyToken, async (req, res) => {
+    try {
+        const { enabled, deviceToken } = req.body;
+        if (typeof enabled !== 'boolean') return res.status(400).json({ success: false, message: 'Enabled harus boolean' });
+        if (enabled && !deviceToken) return res.status(400).json({ success: false, message: 'Device token diperlukan' });
+
+        const crypto = require('crypto');
+        const encryptedToken = deviceToken ? crypto.publicEncrypt(
+            { key: process.env.RSA_PUBLIC_KEY || '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----' },
+            Buffer.from(deviceToken)
+        ).toString('base64') : null;
+
+        await db.execute('UPDATE user_northline SET northpay_biometric_enabled=?, northpay_device_token=?, northpay_last_security_change=NOW() WHERE id=?', [enabled, encryptedToken, req.user.id]);
+        res.json({ success: true, message: 'Biometric ' + (enabled ? 'diaktifkan' : 'dinonaktifkan') });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/logout-all', verifyToken, async (req, res) => {
+    try {
+        const crypto = require('crypto');
+        const newCsrf = crypto.randomBytes(32).toString('hex');
+        await db.execute(
+            'UPDATE user_northline SET csrf_token=?, auth_version = auth_version + 1, northpay_device_token=NULL, northpay_biometric_enabled=0 WHERE id=?',
+            [newCsrf, req.user.id]
+        );
+        res.clearCookie('nl_jwt', { path: '/' });
+        res.clearCookie('session', { path: '/' });
+        res.clearCookie('user_session', { path: '/' });
+        res.clearCookie('logged_in', { path: '/' });
+        res.json({ success: true, message: 'Berhasil logout dari semua perangkat' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/toggle', verifyToken, async (req, res) => {
+    try {
+        const { enabled } = req.body;
+        if (typeof enabled !== 'boolean') return res.status(400).json({ success: false, message: 'Parameter enabled wajib boolean' });
+        await db.execute('UPDATE user_northline SET northpay_enabled=? WHERE id=?', [enabled ? 1 : 0, req.user.id]);
+        const { invalidateByPrefix } = require('../config/redis');
+        await invalidateByPrefix(`user:flags:${req.user.id}`);
+        await invalidateByPrefix(`user:vouchers:${req.user.id}`);
+        res.json({ success: true, message: enabled ? 'NorthPay diaktifkan kembali' : 'NorthPay dinonaktifkan sementara, saldo tetap tersimpan' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/delete', verifyToken, async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin) return res.status(400).json({ success: false, message: 'PIN diperlukan' });
+        
+        const [rows] = await db.execute('SELECT northpay_pin FROM user_northline WHERE id=?', [req.user.id]);
+        if (rows.length === 0 || !rows[0].northpay_pin) return res.status(400).json({ success: false, message: 'PIN belum diset' });
+        
+        const bcrypt = require('bcrypt');
+        const match = await bcrypt.compare(pin, rows[0].northpay_pin);
+        if (!match) return res.status(400).json({ success: false, message: 'PIN salah' });
+        
+        await db.execute('UPDATE user_northline SET northpay_balance=0, northpay_pin=NULL, northpay_pin_set_at=NULL, northpay_security_question=NULL, northpay_security_answer=NULL, northpay_auto_topup_enabled=0, northpay_auto_topup_amount=0, northpay_auto_topup_threshold=0, northpay_biometric_enabled=0, northpay_device_token=NULL WHERE id=?', [req.user.id]);
+        res.json({ success: true, message: 'Akun NorthPay dihapus permanen' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/northpay/settings/pin/verify', verifyToken, async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin || !/^\d{6}$/.test(pin)) return res.status(400).json({ success: false, message: 'PIN tidak valid' });
+        const [rows] = await db.execute('SELECT northpay_pin FROM user_northline WHERE id=?', [req.user.id]);
+        if (rows.length === 0 || !rows[0].northpay_pin) return res.status(400).json({ success: false, message: 'PIN belum diset' });
+        const bcrypt = require('bcrypt');
+        const match = await bcrypt.compare(pin, rows[0].northpay_pin);
+        if (!match) return res.status(400).json({ success: false, message: 'PIN salah' });
+        res.json({ success: true, message: 'PIN valid' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.get('/api/user/profile', verifyToken, async (req, res) => {
     const loggedInUsername = req.user.username; 
 
     const query = "SELECT username, name, email, phone, gender, avatar, created_at FROM user_northline WHERE username = ?";
@@ -211,7 +690,6 @@ router.put('/user/profile/update', verifyToken, async (req, res) => {
 router.post("/upload-avatar", verifyToken, async (req, res) => { 
     try {
         const base64Avatar = req.body.avatar;
-        console.log("DEBUG: User ID yang melakukan update:", req.user.id); 
 
         if (!base64Avatar) {
             return res.status(400).json({ success: false, message: "Data avatar kosong!" });
@@ -233,21 +711,33 @@ router.post("/upload-avatar", verifyToken, async (req, res) => {
     }
 });
 
-router.get('/me', verifyToken, async (req, res) => {
+router.get('/me', async (req, res) => {
     try {
-        const userId = req.user.id; 
-        const [users] = await db.execute(
-            'SELECT id, username, name, email, phone, gender, created_at, avatar FROM user_northline WHERE id = ?',
-            [userId]
-        );
-        if (users.length === 0) {
+        let token = null;
+        const bearer = req.headers['authorization'];
+        if (typeof bearer !== 'undefined') {
+            token = bearer.split(' ')[1];
+        } else {
+            token = getCookie(req, 'nl_jwt');
         }
-        return res.status(200).json({
-            success: true,
-            user: users[0]
+        if (!token) {
+            return res.status(200).json({ success: false, user: null });
+        }
+        jwt.verify(token, JWT_SECRET, async (err, authData) => {
+            if (err) {
+                return res.status(200).json({ success: false, user: null });
+            }
+            const [users] = await db.execute(
+                'SELECT id, username, name, email, phone, gender, created_at, avatar, address, last_login_ip, last_login_ua, seller, role FROM user_northline WHERE id = ?',
+                [authData.id]
+            );
+            if (users.length === 0) {
+                return res.status(200).json({ success: false, user: null });
+            }
+            return res.status(200).json({ success: true, user: users[0] });
         });
-
     } catch (error) {
+        return res.status(200).json({ success: false, user: null });
     }
 });
 
@@ -460,19 +950,24 @@ router.post('/register-complete', async (req, res) => {
         );
 
 
+        const csrfToken = crypto.randomBytes(32).toString('hex');
+        await db.execute('UPDATE user_northline SET csrf_token=? WHERE id=?', [csrfToken, result.insertId]);
+
         const token = jwt.sign(
-            { id: result.insertId, username: username },
+            { id: result.insertId, username: username, authVersion: 0 },
             JWT_SECRET,            { expiresIn: '1d' }
         );
 
         const userPayload = { id: result.insertId, username, email, phone: formattedPhone };
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
 
         return res.status(201).json({
             success: true,
             message: "Akun Northline lu berhasil dibuat dengan aman, Der! Otomatis masuk sistem.",
             userId: result.insertId,
             token: token,
+            csrfToken,
             user: userPayload
         });
 
@@ -505,12 +1000,22 @@ router.post('/login-otp-success', async (req, res) => {
 
         const user = users[0];
 
+        const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.connection?.remoteAddress || 'unknown';
+        const ua = req.headers['user-agent'] || '';
+
+        const csrfToken = crypto.randomBytes(32).toString('hex');
+        await db.execute(
+            'UPDATE user_northline SET csrf_token=?, last_login_ip=?, last_login_ua=? WHERE id=?',
+            [csrfToken, ip, ua, user.id]
+        );
+
         const token = jwt.sign(
-            { id: user.id, username: user.username },
+            { id: user.id, username: user.username, authVersion: user.auth_version || 0 },
             JWT_SECRET,            { expiresIn: '1d' }
         );
 
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
 
         console.log(`[Bypass Login] User ${user.username} berhasil login langsung via OTP WhatsApp.`);
 
@@ -518,12 +1023,15 @@ router.post('/login-otp-success', async (req, res) => {
             success: true,
             message: `Selamat datang kembali, ${user.username}!`,
             token,
+            csrfToken,
             user: {
                 id: user.id,
                 username: user.username,
                 email: user.email,
                 phone: user.phone,
-                avatar: user.avatar
+                avatar: user.avatar,
+                last_login_ip: ip,
+                last_login_ua: ua
             }
         });
 
@@ -538,32 +1046,58 @@ router.get('/products/:productId/comments', async (req, res) => {
         const { productId } = req.params;
 
         const [rows] = await db.execute(
-            'SELECT * FROM comment_product WHERE product_id = ? ORDER BY created_at DESC',
+            'SELECT * FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC, id DESC',
             [productId]
         );
 
         const [metaRows] = await db.execute(
-            'SELECT COUNT(*) as totalReviews, AVG(rating) as avgRating FROM comment_product WHERE product_id = ?',
+            'SELECT COUNT(*) as totalReviews, AVG(rating) as avgRating, AVG(rating_bahan) as avgBahan, AVG(rating_ukuran) as avgUkuran, AVG(rating_warna) as avgWarna FROM product_reviews WHERE product_id = ?',
+            [productId]
+        );
+
+        const [[deliveryAgg]] = await db.execute(
+            `SELECT AVG(t.delivery_rating) as avgDelivery, COUNT(t.delivery_rating) as deliveryCount
+             FROM transactions t
+             JOIN product_reviews pr ON pr.order_id = t.order_id AND pr.product_id = t.product_id
+             WHERE pr.product_id = ? AND t.delivery_rating IS NOT NULL`,
             [productId]
         );
 
         const totalReviews = metaRows[0].totalReviews || 0;
-        const averageRating = totalReviews > 0 ? Math.round(metaRows[0].avgRating) : 0;
+        const round1 = (v) => (v === null || v === undefined) ? null : Math.round(Number(v) * 10) / 10;
+        const averageRating = totalReviews > 0 ? round1(metaRows[0].avgRating) : 0;
 
         const formattedComments = rows.map(row => ({
             id: row.id,
             productId: row.product_id,
+            orderId: row.order_id,
             userId: row.user_id,
             userName: row.username,
             userAvatar: row.user_avatar,
             rating: row.rating,
-            text: row.comment_text,
+            ratingBahan: row.rating_bahan,
+            ratingUkuran: row.rating_ukuran,
+            ratingWarna: row.rating_warna,
+            variantColor: row.variant_color,
+            variantSize: row.variant_size,
+            variantModel: row.variant_model,
+            images: row.images ? JSON.parse(row.images) : [],
+            verified: !!row.verified_purchase,
+            replyText: row.reply_text,
+            replyAt: row.reply_at,
+            replyBy: row.reply_by,
+            text: row.review_text,
             createdAt: row.created_at
         }));
 
         res.status(200).json({
             totalReviews: totalReviews,
             averageRating: averageRating,
+            averageBahan: round1(metaRows[0].avgBahan),
+            averageUkuran: round1(metaRows[0].avgUkuran),
+            averageWarna: round1(metaRows[0].avgWarna),
+            averageDelivery: deliveryAgg && deliveryAgg.avgDelivery !== null ? round1(deliveryAgg.avgDelivery) : null,
+            deliveryCount: (deliveryAgg && deliveryAgg.deliveryCount) || 0,
             comments: formattedComments
         });
     } catch (err) {
@@ -581,7 +1115,7 @@ router.post('/products/comments', async (req, res) => {
         }
 
         const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; 
+        let token = (authHeader && authHeader.split(' ')[1]) || getCookie(req, 'nl_jwt');
 
         if (!token) {
             return res.status(401).json({ message: "Sesi habis, token kagak dikirim dari frontend!" });
@@ -593,6 +1127,16 @@ router.post('/products/comments', async (req, res) => {
         } catch (jwtErr) {
             console.error("JWT Verify Error:", jwtErr.message);
             return res.status(403).json({ message: "Login Ulang Ya!" });
+        }
+
+        try {
+            const [[user]] = await db.execute('SELECT auth_version FROM user_northline WHERE id = ?', [decodedUser.id]);
+            if (!user || (decodedUser.authVersion || 0) !== user.auth_version) {
+                return res.status(403).json({ message: "Sesi berakhir, silakan login ulang" });
+            }
+        } catch (dbErr) {
+            console.error("auth_version check error:", dbErr.message);
+            return res.status(500).json({ message: "Terjadi kesalahan server" });
         }
 
         const userId = decodedUser.id;
@@ -629,6 +1173,9 @@ router.post('/products/comments', async (req, res) => {
             [productId, userId, username, userAvatar, rating, text]
         );
 
+        const { invalidateByPrefix } = require('../config/redis');
+        await invalidateByPrefix(`catalog:reviews`);
+
         const [metaRows] = await db.execute(
             'SELECT COUNT(*) as totalReviews, AVG(rating) as avgRating FROM comment_product WHERE product_id = ?',
             [productId]
@@ -653,7 +1200,7 @@ router.get('/products/rating-summary', async (req, res) => {
     try {
         const [rows] = await db.execute(
             `SELECT product_id, COUNT(*) as totalReviews, AVG(rating) as avgRating 
-             FROM comment_product 
+             FROM product_reviews 
              GROUP BY product_id`
         );
 
@@ -661,8 +1208,14 @@ router.get('/products/rating-summary', async (req, res) => {
         rows.forEach(row => {
             summary[row.product_id] = {
                 totalReviews: parseInt(row.totalReviews) || 0,
-                avgRating: Math.round(row.avgRating) || 0
+                avgRating: row.avgRating ? Math.round(Number(row.avgRating) * 10) / 10 : 0
             };
+        });
+
+        const catalogData = require('./catalog');
+        catalogData.NORTHLINE_CATALOG.forEach(p => {
+            const real = summary[p.id];
+            summary[p.id] = catalogData.mergeRealReviews(p.id, real ? real.totalReviews : 0, real ? real.avgRating : 0);
         });
 
         res.status(200).json(summary);
@@ -715,6 +1268,7 @@ router.post('/confirm-manual-payment', verifyToken, async (req, res) => {
         }
 
         await db.query("UPDATE transactions SET status = 'success' WHERE order_id = ?", [orderId]);
+        await grantCommission(orderId).catch(e => console.error('grantCommission:', e.message));
         
         const [rows] = await db.query(`
             SELECT t.product_name, t.chosen_size, t.chosen_color, t.total_price, 
@@ -769,9 +1323,16 @@ router.get('/user-orders/:userId', verifyToken, async (req, res) => {
                 total_price,
                 status AS payment_status,
                 delivery_status,
+                delivery_rating,
+                tracking_number,
+                tracking_courier,
+                shipped_at,
                 is_discounted,
                 estimated_arrival,
-                created_at
+                created_at,
+                payment_method,
+                shipping_address,
+                EXISTS(SELECT 1 FROM product_reviews pr WHERE pr.order_id = transactions.order_id AND pr.product_id = transactions.product_id) AS reviewed
             FROM transactions
             WHERE user_id = ?
             ORDER BY created_at DESC
@@ -788,6 +1349,36 @@ router.get('/user-orders/:userId', verifyToken, async (req, res) => {
             success: false,
             message: error.message
         });
+    }
+});
+
+router.post('/orders/confirm-receipt', verifyToken, async (req, res) => {
+    try {
+        const { orderId } = req.body || {};
+        if (!orderId) return res.status(400).json({ success: false, message: "orderId wajib diisi" });
+
+        const [orders] = await db.execute(
+            'SELECT order_id, delivery_status FROM transactions WHERE order_id=? AND user_id=?',
+            [orderId, req.user.id]
+        );
+        if (orders.length === 0) {
+            return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
+        }
+        const ds = String(orders[0].delivery_status || '').toLowerCase();
+        if (ds.includes('selesai')) {
+            return res.json({ success: true, message: "Pesanan sudah selesai" });
+        }
+        if (!ds.includes('dikirim')) {
+            return res.status(400).json({ success: false, message: "Pesanan belum dikirim, tidak bisa dikonfirmasi" });
+        }
+        await db.execute(
+            "UPDATE transactions SET delivery_status='Pesanan Selesai' WHERE order_id=? AND user_id=?",
+            [orderId, req.user.id]
+        );
+        res.json({ success: true, message: "Pesanan diterima, terima kasih!" });
+    } catch (err) {
+        console.error("confirm receipt error:", err);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -875,7 +1466,6 @@ router.post('/send-otp-for-password', verifyToken, async (req, res) => {
 
         await waBot.sendMessage(formattedPhone + "@c.us", messageText);
 
-        console.log(`[OTP] OTP sent to ${formattedPhone}: ${secretOtp}`); 
         return res.status(200).json({ success: true, message: "OTP sent successfully!" });
 
     } catch (err) {
@@ -896,7 +1486,6 @@ async function logNotification(userId, title, message) {
 }
 
 router.get('/notifications', verifyToken, async (req, res) => {
-    console.log("User ID yang request:", req.user.id); 
     try {
         const [notifs] = await db.execute(
             `SELECT * FROM user_notifications 
@@ -911,6 +1500,21 @@ router.get('/notifications', verifyToken, async (req, res) => {
     }
 });
 
+router.get('/notifications/latest', verifyToken, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id FROM user_notifications 
+             WHERE user_id = ? OR is_global = 1 
+             ORDER BY created_at DESC LIMIT 1`,
+            [req.user.id]
+        );
+        res.json({ latestId: rows.length > 0 ? rows[0].id : 0 });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error" });
+    }
+});
+
 router.get('/settings/po-date', async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -918,10 +1522,10 @@ router.get('/settings/po-date', async (req, res) => {
             ['po_target_date']
         );
 
-        if (rows.length > 0) {
+        if (rows.length > 0 && rows[0].setting_value) {
             res.json({ targetDate: rows[0].setting_value });
         } else {
-            res.status(404).json({ message: "Setting tidak ditemukan" });
+            res.json({ targetDate: null });
         }
     } catch (err) {
         console.error("Database Error:", err);
@@ -929,453 +1533,485 @@ router.get('/settings/po-date', async (req, res) => {
     }
 });
 
-const products = [
-    {
-        id: 1,
-        name: "Northline Longsleeve & Shortsleeve Boxy 919 NRT - 24s Cotton Combed Kaos Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteLong919.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteShort919.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 2,
-        name: "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH", "HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtwhiteLongNorth.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtwhiteShortNorth.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackLongNorth.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackShortNorth.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 3,
-        name: "Northline Longsleeve & Shortsleeve Boxy - 24s Cotton Combed Kaos Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH", "HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteLong.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteShort.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackLong.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackShort.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 4,
-        name: "Northline Longsleeve & Shortsleeve Boxy Arabic - 24s Cotton Combed Kaos Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH", "HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteLongArabic.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtWhiteShortArabic.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackLongArabic.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtBlackShortArabic.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 5,
-        name: "Northline Workshirt Zipper Black Boxy - Workshirt Zipper Boxy",
-        price: 188000,
-        oldPrice: 250000,
-        colors: ["HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/NorthWorkshirtZipper.jpeg",
-            "https://nl.hostinesia.my.id/public/image/NorthlineWorkshirtZipper.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 6,
-        name: "Northline Longsleeve 111 White Boxy - 24s Cotton Combed Longsleeve White Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtwhite111Long.jpeg",
-            "https://nl.hostinesia.my.id/public/image/nrtwhite111Short.jpeg",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 7,
-        name: "Northline Shortsleeve NORTNL White Boxy - 24s Cotton Combed Shortsleeve White Boxy",
-        price: 138000,
-        priceShort: 138000,
-        priceLong: 158000,
-        oldPrice: 250000,
-        colors: ["PUTIH"],
-        sizes: ["S", "M", "L", "XL"],
-        models: ["PANJANG", "PENDEK"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtNORTNLWhiteShort.webp",
-            "https://nl.hostinesia.my.id/public/image/nrtNORTNLWhiteLong.webp",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 8,
-        name: "Northline Afterall Boxy Work Shirt Zipper - NORTNL Afterall Boxy Work Shirt Zipper",
-        price: 240000,
-        oldPrice: 280000,
-        colors: ["HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtNORTNLKemejaZipper.webp",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-    {
-        id: 9,
-        name: "Northline HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB - NORTNL HOODIE BOXY DOUBLE ZIPPER VINTAGECLUB",
-        price: 310000,
-        oldPrice: 320000,
-        colors: ["HITAM"],
-        sizes: ["S", "M", "L", "XL"],
-        images: [
-            "https://nl.hostinesia.my.id/public/image/nrtNORTNLHoodieBoxyZipper.webp",
-        ],
-        avgRating: 4,
-        totalReviews: 0,
-    },
-];
 
-function formatHistory(history) {
-    if (!history || history.length === 0) return '';
-    const recent = history.slice(-6);
-    const lines = recent.map(msg => {
-        const role = msg.role === 'user' ? 'Customer' : 'Northline Support';
-        return `${role}: ${msg.text}`;
-    });
-    return `\nRiwayat Percakapan Sebelumnya:\n${lines.join('\n')}\n`;
+// ===========================================
+// WebAuthn (Face ID / Passkey) Endpoints
+// ===========================================
+const { 
+    generateRegistrationOptions, 
+    verifyRegistrationResponse,
+    generateAuthenticationOptions,
+    verifyAuthenticationResponse
+} = require('@simplewebauthn/server');
+
+const WEBAUTHN_RP_NAME = 'Northline';
+const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID || 'localhost';
+const WEBAUTHN_ORIGIN = process.env.WEBAUTHN_ORIGIN || 'http://localhost:9000';
+
+// In-memory challenge storage (use Redis in production)
+const webauthnChallenges = new Map();
+
+// Store QR login sessions
+const qrLoginSessions = new Map();
+
+// Helper: get user from DB
+async function getUserById(userId) {
+    const [rows] = await db.execute(
+        `SELECT id, username, name, email, face_id_credential_id, face_id_public_key, 
+         face_id_counter, face_id_enabled FROM user_northline WHERE id = ?`,
+        [userId]
+    );
+    return rows[0] || null;
 }
 
-function buildSystemPrompt(products, history = []) {
-    const historyBlock = formatHistory(history);
+// ===========================================
+// Face ID / WebAuthn Registration (Setup Face ID)
 
-    const productLines = products.map((p, i) => {
-        let priceInfo;
-        if (p.priceShort && p.priceLong) {
-            priceInfo = `- Harga: Mulai Rp${p.priceShort.toLocaleString('id-ID')} (Pendek) / Rp${p.priceLong.toLocaleString('id-ID')} (Panjang)`;
-        } else {
-            priceInfo = `- Harga: Rp${p.price.toLocaleString('id-ID')}`;
-        }
-
-        const parts = [
-            `${i + 1}. ${p.name}`,
-            priceInfo,
-        ];
-
-        if (p.oldPrice) {
-            parts.push(`- Harga Sebelumnya: Rp${p.oldPrice.toLocaleString('id-ID')}`);
-        }
-
-        parts.push(`- Warna Tersedia: ${p.colors.join(', ')}`);
-        parts.push(`- Ukuran: ${p.sizes.join(', ')}`);
-
-        if (p.models) {
-            parts.push(`- Model: ${p.models.join(', ')}`);
-        }
-
-        parts.push(`- Ready Order: ${p.readyStart} - ${p.readyEnd}`);
-
-        return parts.join('\n');
-    }).join('\n\n');
-
-    return `Kamu adalah Northline Support, customer service resmi dari brand fashion Northline.
-
-Informasi Brand Northline:
-- Pendiri/Owner: Hata Supriatna & M. Alfian Nur Hadiansyah
-- Brand berasal dari: Karawang, Jawa Barat
-- Northline adalah brand fashion streetwear premium asli Karawang yang beroprasi pada tahun 2025 oleh PT Northline Indonesia di bawah naungan PT Hostinesia.
-- Desain Norhtline ada @hadabeltee sekaligus dibalik layar website ini dan pendiri Hostinesia Infrastruktur yang anda pakai ini adalah hasil payah dia sendiri.
-- Northline fokus pada kualitas bahan, kenyamanan, dan desain boxy fit modern.
-- Northline menjual produk apparel seperti t-shirt, longsleeve, dan koleksi eksklusif lainnya.
-- Northline menggunakan sistem pre-order untuk beberapa produk.
-- Jawaban harus profesional, ramah, singkat, dan membantu customer.
-- Selalu gunakan Bahasa Indonesia.
-- jawab menggunakan emoji.
-- Jangan menjawab di luar konteks customer service jika tidak diperlukan.${historyBlock}
-
-Data Produk Saat Ini:
-
-${productLines}
-
-Aturan Penting:
-
-1. Jika customer bertanya harga produk:
-Berikan harga sesuai data di atas.
-
-2. Jika customer bertanya ukuran:
-Berikan ukuran yang tersedia sesuai data.
-
-3. Jika customer bertanya warna:
-Berikan warna yang tersedia sesuai data.
-
-4. Jika customer bertanya stok:
-Jawab bahwa produk tersedia selama stock ready berlangsung.
-
-5. Jika customer bertanya kapan pesanan diproses:
-Jawab bahwa pesanan akan diproses setelah pesanan selesai.
-
-6. Jika customer bertanya tentang Northline:
-Jelaskan bahwa Northline adalah brand streetwear premium dengan fokus pada kualitas bahan dan desain modern boxy fit.
-
-7. Jangan pernah:
-- Mengarang produk baru.
-- Mengarang harga baru.
-- Mengarang ukuran baru.
-- Mengarang warna baru.
-- Mengaku mengetahui informasi yang tidak diberikan.
-
-8. Jika informasi tidak tersedia:
-Jawab: "Silakan hubungi admin Northline untuk informasi lebih lanjut."
-
-9. Jika customer hanya menyapa:
-Balas dengan: "Halo, selamat datang di Northline. Ada yang bisa kami bantu terkait produk atau pesanan Anda?"
-
-10. Jika customer bertanya cara order:
-Jawab dengan langkah-langkah berikut:
-- Pilih produk yang tersedia di Shop Northline atau tanya apa yang sedang ready.
-- Pilih size dan warna yang tertera di detail produk.
-- Lakukan pembayaran melalui QRIS Northline.
-- Tunggu sampai pembayaran berhasil dan pesanan diproses oleh tim Northline.
-- Lihat pada menu Orders dan pantau pengembangan pesanan yang akan diupdate oleh tim Northline.
-
-Format penting untuk referensi produk:
-- Jika kamu menyebut produk tertentu, sertakan [product:ID] setelah menyebutnya (contoh: "Kaos Boxy 919 NRT [product:1]")
-- Jika kamu menyebut semua produk, sertakan [products:all] di akhir kalimat.
-- Jangan gunakan format lain selain [product:ID] atau [products:all].
-- Tag ini akan digunakan sistem untuk menampilkan gambar produk ke customer.`;
-}
-
-function buildStoreSystemPrompt(products, history = []) {
-    const historyBlock = formatHistory(history);
-
-    const productLines = products.map((p, i) => {
-        let priceInfo;
-        if (p.priceShort && p.priceLong) {
-            priceInfo = `- Harga: Mulai Rp${p.priceShort.toLocaleString('id-ID')} (Pendek) / Rp${p.priceLong.toLocaleString('id-ID')} (Panjang)`;
-        } else {
-            priceInfo = `- Harga: Rp${p.price.toLocaleString('id-ID')}`;
-        }
-
-        const parts = [
-            `${i + 1}. ${p.name}`,
-            priceInfo,
-        ];
-
-        if (p.oldPrice) {
-            parts.push(`- Harga Sebelumnya: Rp${p.oldPrice.toLocaleString('id-ID')}`);
-        }
-
-        parts.push(`- Warna Tersedia: ${p.colors.join(', ')}`);
-        parts.push(`- Ukuran: ${p.sizes.join(', ')}`);
-
-        if (p.models) {
-            parts.push(`- Model: ${p.models.join(', ')}`);
-        }
-
-        parts.push(`- Ready Order: ${p.readyStart} - ${p.readyEnd}`);
-
-        return parts.join('\n');
-    }).join('\n\n');
-
-    return `Kamu adalah admin dari toko Northline Official. Tugasmu adalah membantu pelanggan dengan ramah dan natural, seperti admin toko beneran.
-
-Informasi Brand Northline:
-- Pendiri/Owner: Hata Supriatna & M. Alfian Nur Hadiansyah
-- Brand berasal dari: Karawang, Jawa Barat
-- Northline adalah brand fashion streetwear premium asli Karawang yang beroprasi pada tahun 2025.
-- Northline fokus pada kualitas bahan, kenyamanan, dan desain boxy fit modern.
-- Northline menjual produk apparel seperti t-shirt, longsleeve, dan koleksi eksklusif lainnya.
-- Northline menggunakan sistem pre-order untuk beberapa produk.
-
-Gaya bicara:
-- Panggil pelanggan dengan "kak"
-- Bicara natural dan santai, kayak lagi ngobrol sama temen
-- Jangan kedengeran kayak robot atau AI
-- Jawab dengan hangat dan helpful
-- Gunakan bahasa Indonesia sehari-hari yang natural
-- JANGAN gunakan emoji sama sekali
-- JANGAN sebut dirimu AI, robot, bot, atau asisten virtual
-- Jawab singkat dan to the point, nggak perlu bertele-tele${historyBlock}
-
-Data Produk Saat Ini:
-
-${productLines}
-
-Aturan Penting:
-
-1. Jika customer bertanya harga produk:
-Berikan harga sesuai data di atas.
-
-2. Jika customer bertanya ukuran:
-Berikan ukuran yang tersedia sesuai data.
-
-3. Jika customer bertanya warna:
-Berikan warna yang tersedia sesuai data.
-
-4. Jika customer bertanya stok:
-Jawab bahwa produk tersedia selama stock ready berlangsung.
-
-5. Jika customer bertanya kapan pesanan diproses:
-Jawab bahwa pesanan akan diproses setelah pesanan selesai.
-
-6. Jika customer bertanya tentang Northline:
-Jelaskan bahwa Northline adalah brand streetwear premium dengan fokus pada kualitas bahan dan desain modern boxy fit.
-
-7. Jangan pernah:
-- Mengarang produk baru.
-- Mengarang harga baru.
-- Mengarang ukuran baru.
-- Mengarang warna baru.
-- Mengaku mengetahui informasi yang tidak diberikan.
-
-8. Jika informasi tidak tersedia:
-Jawab dengan natural seperti: "Maaf kak, untuk info itu saya kurang tahu pastinya. Menunggu konfirmasi admin northline dulu kak."
-
-9. Jika customer bertanya cara order:
-Jawab dengan langkah-langkah berikut:
-- Pilih produk yang tersedia di Shop Northline atau tanya apa yang sedang ready.
-- Pilih size dan warna yang tertera di detail produk.
-- Lakukan pembayaran melalui QRIS Northline.
-- Tunggu sampai pembayaran berhasil dan pesanan diproses oleh tim Northline.
-- Lihat pada menu Orders dan pantau pengembangan pesanan yang akan diupdate oleh tim Northline.`;
-}
-
-function findMentionedProducts(replyText, products) {
-    const lowerReply = replyText.toLowerCase();
-    const matched = [];
-
-    for (const product of products) {
-        const nameLower = product.name.toLowerCase();
-        const significantPart = nameLower.substring(0, 50);
-        if (lowerReply.includes(significantPart)) {
-            matched.push(product);
-            continue;
-        }
-        for (const color of product.colors) {
-            if (color.toLowerCase() === 'hitam' || color.toLowerCase() === 'putih') continue;
-            if (lowerReply.includes(color.toLowerCase())) {
-                matched.push(product);
-                break;
+// Cleanup intervals - run after module is fully loaded
+setImmediate(() => {
+    // Cleanup expired QR login sessions periodically
+    setInterval(() => {
+        const now = Date.now();
+        for (const [id, session] of qrLoginSessions.entries()) {
+            if (session.expiresAt < now) {
+                qrLoginSessions.delete(id);
             }
         }
-    }
+    }, 60000);
 
-    return matched;
+    // Cleanup webauthn challenges
+    setInterval(() => {
+        const now = Date.now();
+        for (const [userId, challenge] of webauthnChallenges.entries()) {
+            if (challenge.expiresAt < now) {
+                webauthnChallenges.delete(userId);
+            }
+        }
+    }, 60000);
+});
+
+// Helper: get user from DB
+async function getUserById(userId) {
+    const [rows] = await db.execute(
+        `SELECT id, username, name, email, face_id_credential_id, face_id_public_key, 
+         face_id_counter, face_id_enabled FROM user_northline WHERE id = ?`,
+        [userId]
+    );
+    return rows[0] || null;
 }
 
-const OPENCODE_SERVER = 'http://127.0.0.1:11436';
-let opencodeSessionId = null;
+// ===========================================
+// Face ID / WebAuthn Registration (Setup Face ID)
+// ===========================================
 
-async function getOrCreateSession() {
-    if (opencodeSessionId) return opencodeSessionId;
-    const { data } = await axios.post(`${OPENCODE_SERVER}/session`, {}, { timeout: 5000 });
-    opencodeSessionId = data.id;
-    return opencodeSessionId;
-}
-
-router.post('/chat', async (req, res) => {
+// Get Face ID status
+router.get('/user/face-id/status', verifyToken, async (req, res) => {
     try {
-        const { message, history, mode } = req.body;
-        if (!message || message.length > 1000) {
-            return res.status(400).json({ reply: 'Pesan tidak valid.' });
-        }
+        const user = await getUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
 
-        const sessionId = await getOrCreateSession();
-
-        const systemPrompt = mode === 'store'
-            ? buildStoreSystemPrompt(products, history || [])
-            : buildSystemPrompt(products, history || []);
-
-        const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionId}/message`, {
-            model: { providerID: 'opencode', modelID: 'north-mini-code-free' },
-            parts: [{ type: 'text', text: message }],
-            system: systemPrompt
-        }, { timeout: 120000 });
-
-        let reply = data.parts?.find(p => p.type === 'text')?.text || 'Maaf, saya tidak dapat menjawab saat ini.';
-
-        let matchedProducts = [];
-
-        const productTagRegex = /\[product:(\d+)\]/gi;
-        const allProductsTag = /\[products:all\]/gi;
-        let match;
-        const matchIds = new Set();
-
-        while ((match = productTagRegex.exec(reply)) !== null) {
-            matchIds.add(parseInt(match[1]));
-        }
-
-        const hasAllProducts = allProductsTag.test(reply);
-
-        reply = reply.replace(/\[product:\d+\]/gi, '').replace(/\[products:all\]/gi, '').trim();
-
-        if (hasAllProducts) {
-            matchedProducts = products;
-        } else if (matchIds.size > 0) {
-            matchedProducts = products.filter(p => matchIds.has(p.id));
-        } else {
-            matchedProducts = findMentionedProducts(reply, products);
-        }
-
-        const productData = matchedProducts.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            oldPrice: p.oldPrice || null,
-            image: p.images?.[0] || null,
-            colors: p.colors,
-            sizes: p.sizes,
-            models: p.models || null,
-        }));
-
-        res.json({ reply, products: productData });
+        res.json({
+            success: true,
+            faceIdEnabled: !!user.face_id_enabled,
+            hasCredential: !!user.face_id_credential_id
+        });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ reply: 'Northline Support sedang tidak tersedia.', products: [] });
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Start Face ID registration (get challenge)
+router.post('/user/face-id/register/begin', verifyToken, async (req, res) => {
+    try {
+        const user = await getUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+        if (user.face_id_enabled) {
+            return res.status(400).json({ success: false, message: 'Face ID sudah terdaftar' });
+        }
+
+        const options = generateRegistrationOptions({
+            rpName: WEBAUTHN_RP_NAME,
+            rpID: WEBAUTHN_RP_ID,
+            userID: Buffer.from(String(req.user.id)),
+            userName: user.username,
+            userDisplayName: user.name || user.username,
+            attestationType: 'none',
+            authenticatorSelection: {
+                authenticatorAttachment: 'platform',
+                userVerification: 'required',
+                requireResidentKey: true
+            },
+            supportedAlgorithmIDs: [-7, -257], // ES256, RS256
+            excludeCredentials: user.face_id_credential_id ? [{
+                id: Buffer.from(user.face_id_credential_id, 'base64'),
+                type: 'public-key',
+                transports: ['internal']
+            }] : []
+        });
+
+        // Store challenge
+        webauthnChallenges.set(req.user.id, {
+            challenge: options.challenge,
+            type: 'registration',
+            expiresAt: Date.now() + 60000 // 1 minute
+        });
+
+        res.json({ success: true, options });
+    } catch (err) {
+        console.error('WebAuthn register begin error:', err);
+        res.status(500).json({ success: false, message: 'Gagal memulai registrasi Face ID' });
+    }
+});
+
+// Complete Face ID registration
+router.post('/user/face-id/register/complete', verifyToken, async (req, res) => {
+    try {
+        const user = await getUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+        const challengeData = webauthnChallenges.get(req.user.id);
+        if (!challengeData || challengeData.type !== 'registration' || challengeData.expiresAt < Date.now()) {
+            return res.status(400).json({ success: false, message: 'Challenge expired atau tidak valid' });
+        }
+
+        const verification = await verifyRegistrationResponse({
+            credential: req.body,
+            expectedChallenge: challengeData.challenge,
+            expectedOrigin: WEBAUTHN_ORIGIN,
+            expectedRPID: WEBAUTHN_RP_ID,
+            requireUserVerification: true
+        });
+
+        if (!verification.verified) {
+            return res.status(400).json({ success: false, message: 'Registrasi Face ID gagal' });
+        }
+
+        // Save credential to database
+        const credentialIdBase64 = Buffer.from(verification.registrationInfo.credentialID).toString('base64');
+        const publicKeyBase64 = Buffer.from(verification.registrationInfo.credentialPublicKey).toString('base64');
+
+        await db.execute(
+            `UPDATE user_northline SET 
+                face_id_credential_id = ?,
+                face_id_public_key = ?,
+                face_id_counter = ?,
+                face_id_enabled = 1,
+                northpay_last_security_change = NOW()
+            WHERE id = ?`,
+            [credentialIdBase64, publicKeyBase64, verification.registrationInfo.counter, req.user.id]
+        );
+
+        // Clean up challenge
+        webauthnChallenges.delete(req.user.id);
+
+        res.json({ success: true, message: 'Face ID berhasil didaftarkan' });
+    } catch (err) {
+        console.error('WebAuthn register complete error:', err);
+        res.status(500).json({ success: false, message: 'Gagal menyelesaikan registrasi Face ID' });
+    }
+});
+
+// Disable Face ID
+router.post('/user/face-id/disable', verifyToken, async (req, res) => {
+    try {
+        await db.execute(
+            `UPDATE user_northline SET 
+                face_id_credential_id = NULL,
+                face_id_public_key = NULL,
+                face_id_counter = 0,
+                face_id_enabled = 0,
+                northpay_last_security_change = NOW()
+            WHERE id = ?`,
+            [req.user.id]
+        );
+        res.json({ success: true, message: 'Face ID dinonaktifkan' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Gagal menonaktifkan Face ID' });
+    }
+});
+
+// ===========================================
+// Face ID / WebAuthn Authentication (Login with Face ID)
+// ===========================================
+
+// Start Face ID authentication (get challenge)
+router.post('/user/face-id/authenticate/begin', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) {
+            return res.status(400).json({ success: false, message: 'Username diperlukan' });
+        }
+
+        const [rows] = await db.execute(
+            `SELECT id, username, face_id_credential_id, face_id_public_key, face_id_counter, face_id_enabled 
+             FROM user_northline WHERE username = ? AND face_id_enabled = 1`,
+            [username]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Face ID tidak terdaftar untuk user ini' });
+        }
+
+        const user = rows[0];
+
+        const options = generateAuthenticationOptions({
+            rpID: WEBAUTHN_RP_ID,
+            allowCredentials: [{
+                id: Buffer.from(user.face_id_credential_id, 'base64'),
+                type: 'public-key',
+                transports: ['internal']
+            }],
+            userVerification: 'required'
+        });
+
+        // Store challenge
+        webauthnChallenges.set(user.id, {
+            challenge: options.challenge,
+            type: 'authentication',
+            expiresAt: Date.now() + 60000
+        });
+
+        res.json({ success: true, options });
+    } catch (err) {
+        console.error('WebAuthn auth begin error:', err);
+        res.status(500).json({ success: false, message: 'Gagal memulai autentikasi Face ID' });
+    }
+});
+
+// Complete Face ID authentication
+router.post('/user/face-id/authenticate/complete', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) {
+            return res.status(400).json({ success: false, message: 'Username diperlukan' });
+        }
+
+        const [rows] = await db.execute(
+            `SELECT id, username, face_id_credential_id, face_id_public_key, face_id_counter, face_id_enabled 
+             FROM user_northline WHERE username = ? AND face_id_enabled = 1`,
+            [username]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Face ID tidak terdaftar' });
+        }
+
+        const user = rows[0];
+        const challengeData = webauthnChallenges.get(user.id);
+        if (!challengeData || challengeData.type !== 'authentication' || challengeData.expiresAt < Date.now()) {
+            return res.status(400).json({ success: false, message: 'Challenge expired atau tidak valid' });
+        }
+
+        const verification = await verifyAuthenticationResponse({
+            credential: req.body,
+            expectedChallenge: challengeData.challenge,
+            expectedOrigin: WEBAUTHN_ORIGIN,
+            expectedRPID: WEBAUTHN_RP_ID,
+            credential: {
+                id: Buffer.from(user.face_id_credential_id, 'base64'),
+                publicKey: Buffer.from(user.face_id_public_key, 'base64'),
+                counter: user.face_id_counter
+            },
+            requireUserVerification: true
+        });
+
+        if (!verification.verified) {
+            return res.status(400).json({ success: false, message: 'Autentikasi Face ID gagal' });
+        }
+
+        // Update counter
+        await db.execute(
+            'UPDATE user_northline SET face_id_counter = ?, last_login_at = NOW() WHERE id = ?',
+            [verification.authenticationInfo.newCounter, user.id]
+        );
+
+        // Generate JWT token
+        const token = jwt.sign({ id: user.id, username: user.username, authVersion: user.auth_version || 0 }, JWT_SECRET, { expiresIn: '1d' });
+
+        // Set cookie
+        res.cookie('nl_jwt', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+        res.cookie('logged_in', '1', {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        webauthnChallenges.delete(user.id);
+
+        res.json({ 
+            success: true, 
+            message: 'Login dengan Face ID berhasil',
+            user: { id: user.id, username: user.username }
+        });
+    } catch (err) {
+        console.error('WebAuthn auth complete error:', err);
+        res.status(500).json({ success: false, message: 'Gagal menyelesaikan autentikasi Face ID' });
+    }
+});
+
+// ===========================================
+// QR Cross-Device Login (Mobile scans Desktop QR)
+// ===========================================
+
+// Generate QR login session (for desktop to display QR)
+router.get('/user/qr-login/generate', verifyToken, async (req, res) => {
+    try {
+        const sessionId = crypto.randomUUID();
+        const code = crypto.randomBytes(16).toString('hex');
+        
+        qrLoginSessions.set(sessionId, {
+            userId: req.user.id,
+            code,
+            status: 'pending',
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+        });
+
+        // QR data contains sessionId and code for mobile to scan
+        const qrData = JSON.stringify({
+            type: 'northline_login',
+            sessionId,
+            code,
+            origin: WEBAUTHN_ORIGIN
+        });
+
+        res.json({ 
+            success: true, 
+            sessionId, 
+            code,
+            qrData,
+            expiresIn: 300 // 5 minutes
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Gagal generate QR login' });
+    }
+});
+
+// Mobile scans QR - initiates WebAuthn authentication
+router.post('/user/qr-login/scan', async (req, res) => {
+    try {
+        const { sessionId, credential } = req.body;
+        
+        const session = qrLoginSessions.get(sessionId);
+        if (!session || session.status !== 'pending' || session.expiresAt < Date.now()) {
+            return res.status(400).json({ success: false, message: 'QR session expired atau tidak valid' });
+        }
+
+        const user = await getUserById(session.userId);
+        if (!user || !user.face_id_enabled || !user.face_id_credential_id) {
+            return res.status(400).json({ success: false, message: 'Face ID tidak terdaftar untuk user ini' });
+        }
+
+        // Verify the WebAuthn assertion
+        const verification = await verifyAuthenticationResponse({
+            credential: req.body.credential,
+            expectedChallenge: session.challenge || 'qr-login-' + session.code,
+            expectedOrigin: WEBAUTHN_ORIGIN,
+            expectedRPID: WEBAUTHN_RP_ID,
+            credential: {
+                id: Buffer.from(user.face_id_credential_id, 'base64'),
+                publicKey: Buffer.from(user.face_id_public_key, 'base64'),
+                counter: user.face_id_counter
+            },
+            requireUserVerification: true
+        });
+
+        if (!verification.verified) {
+            return res.status(400).json({ success: false, message: 'Verifikasi Face ID gagal' });
+        }
+
+        // Update counter and session
+        await db.execute(
+            'UPDATE user_northline SET face_id_counter = ?, last_login_at = NOW() WHERE id = ?',
+            [verification.authenticationInfo.newCounter, user.id]
+        );
+
+        session.status = 'approved';
+        session.userData = { id: user.id, username: user.username, authVersion: user.auth_version || 0 };
+
+        // Generate token for the scanned device
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1d' });
+
+        res.json({ 
+            success: true, 
+            message: 'Login via QR berhasil',
+            token,
+            user: { id: user.id, username: user.username }
+        });
+    } catch (err) {
+        console.error('QR scan error:', err);
+        res.status(500).json({ success: false, message: 'Gagal verifikasi QR login' });
+    }
+});
+
+// Check QR login status (polling from desktop)
+router.get('/user/qr-login/status/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const session = qrLoginSessions.get(sessionId);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: 'Session tidak ditemukan' });
+        }
+
+        if (session.expiresAt < Date.now()) {
+            qrLoginSessions.delete(sessionId);
+            return res.json({ success: true, status: 'expired' });
+        }
+
+        if (session.status === 'approved') {
+            const token = jwt.sign({ id: session.userData.id, username: session.userData.username }, JWT_SECRET, { expiresIn: '1d' });
+            qrLoginSessions.delete(sessionId);
+            return res.json({ success: true, status: 'approved', token, user: session.userData });
+        }
+
+        res.json({ success: true, status: 'pending' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ===========================================
+// Per-account AI Chat History Storage
+// (pindah ke routes/ai.js)
+// ===========================================
+
+router.get('/tracking/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const [orders] = await db.query(
+            `SELECT t.order_id, t.product_id, t.product_name, t.product_image,
+                t.chosen_color, t.chosen_size, t.chosen_model, t.quantity,
+                t.total_price, t.status AS payment_status, t.delivery_status,
+                t.tracking_number, t.tracking_courier, t.shipped_at,
+                t.estimated_arrival, t.created_at, t.shipping_address
+            FROM transactions t WHERE t.order_id = ? LIMIT 1`,
+            [orderId],
+        );
+        if (orders.length === 0) {
+            return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
+        }
+        const [events] = await db.query(
+            "SELECT id, order_id, status, description, location, created_at FROM tracking_events WHERE order_id = ? ORDER BY id ASC",
+            [orderId],
+        );
+        res.json({ success: true, order: orders[0], events });
+    } catch (error) {
+        console.error("Error Get Tracking:", error);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
+const catalogRoutes = require("./catalog");
 
 router.get("/search", async (req, res) => {
     try {
@@ -8,8 +9,22 @@ router.get("/search", async (req, res) => {
         const keyword = (req.query.q || "").trim();
 
         if (!keyword) {
-            return res.json([]);
+            return res.json({ products: [], sellers: [] });
         }
+
+        const kw = keyword.toLowerCase();
+
+        const catalogProducts = catalogRoutes.NORTHLINE_CATALOG
+            .filter(p => p.name && p.name.toLowerCase().includes(kw))
+            .map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.priceShort || p.price || 0,
+                img: (p.images && p.images[0]) || "default.png",
+                code: catalogRoutes.getProductCode(p.id),
+                store_name: "Northline Official",
+                source: "catalog"
+            }));
 
         const [productRows] = await db.query(`
             SELECT
@@ -43,15 +58,23 @@ router.get("/search", async (req, res) => {
             `%${keyword}%`
         ]);
 
+        const dbProducts = productRows.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: Number(p.price) || 0,
+            img: p.image || "default.png",
+            store_name: p.store_name,
+            source: "database"
+        }));
+
+        const merged = catalogProducts.slice();
+        const catalogIds = new Set(merged.map(p => p.id));
+        dbProducts.forEach(p => {
+            if (!catalogIds.has(p.id)) merged.push(p);
+        });
+
         return res.json({
-            products: productRows.map(p => ({
-                id: p.id,
-                name: p.name,
-                price: Number(p.price) || 0,
-                img: p.image || "default.png",
-                store_name: p.store_name,
-                source: "database"
-            })),
+            products: merged,
             sellers: sellerRows.map(seller => ({
                 id: seller.id,
                 type: "seller",

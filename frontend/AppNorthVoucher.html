@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="shortcut icon"
+      href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2"
+      type="image/x-icon"
+    />
+    <title>Voucher Center - Northline</title>
+    <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css" />
+    <link rel="stylesheet" href="/css/style.css?v=0000v1css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <meta name="theme-color" content="#DF414F" />
+    <style>
+      body {
+        font-family: "DM Sans", sans-serif;
+      }
+      .vc-tab {
+        flex: 1;
+        text-align: center;
+        padding: 12px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #9ca3af;
+        border-bottom: 2px solid transparent;
+        background: none;
+        cursor: pointer;
+      }
+      .vc-tab.active {
+        color: #df414f;
+        border-bottom: 2px solid #df414f;
+      }
+      .vc-card {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #f3f4f6;
+        align-items: center;
+      }
+    .vc-btn {
+        border: none;
+        background: #df414f;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 6px 12px;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+    }
+      .vc-btn:disabled {
+        background: #e5e7eb;
+        color: #9ca3af;
+        cursor: not-allowed;
+      }
+      .vc-badge {
+        display: inline-block;
+        font-size: 10px;
+        color: #df414f;
+        letter-spacing: 0.5px;
+      }
+    </style>
+  </head>
+  <body style="background: #f9fafb; margin: 0">
+    <header
+      style="
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #fff;
+        border-bottom: 1px solid #f3f4f6;
+      "
+    >
+      <div
+        style="
+          max-width: 640px;
+          margin: 0 auto;
+          height: 52px;
+          padding: 0 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        "
+      >
+        <a
+          href="/"
+          style="display: flex; align-items: center"
+          aria-label="Kembali"
+        >
+          <img
+            src="https://img.icons8.com/?size=100&id=85459&format=png&color=DF414F"
+            style="width: 20px; height: 20px"
+            alt="back"
+          />
+        </a>
+        <h1 style="font-size: 15px; font-weight: 500; color: #374151">
+          Voucher Center
+        </h1>
+      </div>
+    </header>
+
+    <main style="max-width: 640px; margin: 0 auto; min-height: 70vh">
+      <div
+        id="vc-page-guest"
+        class="hidden"
+        style="text-align: center; padding: 80px 24px"
+      >
+        <img
+          src="public/icons/nrtFaviconBlack.png"
+          style="width: 100px; height: 100px; margin: 0 auto 16px; opacity: 50%"
+          alt="voucher"
+        />
+        <h2 style="font-size: 16px; font-weight: 600; color: #1f2937">
+          Masuk untuk melihat voucher
+        </h2>
+        <p style="font-size: 12px; color: #6b7280; margin: 8px 0 20px">
+          Login terlebih dahulu untuk melihat, mengklaim, dan menggunakan voucher yang tersedia untukmu.
+        </p>
+        <a
+          href="/AppNorthAuth"
+          style=" display: inline-flex; align-items: center; justify-content: center; min-width: 150px; height: 38px; padding: 0 24px; background: #df414f; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid #df414f; transition: all 0.2s ease; "
+          >Masuk</a
+        >
+      </div>
+
+      <div id="vc-page-main" class="hidden">
+        <div
+          style="
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #f3f4f6;
+            position: sticky;
+            top: 52px;
+            z-index: 40;
+          "
+        >
+          <button
+            class="vc-tab active"
+            id="vc-tab-available"
+            onclick="VoucherCenter.switchTab('available')"
+          >
+            Tersedia
+          </button>
+          <button
+            class="vc-tab"
+            id="vc-tab-mine"
+            onclick="VoucherCenter.switchTab('mine')"
+          >
+            Voucher Saya
+          </button>
+        </div>
+
+        <div
+          id="vc-available"
+          style="padding: 8px; display: flex; flex-direction: column; gap: 8px"
+        ></div>
+
+        <div
+          id="vc-mine"
+          class="hidden"
+          style="padding: 8px; display: flex; flex-direction: column; gap: 8px"
+        ></div>
+      </div>
+    </main>
+
+    <div
+      id="vc-toast"
+      class="hidden"
+      style="
+        position: fixed;
+        left: 50%;
+        bottom: 90px;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background: #fff;
+        border: 1px solid #df414f;
+        color: #df414f;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 10px 18px;
+        max-width: calc(100vw - 48px);
+        text-align: center;
+      "
+    ></div>
+
+    <div id="vc-data-loader"
+        class="hidden fixed inset-0 z-[999] items-center justify-center"
+        style="background: rgba(255,255,255,0.55);">
+        <div class="loader-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <div id="global-loader"
+        class="hidden fixed inset-0 z-[99999] md:hidden flex items-center justify-center bg-white/10 backdrop-blur-lg">
+        <div class="loader-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
+    <script src="/java/AppNorthVoucher.js?v=0000v10vc" defer></script>
+    <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
+
+    <script>
+      function _d(s) {
+        let r = "";
+        for (let i = 0; i < s.length; i++) {
+          r += String.fromCharCode(
+            ((s.charCodeAt(i) - 32 - 10 + 95) % 95) + 32,
+          );
+        }
+        return r;
+      }
+
+      function showIosModal(message) {
+        const overlay = document.createElement("div");
+        overlay.style.cssText =
+          "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);";
+        const card = document.createElement("div");
+        card.style.cssText =
+          "background:#fff;padding:20px 24px;max-width:300px;width:calc(100% - 48px);text-align:center;";
+        const p = document.createElement("p");
+        p.style.cssText =
+          "font-size:13px;color:#1f2937;line-height:1.5;word-wrap:break-word;";
+        p.textContent = message;
+        const btn = document.createElement("button");
+        btn.textContent = "OK";
+        btn.style.cssText =
+          "margin-top:14px;width:100%;padding:9px;background:#DF414F;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;";
+        btn.onclick = () => overlay.remove();
+        card.appendChild(p);
+        card.appendChild(btn);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.VoucherCenter) {
+          VoucherCenter.init();
+        } else {
+          const guest = document.getElementById("vc-page-guest");
+          const main = document.getElementById("vc-page-main");
+          if (guest) guest.classList.remove("hidden");
+          if (main) main.classList.add("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+    <title>Northline Account Settings</title>
+    <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
+    <link rel="stylesheet" href="/css/style.css?v=0000v1css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .text-northline-black { color: #111111; }
+        .bg-northline-black { background-color: #111111; }
+        .bg-northline-black-hover:hover { background-color: #222222; }
+        .bg-northline-orange { background-color: #DF414F; }
+        .bg-northline-orange-hover:hover { background-color: #df414ede; }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .loader-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .loader-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background: #DF414F;
+            animation: loaderBounce 1s infinite ease-in-out;
+        }
+        .loader-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+        .loader-dots span:nth-child(3) {
+            animation-delay: .3s;
+        }
+        @keyframes loaderBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: .5;
+            }
+            40% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+        .s-switch { position: relative; width: 44px; height: 24px; background: #E5E7EB; border-radius: 9999px; cursor: pointer; flex-shrink: 0; }
+        .s-switch.active { background: #DF414F; }
+        .s-switch-thumb { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .s-switch.active .s-switch-thumb { transform: translateX(20px); }
+    </style>
+</head>
+<body class="bg-gray-100 text-[#111111] min-h-screen flex flex-col">
+
+        <header class="sticky top-0 z-50 bg-[#DF414F] text-white text-[11px] hidden md:block">
+            <div class="max-w-6xl mx-auto px-4 py-1.5 flex justify-between items-center cursor-pointer">
+                <div class="flex gap-4 font-medium">
+                    <div class="relative group cursor-pointer">
+                        <a href="/seller/AppNorthSellerRegister">Seller Centre</a>
+                        <div class="absolute top-full left-0 mt-2 w-48 bg-white border text-black text-xs shadow-md p-3 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-[9999]">
+                            <div class="absolute -top-1.5 left-4 w-3 h-3 bg-white border-l border-t rotate-45"></div>
+                            <p class="font-bold mb-1">Pusat Penjual</p>
+                            <p class="text-[10px] text-gray-500 leading-tight">
+                                Kelola toko, pantau pesanan, dan lihat statistik penjualan Anda di sini.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="relative group cursor-pointer">
+                        <span>Download</span>
+                        <div class="fixed mt-2 w-40 bg-white border border-gray-300 text-black text-xs shadow-xl p-4 rounded-sm invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-[9999]">
+                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
+                            <div class="w-full h-24 mx-auto flex items-center justify-center mb-3">
+                                <img src="https://nl.hostinesia.my.id/public/image/Northline App.png" style="height: 100px; object-fit: contain;">
+                            </div>
+                            <p class="text-[9px] text-gray-500 text-center leading-tight">
+                                Scan QR Code untuk download aplikasi Northline di App Store & Play Store.
+                            </p>
+                        </div>
+                    </div>
+                    <a href="https://www.instagram.com/northline.karawang/">
+                        <span class="flex items-center gap-1 hover:opacity-90">Ikuti kami di 
+                            <img src="https://img.icons8.com/ios-filled/20/ffffff/instagram-new.png" class="w-3 h-3">
+                        </span>
+                    </a>
+                </div>
+                <div class="flex gap-4 font-medium items-center">
+                    <!-- Notification header function -->
+                    <div class="relative group cursor-pointer">
+                        <span class="flex items-center gap-1 hover:opacity-90"><img src="https://img.icons8.com/?size=100&id=11642&format=png&color=ffffff" class="w-3 h-3"> Notifikasi</span>
+                        <div class="absolute top-full left-0 mt-2 w-48 bg-white border text-black text-xs shadow-md p-3 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-[9999]">
+                            <div class="absolute -top-1.5 left-4 w-3 h-3 bg-white border-l border-t rotate-45"></div>
+                            <p class="font-bold mb-1">Notifikasi</p>
+                            <div id="notif-popup-list-header">
+                                <p class="text-xs text-gray-400 text-center py-4">Memuat notifikasi...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <span class="flex items-center gap-1 hover:opacity-90"><img src="https://img.icons8.com/ios/20/ffffff/help.png" class="w-3 h-3"> Bantuan</span>
+                    <div class="relative cursor-pointer" id="lang-wrapper">
+                        <span id="current-lang" class="flex items-center gap-1 hover:opacity-90">
+                            <img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">
+                            Bahasa Indonesia
+                        </span>
+                        <div id="lang-dropdown"
+                            class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
+                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
+                            <div class="py-2">
+                                <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full object-cover">
+                                    Bahasa Indonesia
+                                </button>
+                                <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full object-cover">
+                                    Bahasa Malaysia
+                                </button>
+                                <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full object-cover">
+                                    English (Singapore)
+                                </button>
+                                <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full object-cover">
+                                    ไทย
+                                </button>
+                                <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full object-cover">
+                                    Tiếng Việt
+                                </button>
+                                <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                                    <img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full object-cover">
+                                    English
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative group cursor-pointer">
+                        <a href="/AppNorthAuth" id="auth-menu-btn" class="font-bold hover:opacity-90">
+                            Sign Up
+                        </a>
+
+                        <a href="/AppNorthAccount" id="account-tooltip" 
+                        class="absolute top-full right-0 mt-2 w-32 bg-white border border-gray-200 text-black text-xs shadow-xl p-2 rounded-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999] text-center no-underline hover:bg-gray-50">
+                            <div class="absolute -top-1.5 right-4 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                            <p class="font-bold">My Account</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-6xl mx-auto px-4 pb-4 pt-2 flex items-center gap-8">
+                <a href="/">
+                    <div class="w-32 h-12 flex items-center">
+                        <img src="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png" style="height: 110px;">
+                    </div>
+                </a>
+
+                <div class="flex-1 flex bg-white p-0.5 items-center relative">
+                    <input id="main-search"
+                        type="text"
+                        class="flex-1 px-3 text-black outline-none text-sm bg-transparent relative z-10">
+                    <div class="absolute left-3 top-0 h-full flex items-center pointer-events-none text-gray-300 text-sm whitespace-nowrap"
+                        id="desktop-placeholder-wrapper">
+                        <span id="desktop-placeholder-text" class="text-[#DF414F]">
+                            Northline Official
+                        </span>
+                    </div>
+                    <img src="https://img.icons8.com/?size=100&id=56577&format=png&color=000000"
+                        class="w-8 h-8 cursor-pointer mr-2 opacity-50 desktop-search-camera">
+                    <input type="file" accept="image/*" class="hidden" id="desktop-search-camera-input">
+                    <button class="bg-[#DF414F] px-8 py-2 relative z-10">
+                        <img src="https://img.icons8.com/ios-filled/50/ffffff/search.png" class="w-5 h-5">
+                    </button>
+                    <div id="search-results-dropdown"
+                        class="absolute left-0 top-full mt-1 w-full bg-white border shadow-xl hidden z-50 max-h-64 overflow-y-auto overscroll-contain transition-all">
+                        <div id="search-results-list" class="p-1 divide-y divide-gray-100"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center hidden md:flex gap-2 text-xl">
+                    <button onclick="window.WishlistManager.togglePopup()" class="relative hover:scale-110 transition duration-300 focus:outline-none cursor-pointer">
+                        <img src="https://img.icons8.com/?size=100&id=3686&format=png&color=ffffff" style="height: 25px;" alt="Wishlist" loading="lazy">
+                        <span id="wishlist-badge" class="absolute -top-1 -right-2 bg-white border-2 border-[#DF414F] text-[#DF414F] text-[10px] w-5 h-5 flex items-center justify-center rounded-full scale-90 hidden transition-all duration-300"></span>
+                    </button>
+                    <button onclick="window.OrderManager.openSpaOrders()" class="relative hover:scale-110 transition duration-300 focus:outline-none cursor-pointer">
+                        <img src="https://img.icons8.com/?size=100&id=Ot2P5D5MPltM&format=png&color=ffffff" style="height: 26px;" loading="lazy">
+                        <span id="desktop-orders-badge" class="absolute -top-1 -right-2 bg-white border-2 border-[#DF414F] text-[#DF414F] text-[9px] w-5 h-5 flex items-center justify-center rounded-full scale-90 hidden transition-all duration-300"></span>                    
+                    </button>
+                </div>
+            </div>
+        </header>
+
+    <nav class="sticky top-0 bg-[#DF414F] text-white z-50">
+        <div class="md:hidden relative bg-[#DF414F] px-2 pt-5 pb-2">
+            <div
+                class="absolute inset-0 opacity-[0.20]"
+                style="
+                    background-image:url('https://nl.hostinesia.my.id/public/image/batik.png');
+                    background-repeat:repeat;
+                    background-size:300px;
+                ">
+            </div>
+
+            <div
+                class="absolute inset-y-0 left-0 w-16 z-[1]"
+                style="
+                    background: linear-gradient(
+                        to right,
+                        #DF414F 0%,
+                        rgba(223,65,79,0.95) 30%,
+                        rgba(223,65,79,0) 100%
+                    );
+                ">
+            </div>
+
+            <div
+                class="absolute inset-y-0 right-0 w-16 z-[1]"
+                style="
+                    background: linear-gradient(
+                        to left,
+                        #DF414F 0%,
+                        rgba(223,65,79,0.95) 30%,
+                        rgba(223,65,79,0) 100%
+                    );
+                ">
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 relative overflow-visible">
+                        <div class="h-8 bg-white flex items-center px-3 relative z-10">
+                            <img
+                                src="https://img.icons8.com/?size=100&id=59878&format=png&color=DF414F"
+                                class="w-4 h-4" loading="lazy">
+                            <div class="relative flex-1 h-full overflow-hidden">
+                                <input
+                                    id="mobile-search"
+                                    type="text"
+                                    class="w-full h-full bg-transparent pl-2 text-black text-[13px] outline-none">
+                                <div
+                                    id="search-placeholder-wrapper"
+                                    class="absolute left-2 top-0 h-full flex items-center pointer-events-none text-[#DF414F] text-[13px] whitespace-nowrap">
+                                    <span id="search-placeholder-text">
+                                        Northline Longsleeve Boxy
+                                    </span>
+                                </div>
+                            </div>
+                            <input type="file" accept="image/*" capture="environment" class="hidden" id="mobile-search-camera-input">
+                            <img
+                                src="https://img.icons8.com/?size=100&id=56577&format=png&color=000000"
+                                class="w-5 h-5 opacity-50 mobile-search-camera" loading="lazy">
+                        </div>
+                        <div id="mobile-search-dropdown" class="hidden absolute left-0 right-0 top-full bg-white shadow-xl border border-gray-200 z-50 max-h-[60vh] overflow-y-auto">
+                            <div id="mobile-search-list" class="divide-y divide-gray-100"></div>
+                        </div>
+                    </div>
+                    <div class="relative shrink-0">
+                        <a href="/AppNorthStore" class="relative">
+                            <img
+                                src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=ffffff"
+                                class="w-6 h-6" loading="lazy">
+                        </a>
+                    </div>
+                    <div class="relative shrink-0">
+                        <button id="chat-toggle-mobile" onclick="openChat()" class="relative mt-2">
+                            <img
+                                src="https://img.icons8.com/?size=100&id=38977&format=png&color=ffffff"
+                                class="w-6 h-6" loading="lazy">
+                        </button>
+                    </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200/80 z-50 md:hidden pb-safe" style="background-image: url('https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5d - Diedit.jpg'); background-size: contain; background-position: center;">
+            <div class="flex items-center justify-around py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            <a href="/" class="flex flex-col items-center gap-1 shrink-0 hover:text-black transition-colors">
+                <img src="https://img.icons8.com/?size=100&id=YF1V1hzbOOHk&format=png&color=737373" class="w-5 h-5 object-contain" alt="Shop" loading="lazy">
+                <span>SHOP</span>
+            </a>
+            <a href="javascript:void(0)" onclick="switchAccountTab('address')" class="flex flex-col items-center gap-1 shrink-0 hover:text-black transition-colors">
+                <img src="https://img.icons8.com/?size=100&id=85757&format=png&color=737373" class="w-6 h-6" loading="lazy">
+                <span>ADDRESS</span>
+            </a>
+            <a href="javascript:void(0)" onclick="switchAccountTab('profile')" class="flex flex-col items-center gap-1 shrink-0 hover:text-black transition-colors">
+                <img src="https://img.icons8.com/?size=100&id=qBbhsiAagGNX&format=png&color=737373" class="w-6 h-6" alt="profile-icon" loading="lazy">
+                <span>PROFILE</span>
+            </a>
+            <a href="javascript:void(0)" onclick="switchAccountTab('password')" class="flex flex-col items-center gap-1 shrink-0 hover:text-black transition-colors">
+                <img src="https://img.icons8.com/?size=100&id=7Sm4QkMSvsON&format=png&color=737373" class="w-6 h-6" loading="lazy">
+                <span>PASSWORD</span>
+            </a>
+            <a href="javascript:void(0)" 
+               id="sidebar-menu-notif" 
+               onclick="switchAccountTab('notif')" 
+               class="flex flex-col items-center gap-1 shrink-0 hover:text-black transition-colors">
+                <img src="https://img.icons8.com/?size=100&id=11668&format=png&color=737373" class="w-5 h-5" alt="noti-icon" loading="lazy">
+                <span>NOTIF</span>
+            </a>
+        </div>
+    </header>
+
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-2 md:px-4 py-2 flex flex-col md:flex-row gap-6">
+        <div id="sidebar-menu" class="hidden md:block w-60 shrink-0 space-y-4">
+            <div class="flex items-center gap-3 px-2 py-3 border-b border-gray-200">
+                <div class="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm overflow-hidden shrink-0">
+                    <img id="sidebar-avatar" src="/public/icons/default.png" class="w-full h-full object-cover" alt="User Avatar" loading="lazy">
+                </div>
+                <div class="overflow-hidden">
+                    <div id="sidebar-username" class="font-bold text-sm truncate text-gray-950"></div>
+                    <a href="" class="text-xs text-gray-400 flex items-center gap-1 hover:text-northline-orange">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        Edit Profile
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-y-1 text-sm pl-2">
+                <a href="#" class="flex items-center gap-2 py-2 text-northline-black font-bold transition-all">
+                    <img src="https://img.icons8.com/?size=100&id=qBbhsiAagGNX&format=png&color=737373" style="height: 25px;" loading="lazy">
+                    <span>My Account</span>
+                </a>
+                <div class="pl-8 space-y-2.5 mt-1.5 text-gray-600 text-xs">
+                    <a href="javascript:void(0)" id="sidebar-menu-profile" onclick="switchAccountTab('profile')" class="block text-northline-orange font-semibold transition-all">Profile Details</a>
+                    <a href="javascript:void(0)" id="sidebar-menu-address" onclick="switchAccountTab('address')" class="block hover:text-northline-black transition-all">Addresses</a>
+                    <a href="javascript:void(0)" 
+                       id="sidebar-menu-password" 
+                       onclick="switchAccountTab('password')" 
+                       class="block hover:text-northline-black transition-all">
+                       Ubah Password
+                    </a>
+                    <a href="javascript:void(0)" 
+                       id="sidebar-menu-settings" 
+                       onclick="switchAccountTab('settings')" 
+                       class="block hover:text-northline-black transition-all">
+                       Settings
+                    </a>
+                </div>
+                
+                <a href="javascript:void(0)" 
+                   id="sidebar-menu-notif" 
+                   onclick="switchAccountTab('notif')" 
+                   class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                    <img src="https://img.icons8.com/?size=100&id=11668&format=png&color=737373" style="height: 20px;" alt="notif-icon" loading="lazy">
+                    <span>Notifikasi</span>
+                </a>
+
+                <a href="javascript:void(0)" 
+                   id="sidebar-menu-orders" 
+                   onclick="switchAccountTab('orders')" 
+                   class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                    <img src="https://img.icons8.com/?size=100&id=8SYyfEzEN9Y-&format=png&color=737373" style="height: 20px;" alt="orders-icon" loading="lazy">
+                    <span>Pesanan Saya</span>
+                </a>
+
+                  <a href="javascript:void(0)" 
+                     id="sidebar-menu-northpay"
+                     onclick="switchAccountTab('northpay')" 
+                     class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                      <img src="https://img.icons8.com/?size=100&id=QFJvCyZn0zCW&format=png&color=737373" style="height: 20px;" alt="northpay-icon" loading="lazy">
+                      <span>NorthPay <span id="sidebar-northpay-balance" class="text-[10px] text-gray-400">(Rp 0)</span></span>
+                  </a>
+
+                  <a href="javascript:void(0)" 
+                     id="sidebar-menu-northpayTransfer"
+                     onclick="switchAccountTab('northpayTransfer')" 
+                     class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                      <img src="https://img.icons8.com/?size=100&id=16026&format=png&color=737373" style="height: 20px;" alt="transfer-icon" loading="lazy">
+                      <span>Transfer NorthPay</span>
+                  </a>
+
+                 <a href="javascript:void(0)" 
+                    id="sidebar-menu-chatStorage"
+                    onclick="switchAccountTab('chatStorage')" 
+                    class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                     <img src="https://img.icons8.com/?size=100&id=83299&format=png&color=737373" style="height: 20px;" alt="chat-storage-icon" loading="lazy">
+                     <span>Storage Chat</span>
+                 </a>
+
+                 <a href="/AppNorthAffiliate" 
+                    class="flex items-center gap-3 py-1 text-gray-600 hover:text-northline-black font-medium transition-all">
+                     <img src="https://img.icons8.com/?size=100&id=LueAPX75HwYV&format=png&color=737373" style="height: 20px;" alt="affiliate-icon" loading="lazy">
+                     <span>Affiliate</span>
+                 </a>
+
+                 <button onclick="handleLogout(event)" class="w-full flex items-center gap-3 py-1 text-red-600 hover:text-red-700 font-medium transition-all text-left focus:outline-none cursor-pointer">
+                    <img src="https://img.icons8.com/?size=100&id=n9aysyUpRtGD&format=png&color=FA5252" style="height: 20px;" loading="lazy">
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full">
+            <section id="spa-profile-section" class="spa-section max-w-6xl w-full">
+                <div>
+                    <div class="hidden md:block top-0 md:top-20 z-40 pt-3 bg-white border-b border-gray-200">
+                        <div class="pb-4 px-3">
+                            <h1 class="text-lg font-bold tracking-tight text-gray-950">
+                                Profil Saya
+                            </h1>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Manage and protect your personal profile settings for secure account control.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form id="profile-form-desktop" onsubmit="updateUserProfile(event)" class="hidden md:flex bg-white pb-3 flex flex-col-reverse md:flex-row gap-8 pt-5">
+                        
+                        <div class="flex-1 space-y-5 md:space-y-6 max-w-xl text-sm">
+                            
+                            <div class="max-md:grid max-md:grid-cols-[110px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 pb-2 border-b border-gray-100">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left whitespace-nowrap">
+                                    Account Status
+                                </label>
+                                <div class="flex-1 flex justify-end">
+                                    <div class="relative group">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center gap-1 md:gap-1.5 px-2 py-1 text-[10px] md:text-xs font-medium bg-green-50 text-green-700 border border-green-200 shrink-0 whitespace-nowrap cursor-pointer">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                            Active Verified
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                class="w-3 h-3 opacity-60"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor">
+                                                <path stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <div
+                                            class="absolute hidden md:block right-0 top-full mt-2 w-52 bg-white border border-gray-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                            <div class="absolute -top-2 right-4 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                                            <button
+                                                type="button"
+                                                id="open-seller-btn"
+                                                class="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3 cursor-pointer">
+                                                <img
+                                                    src="https://img.icons8.com/?size=100&id=85080&format=png&color=000000"
+                                                    class="w-4 h-4" loading="lazy">
+                                                <div>
+                                                    <div class="text-xs font-semibold text-gray-800">
+                                                        Menjadi Penjual
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-500">
+                                                        Membuka Toko Anda Sendiri
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left">Username</label>
+                                <div class="flex-1 font-medium text-gray-800 py-1 max-md:py-0">
+                                    <input id="user-username" type="text" readonly class="bg-transparent border-none text-gray-800 font-medium focus:outline-none w-full cursor-default select-all p-0 text-xs md:text-sm" placeholder="loading...">
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left">Name</label>
+                                <div class="flex-1 font-medium text-gray-800 py-1 max-md:py-0">
+                                    <input id="user-fullname" type="text" required class="bg-transparent border-none text-gray-800 font-medium focus:outline-none w-full p-0 text-xs md:text-sm" placeholder="Enter your full name">
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left">Email</label>
+                                <div class="flex-1 flex items-center gap-2 py-1 max-md:py-0">
+                                    <input id="user-email" type="email" required class="bg-transparent border-none text-gray-800 font-medium focus:outline-none w-full p-0 text-xs md:text-sm" placeholder="Enter your email address">
+                                    <a href="javascript:void(0)" onclick="enableEdit('user-email')" class="text-xs text-blue-500 hover:underline shrink-0 font-medium">Change</a>
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left">Phone Number</label>
+                                <div class="flex-1 flex items-center gap-2 py-1 max-md:py-0">
+                                    <input id="user-phone" type="text" class="bg-transparent border-none text-gray-800 font-medium focus:outline-none w-full p-0 text-xs md:text-sm" placeholder="Loading phone number...">
+                                    <a href="javascript:void(0)" onclick="enableEdit('user-phone')" class="text-xs text-blue-500 hover:underline shrink-0 font-medium">Change</a>
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs max-md:text-left">Gender</label>
+                                <div class="flex-1 flex items-center gap-4 text-xs text-gray-700 py-1 max-md:py-0">
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="radio" name="gender" value="male" checked class="w-3.5 h-3.5 accent-[#DF414F]">
+                                        <span>Male</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="radio" name="gender" value="female" class="w-3.5 h-3.5 accent-[#DF414F]">
+                                        <span>Female</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="radio" name="gender" value="other" class="w-3.5 h-3.5 accent-[#DF414F]">
+                                        <span>Other</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row gap-2 sm:gap-4">
+                                <label class="w-full sm:w-28 text-gray-500 sm:text-right text-xs pt-1 max-md:pt-0 max-md:text-left">Date of Birth</label>
+                                <div class="flex-1 text-xs">
+                                    <input id="user-birthdate" type="text" readonly class="bg-transparent border-none text-gray-800 font-medium focus:outline-none w-full cursor-default select-all p-0" placeholder="Processing birthdate...">
+                                    <p class="text-[11px] text-gray-400 mt-1 leading-normal">You have completed KYC verification; your date of birth settings are locked and secured.</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 max-md:space-y-2 max-md:pt-3">
+                                <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <label class="w-full sm:w-28 text-gray-400 sm:text-right text-[11px] max-md:text-left">Member Since</label>
+                                    <div id="user-joined" class="text-xs text-gray-600 font-medium py-1 max-md:py-0">Loading...</div>
+                                </div>
+                                <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <label class="w-full sm:w-28 text-gray-400 sm:text-right text-[11px] max-md:text-left">Last Activity</label>
+                                    <div id="user-lastlogin" class="flex items-center text-xs text-gray-600 font-medium py-1 max-md:py-0">
+                                        <span class="relative flex h-2 w-2 mr-2">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                        </span>
+                                        Just Now
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="max-md:grid max-md:grid-cols-[85px_1fr] flex flex-col sm:flex-row sm:gap-1 pt-4 max-md:pt-2"> 
+                                <div class="w-full sm:w-28 max-md:hidden"></div>
+                                <div class="max-md:col-start-2 flex items-center gap-1">
+                                    <button 
+                                        type="submit"
+                                        class="whitespace-nowrap bg-northline-orange hover:bg-northline-orange-hover text-white px-5 py-2 font-semibold transition-all text-[11px] uppercase tracking-wider cursor-pointer"
+                                    >
+                                        Save Changes
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onclick="handleLogout(event)"
+                                        class="sm:hidden bg-northline-orange hover:bg-northline-orange-hover text-white px-2 sm:px-6 h-9 sm:h-10 font-semibold transition-all text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer flex items-center gap-2"
+                                    >
+                                        <img 
+                                            src="https://img.icons8.com/?size=100&id=n9aysyUpRtGD&format=png&color=FFFFFF"
+                                            class="w-4 h-4"
+                                         loading="lazy">
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-64 border-l-0 md:border-l border-gray-200 flex flex-col items-center justify-start px-4 py-2 gap-4 max-md:pb-4 max-md:border-b max-md:border-dashed max-md:border-gray-100 relative">
+
+                            <button
+                                type="button"
+                                onclick="backToMobileForm()"
+                                class="md:hidden absolute left-2 top-2 z-20 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-md active:scale-95">
+                                <img
+                                    src="https://img.icons8.com/?size=100&id=1806&format=png&color=000000"
+                                    class="w-4 h-4"
+                                    onerror="this.style.display='none'" loading="lazy">
+                            </button>
+
+                            <div class="w-24 h-24 rounded-full border border-gray-200 bg-gray-50 overflow-hidden shrink-0 shadow-sm">
+                                <img id="user-avatar-preview" src="/public/icons/default.png" class="w-full h-full object-cover" alt="User Avatar" loading="lazy">
+                            </div>
+
+                            <button type="button" id="select-image-btn"
+                                class="border border-gray-200 rounded-sm px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer bg-white">
+                                Select Image
+                            </button>
+                            <input type="file" id="avatar-input" accept="image/jpeg, image/png" class="hidden">
+
+                            <div class="text-[11px] text-gray-400 text-center leading-relaxed">
+                                Max file size: 1 MB<br>Image format: .JPG or .PNG
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+
+                <div id="profile-form-mobile" onsubmit="updateUserProfile(event)" class="md:hidden">
+                    <div class="relative bg-[#DF414F] text-white overflow-hidden">
+                        <div
+                            class="absolute inset-0 opacity-[0.20]"
+                            style="
+                                background-image:url('https://nl.hostinesia.my.id/public/image/batik.png');
+                                background-repeat:repeat;
+                                background-size:300px;
+                            ">
+                        </div>
+                        <div
+                            class="absolute inset-y-0 left-0 w-16 z-[1]"
+                            style="
+                                background: linear-gradient(
+                                    to right,
+                                    #DF414F 0%,
+                                    rgba(223,65,79,0.95) 30%,
+                                    rgba(223,65,79,0) 100%
+                                );
+                            ">
+                        </div>
+                        <div
+                            class="absolute inset-y-0 right-0 w-16 z-[1]"
+                            style="
+                                background: linear-gradient(
+                                    to left,
+                                    #DF414F 0%,
+                                    rgba(223,65,79,0.95) 30%,
+                                    rgba(223,65,79,0) 100%
+                                );
+                            ">
+                        </div>
+                        <div class="relative z-[2] p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <img
+                                        id="user-avatar-preview-mobile"
+                                        src="/public/icons/default.png"
+                                        class="w-16 h-16 rounded-full bg-white object-cover shadow-lg" loading="lazy">
+                                </div>
+                                <div>
+                                    <h2 id="mobile-username" class="text-xl font-bold">
+                                        Loading...
+                                    </h2>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0 rounded-full text-[11px] text-black font-medium"
+                                            style="background: linear-gradient(90deg, #fff3b0 0%, #d4af37 60%, #ffe96e 100%);">
+                                            Gold
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-4 text-sm">
+                                        <span id="followersCount">0 Pengikut</span>
+                                        <span id="followingCount">0 Mengikuti</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Mobile account -->
+                    <div class="">
+                        <div class="bg-white mt-2">
+                            <div class="flex justify-between px-2 py-3 border-b">
+                                <span class="font-medium">
+                                    Akun Saya
+                                </span>
+                                <button onclick="switchAccountTab('settings')" class="inline-flex items-center text-gray-600 text-sm gap-1 cursor-pointer font-medium">
+                                    Setting
+                                    <img
+                                        src="https://img.icons8.com/?size=100&id=14099&format=png&color=737373"
+                                        class="w-5 h-5" loading="lazy">
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-4 py-4">
+                                <button onclick="switchAccountTab('orders')" class="flex flex-col items-center gap-2">
+                                    <img src="https://img.icons8.com/?size=100&id=8SYyfEzEN9Y-&format=png&color=737373"
+                                        class="w-6" loading="lazy">
+                                    <span class="text-xs">
+                                        Pesanan
+                                    </span>
+                                </button>
+                                <button onclick="ordersFilter='cancelled';switchAccountTab('orders')" class="flex flex-col items-center gap-2">
+                                    <img src="https://img.icons8.com/?size=100&id=5270&format=png&color=737373"
+                                        class="w-6" loading="lazy">
+                                    <span class="text-xs">
+                                        Dibatalkan
+                                    </span>
+                                </button>
+                                <button onclick="ordersFilter='pending';switchAccountTab('orders')" class="flex flex-col items-center gap-2">
+                                    <img src="https://img.icons8.com/?size=100&id=209&format=png&color=737373"
+                                        class="w-6" loading="lazy">
+                                    <span class="text-xs">
+                                        Belum Bayar
+                                    </span>
+                                </button>
+                                <button onclick="switchAccountTab('northpay')" class="flex flex-col items-center">
+                                    <img src="https://img.icons8.com/?size=100&id=QFJvCyZn0zCW&format=png&color=737373"
+                                        class="w-7 mb-1" loading="lazy">
+                                    <span class="text-xs">
+                                        NorthPay
+                                    </span>
+                                    <span id="mobile-northpay-balance" class="text-[10px] text-gray-500">Rp 0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border-t mt-2">
+                            <div class="px-2 py-3 font-medium">
+                                Informasi Akun
+                            </div>
+                            <div class="divide-y">
+
+                                <div class="flex justify-between px-2 py-1 border mb-1">
+                                    <span class="text-gray-500">
+                                        Username
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="mobile-username-value" class="text-[14px] lowercase text-[#1d9bf0]">
+                                            Loading...
+                                        </span>
+                                        <img src="https://img.icons8.com/?size=100&id=59757&format=png&color=1d9bf0" class="w-3 h-3" loading="lazy">
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between px-2 py-1 border shadow-sm mb-1">
+                                    <span class="text-gray-500">
+                                        Nama
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="mobile-fullname-value" class="text-[14px] text-[#1d9bf0]">
+                                            Loading...
+                                        </span>
+                                        <img src="https://img.icons8.com/?size=100&id=59757&format=png&color=1d9bf0" class="w-3 h-3" loading="lazy">
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between px-2 py-1 border shadow-sm mb-1">
+                                    <span class="text-gray-500">
+                                        Email
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="mobile-email-value" class="text-[14px] text-[#1d9bf0]">
+                                            Loading...
+                                        </span>
+                                        <img src="https://img.icons8.com/?size=100&id=59757&format=png&color=1d9bf0" class="w-3 h-3" loading="lazy">
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between px-2 py-1 border shadow-sm mb-1">
+                                    <span class="text-gray-500">
+                                        Telepon
+                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="mobile-phone-value" class="text-[14px] text-[#1d9bf0]">
+                                            Loading...
+                                        </span>
+                                        <img src="https://img.icons8.com/?size=100&id=59757&format=png&color=1d9bf0" class="w-3 h-3" loading="lazy">
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <section id="spa-address-section" class="spa-section hidden bg-white max-w-6xl w-full">
+
+                <div id="addr-header-list-mobile" class="md:hidden flex items-center py-1 px-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('profile')" class="w-8 h-8 flex items-center justify-center -ml-1">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-700 tracking-wide">Alamat Saya</h1>
+                    <div class="w-8"></div>
+                </div>
+
+                <div id="addr-header-list-desktop" class="hidden md:block border-b border-gray-200 pb-4 px-4 pt-4">
+                    <h1 class="text-lg font-bold tracking-tight text-gray-950">Alamat Saya</h1>
+                    <p class="text-xs text-gray-500 mt-1">Configure your primary shipping destination for Midtrans delivery validation.</p>
+                </div>
+
+                <div id="address-card-view" class="hidden p-3 md:p-4">
+                    <div id="address-card-content" class="bg-white border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-100">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span id="addr-card-name" class="text-sm font-semibold text-gray-800"></span>
+                                <span class="text-gray-300">|</span>
+                                <span id="addr-card-phone" class="text-sm text-gray-600"></span>
+                            </div>
+                            <p id="addr-card-address" class="text-xs text-gray-500 mt-1.5 leading-relaxed"></p>
+                        </div>
+                        <div class="px-4 py-2.5 flex items-center justify-between">
+                            <span id="addr-card-badge" class="hidden text-[10px] font-bold bg-[#DF414F] text-white px-2 py-0.5 tracking-wider">Utama</span>
+                            <span id="addr-card-badge-empty" class="text-[10px] font-bold text-gray-400 uppercase border px-2 py-0.5 tracking-wider"></span>
+                            <button onclick="showAddressForm()" class="text-[#DF414F] text-xs font-semibold">Ubah</button>
+                        </div>
+                    </div>
+
+                    <div id="address-card-empty" class="hidden bg-white border border-gray-300 px-4 py-10 text-center">
+                        <img src="https://img.icons8.com/?size=100&id=7880&format=png&color=9CA3AF" class="w-10 h-10 mx-auto opacity-50" loading="lazy">
+                        <p class="text-sm font-bold text-gray-700 mt-3">Atur Alamat</p>
+                        <p class="text-xs text-gray-400 mt-1">Tambahkan alamat pengirimanmu untuk checkout dan logistik kurir.</p>
+                    </div>
+                </div>
+
+                <div id="address-form-view" class="hidden">
+                    <div id="addr-header-form-mobile" class="md:hidden flex items-center py-1 px-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                        <button onclick="showAddressCard()" class="w-8 h-8 flex items-center justify-center -ml-1">
+                            <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                        </button>
+                        <h1 class="flex-1 text-center text-sm font-bold text-gray-700 tracking-wide">Alamat Baru</h1>
+                        <div class="w-8"></div>
+                    </div>
+
+                    <form id="address-form" onsubmit="updateUserAddress(event)" class="max-w-2xl p-3 md:p-4 space-y-4 text-sm">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Provinsi</label>
+                                <input type="text" id="addr-provinsi" required 
+                                    class="w-full bg-gray-50 border border-gray-200 p-2.5 text-xs md:text-sm font-medium focus:bg-white  outline-none transition-all" 
+                                    placeholder="Contoh: Jawa Barat">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Kota / Kabupaten</label>
+                                <input type="text" id="addr-kota" required 
+                                    class="w-full bg-gray-50 border border-gray-200 p-2.5 text-xs md:text-sm font-medium focus:bg-white  outline-none transition-all" 
+                                    placeholder="Contoh: Karawang">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Kecamatan</label>
+                                <input type="text" id="addr-kecamatan" required 
+                                    class="w-full bg-gray-50 border border-gray-200 p-2.5 text-xs md:text-sm font-medium focus:bg-white  outline-none transition-all" 
+                                    placeholder="Contoh: Cikampek">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Kode Pos</label>
+                                <input type="text" id="addr-kodepos" required pattern="[0-9]{5}" maxLength="5"
+                                    class="w-full bg-gray-50 border border-gray-200 p-2.5 text-xs md:text-sm font-medium focus:bg-white  outline-none transition-all" 
+                                    placeholder="Contoh: 41373">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Detail Alamat (Nama Jalan, RT/RW, No. Rumah/Blok)</label>
+                            <textarea id="addr-detail" required rows="3" 
+                                class="w-full bg-gray-50 border border-gray-200 p-3 text-xs md:text-sm font-medium focus:bg-white  outline-none transition-all resize-none leading-relaxed" 
+                                placeholder="Contoh: Jl. Ahmad Yani No. 24, RT 02/RW 05, Gg. Northline"></textarea>
+                            <span id="detail-error" class="hidden text-[10px] uppercase font-medium text-red-500 mt-0.5"></span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 border border-gray-200 bg-white">
+                            <span class="text-[10px] md:text-sm text-neutral-500 font-bold uppercase">Atur sebagai alamat utama</span>
+                            <button type="button" id="addr-primary-toggle" onclick="toggleAddressPrimary(this)"
+                                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none shrink-0"
+                                style="background-color:#DF414F;border-radius:9999px" data-active="true">
+                                <span class="absolute w-5 h-5 bg-white border border-gray-300 shadow-sm"
+                                    style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(20px)"></span>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500 whitespace-nowrap">Tandai Sebagai</label>
+                            <button type="button" id="addr-label-rumah" onclick="selectAddrLabel('rumah')"
+                                class="addr-label-btn flex items-center gap-1 border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all cursor-pointer bg-white text-gray-600 border-[#DF414F]">
+                                Rumah
+                            </button>
+                            <button type="button" id="addr-label-kantor" onclick="selectAddrLabel('kantor')"
+                                class="addr-label-btn flex items-center gap-1 border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all cursor-pointer bg-white text-gray-600 border-gray-300">
+                                Kantor
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col gap-2 pt-1">
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-neutral-500 items-center gap-1.5">
+                                <span>Pinpoint Lokasi Rumah</span>
+                                <span class="text-[10px] hidden md:flex text-northline-orange font-normal bg-orange-50 px-1.5 py-0.5 border border-orange-100">(Geser dan sesuaikan dengan lokasi kamu sekarang)</span>
+                            </label>
+
+                            <div id="address-google-map" class="w-full h-[240px] md:h-[300px] bg-neutral-100 border border-gray-200 overflow-hidden shadow-inner relative z-0"></div>
+
+                            <button type="button" id="btn-use-location" onclick="useCurrentLocation()"
+                                class="w-full flex items-center justify-center gap-2 bg-[#DF414F] hover:bg-red-700 text-white px-4 py-2 md:py-3 text-[11px] md:text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.99] cursor-pointer">
+                                <img src="https://img.icons8.com/?size=100&id=7880&format=png&color=ffffff" class="w-4 h-4">
+                                <span id="btn-use-location-text">Gunakan Lokasi Sekarang</span>
+                            </button>
+
+                            <label class="md:hidden text-[11px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+                                <span class="text-[10px] text-northline-orange font-normal bg-orange-50 px-1.5 py-0.5 border border-orange-100">(Geser dan sesuaikan dengan lokasi kamu sekarang)</span>
+                            </label>
+
+                            <input type="hidden" id="addr-latitude" name="latitude">
+                            <input type="hidden" id="addr-longitude" name="longitude">
+                        </div>
+
+                        <div class="p-3 bg-neutral-50 border border-neutral-200/60 flex items-start gap-2.5">
+                            <span class="text-sm pt-0.5">💡</span>
+                            <p class="text-[11px] text-gray-500 leading-normal">
+                                Sistem otomatis menggabungkan kolom di atas menjadi satu kesatuan alamat resmi untuk manifest pengiriman logistik Kurir.
+                            </p>
+                        </div>
+
+                        <div class="pt-2 pb-24 md:pb-2">
+                            <button type="submit" id="save-address-btn" class="w-full bg-[#DF414F] hover:bg-red-700 text-white px-6 py-2 md:py-3 font-semibold transition-all text-[11px] sm:text-xs uppercase tracking-wider shadow-sm cursor-pointer">
+                                Simpan
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+                <div id="address-add-footer" class="hidden p-3 md:p-4">
+                    <button onclick="showAddressForm()"
+                        class="w-full bg-[#DF414F] hover:bg-red-700 text-white py-2 md:py-3 font-bold text-[11px] sm:text-xs uppercase tracking-widest transition-all active:scale-[0.99] cursor-pointer">
+                        + Alamat Baru
+                    </button>
+                </div>
+
+            </section>
+            
+            <section id="spa-password-section" class="account-section hidden bg-white max-w-6xl w-full">
+                <div class="md:hidden flex items-center py-1 px-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('profile')" class="w-8 h-8 flex items-center justify-center -ml-1">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-700 tracking-wide">Ubah Password</h1>
+                    <div class="w-8"></div>
+                </div>
+                <div class="hidden md:block top-[65px] md:top-20 z-40 border-b border-gray-200 pb-4 mb-6 px-4 pt-4">
+                    <h2 class="text-lg font-bold text-gray-800">Ubah Password</h2>
+                    <p class="text-xs text-gray-500">For account security, please do not share your password with anyone.</p>
+                </div>
+                
+                <form id="password-form" class="space-y-4 p-3 md:p-4">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-semibold text-gray-700">Current Password</label>
+                        <input type="password" id="current-password" class="w-full px-2 py-1 border border-gray-300 focus:border-orange-500 outline-none text-sm" required>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <label class="block text-xs font-semibold text-gray-700">New Password</label>
+                        <input type="password" id="new-password" class="w-full px-2 py-1 border border-gray-300 focus:border-orange-500 outline-none text-sm" required>
+                        <p class="text-[10px] text-red-500 mt-1">Password must be 8-16 characters, include at least one uppercase, one lowercase, one number, and one symbol.</p>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <label class="block text-xs font-semibold text-gray-700">Confirm Password</label>
+                        <input type="password" id="confirm-password" class="w-full px-2 py-1 border border-gray-300 focus:border-orange-500 outline-none text-sm" required>
+                    </div>
+            
+                    <div class="space-y-1">
+                        <label class="block text-xs font-semibold text-gray-700">Verification Code (OTP)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="otp-code" class="w-full px-2 py-1 border border-gray-300 focus:border-orange-500 outline-none text-sm" placeholder="6-digit code" required>
+                            <button 
+                                type="button" 
+                                id="send-otp-btn"
+                                disabled
+                                class="bg-gray-100 text-gray-700 px-2 py-1 text-[10px] font-bold hover:bg-gray-200 whitespace-nowrap opacity-50 cursor-not-allowed">
+                                SEND OTP
+                            </button>
+                        </div>
+                    </div>
+            
+                    <button type="submit" id="update-pass-btn" class="bg-northline-orange hover:bg-northline-orange-hover text-white px-6 py-2 font-semibold transition-all text-[11px] sm:text-xs uppercase tracking-wider shadow-sm cursor-pointer w-full sm:w-auto">
+                        SAVE PASSWORD
+                    </button>
+                </form>
+            </section>
+            
+            <section id="spa-notif-section" class="account-section hidden bg-white max-w-6xl w-full">
+                <div class="md:hidden flex items-center py-1 px-2 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('profile')" class="w-8 h-8 flex items-center justify-center -ml-1">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-700 tracking-wide">Notifikasi</h1>
+                    <div class="w-8"></div>
+                </div>
+                <div class="hidden md:block top-[65px] md:top-20 z-40 border-b border-gray-200 pb-4 mb-6 px-4 pt-4">
+                    <h2 class="text-xl md:text-xl font-bold text-gray-800">Notifikasi</h2>
+                    <p class="text-xs md:text-xs text-gray-500">Stay updated with your account activity.</p>
+                </div>
+                
+                <div class="flex items-center justify-between mb-3 pt-4 px-2 md:px-4">
+                    <div class="text-sm font-bold text-gray-800">Terbaru</div>
+                    <button id="lihat-semua-notif-btn" onclick="loadAllNotifications()" class="text-xs text-blue-600 underline">Lihat Semua</button>
+                </div>
+                <div id="notif-list" class="divide-y px-2 md:px-4 divide-gray-100"></div>
+            </section>
+
+            <section id="spa-orders-section" class="account-section hidden max-w-6xl w-full">
+                 <h2 class="text-[20px] font-bold mb-4 text-gray-800">Pesanan Saya</h2>
+                 <div class="flex border-b border-gray-200 bg-white">
+                     <button class="order-filter flex-1 py-2.5 text-[11px] font-semibold text-center border-b-2 border-[#DF414F] text-[#DF414F]" data-filter="all">Semua</button>
+                     <button class="order-filter flex-1 py-2.5 text-[11px] font-semibold text-center text-gray-400 border-b-2 border-transparent" data-filter="processing">Diproses</button>
+                     <button class="order-filter flex-1 py-2.5 text-[11px] font-semibold text-center text-gray-400 border-b-2 border-transparent" data-filter="shipped">Dikirim</button>
+                     <button class="order-filter flex-1 py-2.5 text-[11px] font-semibold text-center text-gray-400 border-b-2 border-transparent" data-filter="success">Selesai</button>
+                 </div>
+                 <div id="orders-list" class="mt-4 space-y-3 w-full overflow-y-auto" style="max-height:calc(100vh - 180px)"></div>
+             </section>
+
+            <section id="spa-northpay-section" class="account-section hidden max-w-6xl w-full">
+                <div class="top-[65px] md:top-20 z-40 bg-white py-3 px-2 border-b border-gray-200 pb-4 mb-2">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl md:text-2xl font-bold text-gray-800">NorthPay</h2>
+                    </div>
+                    <p class="text-xs md:text-sm text-gray-500">Top up saldo NorthPay untuk pembayaran lebih cepat.</p>
+                </div>
+
+                <div class="relative bg-[#DF414F] p-4 md:p-6 mb-6 overflow-hidden">
+                    <div class="absolute inset-0 opacity-[0.20]" style="background-image:url('https://nl.hostinesia.my.id/public/image/batik.png');background-repeat:repeat;background-size:300px;"></div>
+                    <div class="absolute inset-y-0 left-0 w-16 z-[1]" style="background:linear-gradient(to right,#DF414F 0%,rgba(223,65,79,0.95) 30%,rgba(223,65,79,0) 100%);"></div>
+                    <div class="absolute inset-y-0 right-0 w-16 z-[1]" style="background:linear-gradient(to left,#DF414F 0%,rgba(223,65,79,0.95) 30%,rgba(223,65,79,0) 100%);"></div>
+                    <div class="relative z-10">
+                        <div class="text-white text-xs tracking-wider">Saldo NorthPay</div>
+                        <div id="northpay-balance-display" class="text-2xl md:text-3xl font-bold text-white mt-1">Rp 0</div>
+                        <div class="mt-3 text-xs text-white">Scan QRIS atau transfer manual untuk top up</div>
+                        <div id="northpay-last-update" class="mt-1 text-[9px] text-white"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-1 md:gap-2 mb-6">
+                    <button onclick="switchAccountTab('northpayTransfer')" class="bg-white border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 flex flex-col items-center gap-1.5 transition-all">
+                        <img src="https://img.icons8.com/?size=100&id=16026&format=png&color=737373" class="w-6 h-6" alt="Transfer" loading="lazy">
+                        <span class="text-[11px] md:text-xs text-gray-700">Transfer</span>
+                    </button>
+                    <button onclick="switchAccountTab('northpayTopup')" class="bg-white border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 flex flex-col items-center gap-1.5 transition-all">
+                        <img src="https://img.icons8.com/?size=100&id=KY0T5QaIS9bn&format=png&color=737373" class="w-6 h-6" alt="Top Up" loading="lazy">
+                        <span class="text-[11px] md:text-xs text-gray-700">Top Up</span>
+                    </button>
+                    <button onclick="switchAccountTab('northpayHistory')" class="bg-white border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 flex flex-col items-center gap-1.5 transition-all">
+                        <img src="https://img.icons8.com/?size=100&id=7YM7E0FU20tN&format=png&color=737373" class="w-6 h-6" alt="Riwayat" loading="lazy">
+                        <span class="text-[11px] md:text-xs text-gray-700">Riwayat</span>
+                    </button>
+                    <button onclick="openNorthpaySettings()" class="bg-white border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 flex flex-col items-center gap-1.5 transition-all">
+                        <img src="https://img.icons8.com/?size=100&id=364&format=png&color=737373" class="w-6 h-6" alt="Pengaturan" loading="lazy">
+                        <span class="text-[11px] md:text-xs text-gray-700">Pengaturan</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="spa-northpay-topup-section" class="account-section hidden max-w-6xl w-full">
+                <div class="mb-6">
+                    <button onclick="switchAccountTab('northpay')" class="flex items-center gap-2 text-xs md:text-sm text-[#DF414F] hover:text-[#c73441] font-medium mb-6">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-6 h-6" alt="Back" loading="lazy">
+                        Kembali
+                    </button>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800">Top Up NorthPay</h2>
+                    <p class="text-xs md:text-sm text-gray-500">Isi saldo NorthPay untuk pembayaran lebih cepat.</p>
+                </div>
+
+                <div class="relative bg-[#DF414F] p-4 md:p-5 mb-6 overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="text-white text-xs tracking-wider">Saldo NorthPay</div>
+                        <div id="topup-balance-display" class="text-2xl md:text-3xl font-bold text-white mt-1">Rp 0</div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="text-sm font-bold text-gray-800 mb-3">Pilih Nominal Top Up</div>
+                    <div class="grid grid-cols-3 gap-2 md:gap-3">
+                        <button onclick="selectTopupNominal(10000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 10.000</button>
+                        <button onclick="selectTopupNominal(25000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 25.000</button>
+                        <button onclick="selectTopupNominal(50000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 50.000</button>
+                        <button onclick="selectTopupNominal(100000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 100.000</button>
+                        <button onclick="selectTopupNominal(200000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 200.000</button>
+                        <button onclick="selectTopupNominal(500000,this)" class="topup-nominal-btn border border-gray-200 hover:border-[#DF414F] hover:bg-[#DF414F]/5 py-3 text-sm font-medium text-gray-700 transition-all">Rp 500.000</button>
+                    </div>
+                    <div class="mt-3 flex items-center border px-4 gap-1">
+                        <span class="text-sm md:text-xl text-gray-700 font-medium">Rp</span>
+                        <input type="text" id="topup-custom-amount" placeholder="0" class="flex-1 py-2.5 text-[16px] md:text-xl text-gray-700 font-medium outline-none bg-transparent" oninput="onCustomAmountInput(this.value)">
+                    </div>
+                </div>
+
+                <div id="northpay-summary" class="border border-gray-200 p-3 md:p-4 mb-3 hidden">
+                    <div class="text-xs font-bold text-gray-800 mb-2">Ringkasan</div>
+                    <div class="flex justify-between text-sm text-gray-600 py-1">
+                        <span>Nominal Top Up</span>
+                        <span id="summary-nominal">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 py-1">
+                        <span>Biaya Admin</span>
+                        <span>Rp 1.000</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-bold text-gray-800 border-t border-gray-100 pt-2 mt-1">
+                        <span>Total Dibayar</span>
+                        <span id="summary-total">Rp 0</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="border border-gray-200 p-3 md:p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="https://images.seeklogo.com/logo-png/39/2/quick-response-code-indonesia-standard-qris-logo-png_seeklogo-391791.png" class="h-8 object-contain" loading="lazy">
+                            <div>
+                                <div class="text-sm font-medium text-gray-800">QRIS</div>
+                                <div class="text-[11px] text-gray-400">Semua Bank & E-Wallet</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-[#DF414F] font-semibold">Terpilih</div>
+                    </div>
+                </div>
+
+                <button onclick="submitNorthpayTopup()" id="btn-topup" class="w-full bg-[#DF414F] hover:bg-[#c73441] text-white py-2 font-bold text-sm tracking-wider transition-all mb-8">Top Up Sekarang</button>
+
+                <div class="text-[11px] text-gray-400 text-center leading-relaxed mb-6">
+                    Northline terdaftar dan diawasi oleh BI: Bank Indonesia. Seluruh dana nasabah dijamin keamanannya.
+                </div>
+            </section>
+
+            <section id="spa-northpay-history-section" class="account-section hidden max-w-6xl w-full">
+                <div class="mb-6">
+                    <button onclick="switchAccountTab('northpay')" class="flex items-center gap-2 text-xs md:text-sm text-[#DF414F] hover:text-[#c73441] font-medium mb-6">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-6 h-6" alt="Back" loading="lazy">
+                        Kembali
+                    </button>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800">Riwayat NorthPay</h2>
+                    <p class="text-xs md:text-sm text-gray-500">Semua transaksi top up dan transfer kamu.</p>
+                </div>
+
+                <div class="flex border-b border-gray-200 mb-5">
+                    <button id="northpay-history-tab-topup" onclick="switchNorthpayHistoryTab('topup')" class="px-4 py-2 text-sm font-semibold border-b-2 transition-all">Top Up</button>
+                    <button id="northpay-history-tab-transfer" onclick="switchNorthpayHistoryTab('transfer')" class="px-4 py-2 text-sm font-semibold border-b-2 transition-all">Transfer</button>
+                </div>
+
+                <div class="mb-3" id="northpay-history-topup-wrap">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-xs font-bold text-gray-800">Riwayat Top Up</div>
+                        <button id="lihat-semua-btn" class="text-xs text-blue-600 underline">Lihat Semua</button>
+                    </div>
+                    <div id="northpay-history-list" class="space-y-2">
+                        <div class="text-center text-gray-400 text-xs py-8">Belum ada riwayat top up</div>
+                    </div>
+                </div>
+
+                <div class="mb-3 hidden" id="northpay-history-transfer-wrap">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-xs font-bold text-gray-800">Riwayat Transfer</div>
+                        <button id="transfer-lihat-semua-btn" class="text-xs text-blue-600 underline hidden">Lihat Semua</button>
+                    </div>
+                    <div id="transfer-history-list" class="space-y-2">
+                        <div class="text-center text-gray-400 text-xs py-8">Belum ada riwayat transfer</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="spa-northpay-transfer-section" class="account-section hidden max-w-6xl w-full">
+                <div class="mb-6">
+                    <button onclick="switchAccountTab('northpay')" class="flex items-center gap-2 text-xs md:text-sm text-[#DF414F] hover:text-[#c73441] font-medium mb-6">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-6 h-6" alt="Back" loading="lazy">
+                        Kembali
+                    </button>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800">Transfer NorthPay</h2>
+                    <p class="text-xs md:text-sm text-gray-500">Tarik saldo NorthPay ke rekening bank atau e-wallet.</p>
+                </div>
+
+                <div class="relative bg-[#DF414F] p-4 md:p-5 mb-6 overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="text-white text-xs tracking-wider">Saldo Tersedia</div>
+                        <div id="transfer-balance-display" class="text-2xl md:text-3xl font-bold text-white mt-1">Rp 0</div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="text-sm font-bold text-gray-800 mb-3">Pilih Tujuan Transfer</div>
+                    <div class="flex items-center border border-gray-200 px-3 mb-3">
+                        <img src="https://img.icons8.com/?size=100&id=132&format=png&color=9ca3af" class="w-4 h-4 mr-2" alt="Search" loading="lazy">
+                        <input type="text" id="transfer-method-search" placeholder="Cari bank atau e-wallet..." class="flex-1 py-2.5 text-sm outline-none bg-transparent" oninput="onTransferMethodSearch(this.value)">
+                    </div>
+                    <div id="transfer-method-grid" class="grid grid-cols-2 gap-4">
+                        <div class="transfer-method-gridcol">
+                            <div class="mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Bank</div>
+                            <div id="transfer-methods-bank" class="grid grid-cols-2 gap-2"></div>
+                            <button id="transfer-more-bank" onclick="toggleTransferMethodMore('bank')" class="hidden w-full mt-2 text-[11px] text-[#DF414F] underline">Lihat Semua Bank</button>
+                        </div>
+                        <div class="transfer-method-gridcol">
+                            <div class="mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">E-Wallet</div>
+                            <div id="transfer-methods-ewallet" class="grid grid-cols-2 gap-2"></div>
+                            <button id="transfer-more-ewallet" onclick="toggleTransferMethodMore('ewallet')" class="hidden w-full mt-2 text-[11px] text-[#DF414F] underline">Lihat Semua E-Wallet</button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="transfer-method-id">
+                    <input type="hidden" id="transfer-method-fee">
+                    <input type="hidden" id="transfer-method-name">
+                </div>
+
+                <div class="mb-6">
+                    <div class="text-sm font-bold text-gray-800 mb-3">Detail Penerima</div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Nomor Rekening / E-Wallet</label>
+                            <input type="text" id="transfer-account-number" placeholder="Contoh: 1234567890" class="w-full border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#DF414F] bg-transparent" oninput="this.value=this.value.replace(/[^A-Za-z0-9 -]/g,'')">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Nama Pemilik Akun</label>
+                            <input type="text" id="transfer-account-name" placeholder="Sesuai nama di rekening" class="w-full border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#DF414F] bg-transparent">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Nominal Transfer</label>
+                            <div id="transfer-amount-box" class="flex items-center border border-gray-200 px-4 gap-1 transition-colors">
+                                <span class="text-sm md:text-lg text-gray-700 font-medium">Rp</span>
+                                <input type="text" id="transfer-amount" placeholder="0" class="flex-1 py-2.5 text-[16px] md:text-lg text-gray-700 font-medium outline-none bg-transparent" oninput="onTransferAmountInput(this.value)">
+                            </div>
+                            <p id="transfer-amount-hint" class="text-[11px] text-gray-400 mt-1">Minimal transfer Rp 10.000</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="transfer-summary" class="border border-gray-200 p-3 md:p-4 mb-3 hidden">
+                    <div class="text-xs font-bold text-gray-800 mb-2">Ringkasan Transfer</div>
+                    <div class="flex justify-between text-sm text-gray-600 py-1">
+                        <span>Tujuan</span>
+                        <span id="transfer-summary-method" class="font-medium text-gray-800">-</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 py-1">
+                        <span>Nominal</span>
+                        <span id="transfer-summary-amount">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 py-1">
+                        <span>Biaya Admin</span>
+                        <span id="transfer-summary-fee">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-bold text-gray-800 border-t border-gray-100 pt-2 mt-1">
+                        <span>Total Dipotong</span>
+                        <span id="transfer-summary-total">Rp 0</span>
+                    </div>
+                </div>
+
+                <button onclick="submitNorthpayTransfer()" id="btn-transfer" disabled class="w-full bg-[#DF414F] hover:bg-[#c73441] text-white py-2 font-bold text-sm tracking-wider transition-all mb-8 opacity-50">Transfer</button>
+            </section>
+
+            <section id="spa-northpay-settings-section" class="account-section hidden max-w-6xl w-full">
+                <div class="mb-6 bg-white py-3 px-2">
+                    <button onclick="switchAccountTab('northpay')" class="flex items-center gap-2 text-xs md:text-sm text-[#DF414F] hover:text-[#c73441] font-medium mb-2">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-6 h-6" alt="Back" loading="lazy">
+                        Kembali
+                    </button>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-800">Pengaturan NorthPay</h2>
+                    <p class="text-xs md:text-sm text-gray-500">Kelola keamanan, transaksi, dan preferensi NorthPay Anda</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-white border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Keamanan</h3>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=hQSVyu621s1v&format=png&color=000000" class="w-5 h-5" alt="PIN" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">PIN Pembayaran</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500" id="pin-status">Belum diatur</p>
+                                    </div>
+                                </div>
+                                <button onclick="showSetPinModal()" class="text-xs md:text-sm text-[#DF414F] font-medium hover:text-[#c73441] shrink-0">Atur</button>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=bfwHrORtPSpB&format=png&color=000000" class="w-5 h-5" alt="Security Question" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Pertanyaan Keamanan</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500" id="security-q-status">Belum diatur</p>
+                                    </div>
+                                </div>
+                                <button onclick="showSecurityQuestionModal()" class="text-xs md:text-sm text-[#DF414F] font-medium hover:text-[#c73441] shrink-0">Atur</button>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=3RlCu6GGhMC3&format=png&color=000000" class="w-5 h-5" alt="Biometric" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Biometrik (Face ID / Fingerprint)</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500">Login & verifikasi cepat</p>
+                                    </div>
+                                </div>
+                                <button type="button" id="biometric-toggle" onclick="toggleBiometric(this)"
+                                    class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#DF414F] shrink-0"
+                                    style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                    <span class="absolute w-5 h-5 bg-white shadow-sm"
+                                        style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                                </button>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=mVo7XYRsVjnm&format=png&color=000000" class="w-5 h-5" alt="Change PIN" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Ganti PIN / Lupa PIN</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500">Reset PIN via pertanyaan keamanan</p>
+                                    </div>
+                                </div>
+                                <button onclick="showForgotPinModal()" class="text-xs md:text-sm text-[#DF414F] font-medium hover:text-[#c73441] shrink-0">Ganti</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Transaksi</h3>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            <div class="px-4 py-4 space-y-3">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=4lXwwBGa0fnw&format=png&color=000000" class="w-5 h-5" alt="Daily Limit" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800 truncate">Limit Harian</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500 break-words">Maksimal transaksi per hari</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <div class="relative flex-1 max-w-xs">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-xs md:text-sm text-gray-500 pointer-events-none">Rp</span>
+                                        <input type="number" id="daily-limit-input" value="5000000" class="w-full pl-5 pr-4 py-2 border border-gray-200 text-xs md:text-sm text-right focus:outline-none" min="100000" max="50000000" step="100000">
+                                    </div>
+                                    <button onclick="saveDailyLimit()" class="px-3 py-2 text-xs bg-[#DF414F] text-white font-medium hover:bg-[#c73441] shrink-0 transition">Simpan</button>
+                                </div>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=drmCLEwhFUo3&format=png&color=000000" class="w-5 h-5" alt="Auto Topup" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Auto Top Up</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500">Isi otomatis saat saldo rendah</p>
+                                    </div>
+                                </div>
+                                <button type="button" id="auto-topup-toggle" onclick="toggleAutoTopup(this)"
+                                    class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#DF414F] shrink-0"
+                                    style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                    <span class="absolute w-5 h-5 bg-white shadow-sm"
+                                        style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                                </button>
+                            </div>
+                            <div id="auto-topup-settings" class="px-4 pb-4 hidden divide-y divide-gray-100">
+                                <div class="py-3 flex items-center justify-between">
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Jumlah Top Up</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500">Nominal per transaksi auto top up</p>
+                                    </div>
+                                    <div class="flex items-center gap-1 md:gap-2 shrink-0">
+                                        <span class="text-xs md:text-sm text-gray-500">Rp</span>
+                                        <input type="number" id="auto-topup-amount" value="50000" class="w-20 md:w-28 px-2 md:px-3 py-2 border border-gray-200 text-xs md:text-sm text-right focus:outline-none focus:border-[#DF414F]" min="10000" max="500000" step="10000">
+                                    </div>
+                                </div>
+                                <div class="py-3 flex items-center justify-between">
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Ambang Batas</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500">Saldo minimum sebelum auto top up</p>
+                                    </div>
+                                    <div class="flex items-center gap-1 md:gap-2 shrink-0">
+                                        <span class="text-xs md:text-sm text-gray-500">Rp</span>
+                                        <input type="number" id="auto-topup-threshold" value="10000" class="w-20 md:w-28 px-2 md:px-3 py-2 border border-gray-200 text-xs md:text-sm text-right focus:outline-none focus:border-[#DF414F]" min="5000" max="100000" step="5000">
+                                    </div>
+                                </div>
+                                <div class="py-3 flex justify-end">
+                                    <button onclick="saveAutoTopupSettings()" class="px-3 md:px-4 py-2 text-xs md:text-sm bg-[#DF414F] text-white hover:bg-[#c73441] transition">Simpan Pengaturan</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Perangkat & Sesi</h3>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            <div class="px-4 py-4 flex items-center justify-between">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=59517&format=png&color=000000" class="w-5 h-5" alt="Devices" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800">Perangkat Terdaftar</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500" id="device-count">0 perangkat</p>
+                                    </div>
+                                </div>
+                                <button onclick="showRegisteredDevices()" class="text-xs md:text-sm text-[#DF414F] font-medium hover:text-[#c73441] shrink-0">Kelola</button>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=23537&format=png&color=000000" class="w-5 h-5" alt="Logout All" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800 truncate">Keluar Semua Perangkat</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500 break-words">Keluar dari NorthPay di semua perangkat</p>
+                                    </div>
+                                </div>
+                                <button onclick="logoutAllDevices()" class="text-xs md:text-sm text-red-600 font-medium hover:text-red-700 shrink-0">Keluar Semua</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-red-200">
+                        <div class="px-4 py-3 border-b border-red-100 bg-red-50">
+                            <h3 class="text-xs font-semibold text-red-400 uppercase tracking-wider">Zona Berbahaya</h3>
+                        </div>
+                        <div class="divide-y divide-red-100">
+                            <div class="px-4 py-4 flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=60713&format=png&color=000000" class="w-5 h-5" alt="Disable" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800 truncate">Nonaktifkan NorthPay</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500 break-words">Sementara nonaktifkan fitur pembayaran NorthPay (saldo tetap tersimpan)</p>
+                                    </div>
+                                </div>
+                                <button type="button" id="northpay-enable-toggle" onclick="toggleNorthpay(this)" data-active="true"
+                                    class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#DF414F] shrink-0"
+                                    style="background-color:#DF414F;border-radius:9999px">
+                                    <span class="absolute w-5 h-5 bg-white shadow-sm"
+                                        style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(20px)"></span>
+                                </button>
+                            </div>
+                            <div class="px-4 py-4 flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                                        <img src="https://img.icons8.com/?size=100&id=47258&format=png&color=000000" class="w-5 h-5" alt="Delete" loading="lazy">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs md:text-sm font-medium text-gray-800 truncate">Hapus Akun NorthPay</p>
+                                        <p class="text-[11px] md:text-xs text-gray-500 break-words">Hapus permanen data NorthPay (saldo hilang permanen)</p>
+                                    </div>
+                                </div>
+                                <button onclick="deleteNorthpayAccount()" class="px-3 py-1.5 text-xs bg-red-600 text-white hover:bg-red-700 transition shrink-0">Hapus</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="spa-chat-storage-section" class="account-section hidden max-w-6xl w-full">
+                <div class="md:hidden flex items-center py-1 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('settings')" class="w-8 h-8 flex items-center justify-center">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-900 tracking-wide">Storage Chat</h1>
+                    <div class="w-8"></div>
+                </div>
+
+                <div class="bg-white md:rounded-sm md:shadow-sm">
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Storage Chat</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="px-4 py-3">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs text-gray-500">Jumlah Pesan</span>
+                                <span class="text-sm font-bold text-gray-900" id="chatstorage-count">0</span>
+                            </div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs text-gray-500">Ukuran Terpakai</span>
+                                <span class="text-sm font-bold text-gray-900" id="chatstorage-bytes">0 B</span>
+                            </div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-500">Kuota</span>
+                                <span class="text-xs text-gray-400">500 pesan / 2 MB</span>
+                            </div>
+                            <div class="w-full bg-gray-100 h-2 overflow-hidden" style="border-radius:9999px">
+                                <div class="h-full bg-[#DF414F]/70" style="width:0%" id="chatstorage-bar"></div>
+                            </div>
+                        </div>
+
+                        <div class="px-4 py-3 flex items-center justify-between border-t border-gray-100">
+                            <div>
+                                <div class="text-sm font-medium text-gray-800">Hapus Riwayat Chat</div>
+                                <div class="text-[11px] text-gray-400">Menghapus semua riwayat chat Anda secara permanen.</div>
+                            </div>
+                            <button type="button" id="chatstorage-clear-btn" onclick="clearChatStorage()" class="shrink-0 bg-[#DF414F] text-white text-xs font-medium px-4 py-2 hover:bg-[#c73441] active:scale-95 transition-all">Hapus Semua</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="spa-account-info-section" class="account-section hidden max-w-6xl w-full">
+                <div class="md:hidden flex items-center py-1 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('settings')" class="w-8 h-8 flex items-center justify-center">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=df414f" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-900 tracking-wide">Informasi Akun</h1>
+                    <div class="w-8"></div>
+                </div>
+
+                <div class="bg-white md:rounded-sm md:shadow-sm">
+                    <form id="account-info-form" onsubmit="updateAccountInfo(event)" class="px-3">
+                        <div class="flex flex-col items-center py-6 border-b border-gray-100">
+                            <div class="relative w-20 h-20 rounded-full bg-gray-100 overflow-hidden border border-gray-200 mb-3">
+                                <img id="ai-avatar" src="/public/icons/default.png" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://img.icons8.com/?size=100&id=84627&format=png&color=9CA3AF'">
+                            </div>
+                            <button type="button" onclick="document.getElementById('ai-avatar-input').click()" class="text-xs text-gray-500 font-medium bg-gray-100 border px-3 py-1 cursor-pointer">Ganti Foto</button>
+                            <input type="file" id="ai-avatar-input" accept="image/jpeg,image/png" class="hidden" onchange="previewAiAvatar(event)">
+                        </div>
+
+                        <div class="pt-4 pb-1">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Data Akun</p>
+                        </div>
+                        <div class="divide-y divide-gray-50">
+                            <div class="py-1">
+                                <label class="text-xs text-gray-500 font-medium">Nama Lengkap</label>
+                                <input type="text" id="ai-name" class="w-full bg-gray-100 px-2 text-sm text-gray-900 mt-1 py-1.5 focus:outline-none focus:ring-0" placeholder="Nama lengkap">
+                            </div>
+                            <div class="py-1">
+                                <label class="text-xs text-gray-500 font-medium">Username</label>
+                                <input type="text" id="ai-username" class="w-full bg-gray-100 px-2 text-sm text-gray-900 mt-1 py-1.5 focus:outline-none focus:ring-0" placeholder="Username">
+                            </div>
+                            <div class="py-1">
+                                <label class="text-xs text-gray-500 font-medium">Email</label>
+                                <input type="email" id="ai-email" class="w-full bg-gray-100 px-2 text-sm text-gray-900 mt-1 py-1.5 focus:outline-none focus:ring-0" placeholder="email@example.com">
+                            </div>
+                            <div class="py-1">
+                                <label class="text-xs text-gray-500 font-medium">Nomor HP</label>
+                                <input type="tel" id="ai-phone" class="w-full bg-gray-100 px-2 text-sm text-gray-900 mt-1 py-1.5 focus:outline-none focus:ring-0" placeholder="08xxxxxxxxxx">
+                            </div>
+                        </div>
+
+                        <div class="pt-4 pb-1 border-t border-gray-100">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Keamanan</p>
+                        </div>
+                        <div class="divide-y divide-gray-50">
+                            <a href="javascript:void(0)" onclick="switchAccountTab('password')" class="flex items-center justify-between py-3 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                                <div class="flex items-center gap-3">
+                                    <img src="https://img.icons8.com/?size=100&id=14101&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                    <span class="text-sm text-gray-800">Ganti Kata Sandi</span>
+                                </div>
+                                <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                            </a>
+                        </div>
+
+                        <div class="py-6">
+                            <button type="submit" class="w-full py-2 bg-[#DF414F] text-white font-medium text-sm border-none cursor-pointer active:bg-[#c73441]">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="spa-northpay-form-section" class="account-section hidden max-w-2xl mx-auto px-2 md:px-0">
+                <div class="mb-6">
+                    <button onclick="switchAccountTab('northpaySettings')" class="flex items-center gap-1 text-xs md:text-sm text-[#DF414F] hover:text-[#c73441] font-medium mb-6">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-5 h-5" alt="Back" loading="lazy">
+                        Kembali
+                    </button>
+                    <h2 id="northpay-form-title" class="text-lg md:text-xl font-bold text-gray-800"></h2>
+                </div>
+                <div id="northpay-form-content"></div>
+            </section>
+
+            <section id="spa-settings-section" class="account-section bg-white hidden max-w-6xl w-full">
+                <div class="md:hidden flex items-center py-1 px-2 border-b border-gray-100 shadow-[0_2px_6px_rgba(0,0,0,0.08)] bg-white sticky top-0 z-10">
+                    <button onclick="switchAccountTab('profile')" class="w-8 h-8 flex items-center justify-center -ml-1">
+                        <img src="https://img.icons8.com/?size=100&id=357&format=png&color=df414f" class="w-5 h-5" loading="lazy">
+                    </button>
+                    <h1 class="flex-1 text-center text-sm font-bold text-gray-700 tracking-wide">Pengaturan</h1>
+                    <div class="w-8"></div>
+                </div>
+
+                <div class="bg-white md:rounded-sm md:shadow-sm">
+                    <!-- User Profile Card -->
+                    <a href="javascript:void(0)" onclick="switchAccountTab('profile')" class="flex bg-white items-center gap-3 px-4 py-4 border-b border-gray-100 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                        <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 border border-gray-200">
+                            <img id="settings-avatar" src="/public/icons/default.png" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://img.icons8.com/?size=100&id=84627&format=png&color=9CA3AF'">
+                        </div>
+                        <div class="flex-1 min-w-0 h-full">
+                            <p id="settings-name" class="text-sm font-semibold text-gray-900 truncate">Nama Pengguna</p>
+                            <p id="settings-email" class="text-xs text-gray-500 truncate">email@example.com</p>
+                        </div>
+                        <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4 shrink-0" loading="lazy">
+                    </a>
+
+                    <!-- AKUN Section -->
+                    <div class="px-4 pt-4 pb-1">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Akun</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <a href="javascript:void(0)" onclick="switchAccountTab('accountInfo')" class="flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=16246&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Informasi Akun</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </a>
+                        <a href="javascript:void(0)" onclick="switchAccountTab('address')" class="flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=c0kUjxdWTRsk&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Alamat Saya</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </a>
+                    </div>
+
+                    <!-- KEAMANAN Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Keamanan</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <a href="javascript:void(0)" onclick="switchAccountTab('password')" class="flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=14101&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Ganti Kata Sandi</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </a>
+                        <button onclick="showRegisteredDevices()" class="w-full flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors text-left no-underline cursor-pointer bg-transparent border-none">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=ADyQCOfsd2iu&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Perangkat Terdaftar</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </button>
+                    </div>
+
+                    <!-- PEMBAYARAN Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pembayaran</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <a href="javascript:void(0)" onclick="switchAccountTab('northpay')" class="flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=QFJvCyZn0zCW&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">NorthPay</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </a>
+                        <a href="javascript:void(0)" onclick="switchAccountTab('northpaySettings')" class="flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors no-underline text-inherit">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=14099&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Pengaturan NorthPay</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=60671&format=png&color=9CA3AF" class="w-4 h-4" loading="lazy">
+                        </a>
+                    </div>
+
+                    <!-- NOTIFIKASI Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Notifikasi</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-2">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=eMfeVHKyTnkc&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Pengaturan Notifikasi</span>
+                            </div>
+                            <button type="button" id="notif-toggle" onclick="toggleNotifSettings(this)"
+                                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none shrink-0"
+                                style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                <span class="absolute w-5 h-5 bg-white border border-gray-300 shadow-sm"
+                                    style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-2">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=eMfeVHKyTnkc&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Notifikasi Login</span>
+                            </div>
+                            <button type="button" id="login-notif-toggle" onclick="toggleLoginNotif(this)"
+                                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none shrink-0"
+                                style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                <span class="absolute w-5 h-5 bg-white border border-gray-300 shadow-sm"
+                                    style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between px-4 py-2">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=eBEo6FOQZ3v4&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Notifikasi Email</span>
+                            </div>
+                            <button type="button" id="email-notif-toggle" onclick="toggleEmailNotif(this)"
+                                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none shrink-0"
+                                style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                <span class="absolute w-5 h-5 bg-white border border-gray-300 shadow-sm"
+                                    style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAMPILAN Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tampilan</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between px-4 py-2">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=PhROZl33o6s6&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Mode Gelap</span>
+                            </div>
+                            <button type="button" id="dark-mode-toggle" onclick="toggleDarkMode(this)"
+                                class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none shrink-0"
+                                style="background-color:#e5e7eb;border-radius:9999px" data-active="false">
+                                <span class="absolute w-5 h-5 bg-white border border-gray-300 shadow-sm"
+                                    style="top:2px;left:2px;border-radius:9999px;transition:transform 0.2s;transform:translateX(0)"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    </div>
+
+                    <!-- Chat Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chat</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <button onclick="switchAccountTab('chatStorage')" class="w-full flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors text-left cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=83299&format=png&color=737373" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-gray-800">Storage Chat</span>
+                            </div>
+                            <img src="https://img.icons8.com/?size=100&id=86169&format=png&color=737373" class="w-4 h-4" loading="lazy">
+                        </button>
+                    </div>
+
+                    <!-- LAINNYA Section -->
+                    <div class="px-4 pt-4 pb-1 border-t border-gray-100">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Lainnya</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        <button onclick="logoutAllDevices()" class="w-full flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors text-left cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=Q1xkcFuVON39&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-red-500">Logout Semua Perangkat</span>
+                            </div>
+                        </button>
+                        <button onclick="clearLocalCache()" class="w-full flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors text-left cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=2578&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-red-500">Bersihkan Cache</span>
+                            </div>
+                        </button>
+                        <button onclick="confirmDeleteAccount()" class="w-full flex items-center justify-between px-4 py-2 active:bg-gray-50 md:hover:bg-gray-50 transition-colors text-left cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <img src="https://img.icons8.com/?size=100&id=85081&format=png&color=DF414F" class="w-5 h-5" loading="lazy">
+                                <span class="text-sm text-red-500">Hapus Akun</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="px-4 py-6 text-center text-[11px] text-gray-400">
+                        Northline v4.00.00
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 border-t border-gray-300">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8">
+                <div>
+                    <h3 class="font-semibold text-xs md:text-sm mb-3 uppercase">
+                        Layanan Pelanggan
+                    </h3>
+                    <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm text-gray-600">
+                        <li><button onclick="openChat()" class="hover:text-blue-600" data-i18n="help">Bantuan</button></li>
+                        <li><a href="/AppNorthPaymentMethod" class="hover:text-blue-600">Metode Pembayaran</a></li>
+                        <li><a href="/AppNorthAccount" class="hover:text-blue-600">Lacak Pesanan</a></li>
+                        <li><a href="/AppNorthRefund" class="hover:text-blue-600">Pengembalian Dana</a></li>
+                        <li><a href="/AppNorthContact" class="hover:text-blue-600">Hubungi Kami</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-xs md:text-sm mb-3 uppercase">
+                        Jelajahi Northline
+                    </h3>
+                    <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm text-gray-600">
+                        <li><a href="/AppNorthAbout" class="hover:text-blue-600">Tentang Kami</a></li>
+                        <li><a href="/AppNorthCareer" class="hover:text-blue-600">Karir</a></li>
+                        <li><a href="/AppNorthBlog" class="hover:text-blue-600">Blog</a></li>
+                        <li><a href="/seller/AppNorthSellerRegister" data-i18n="seller_centre" class="hover:text-blue-600">Seller Centre</a></li>
+                        <li><a href="/AppNorthAffiliate" class="hover:text-blue-600">Affiliate</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-xs md:text-sm mb-3 uppercase">
+                        Pembayaran
+                    </h3>
+                    <div class="grid grid-cols-3 gap-1">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170210.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170641.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170039.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170426.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170346.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170517.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                    </div>
+                    <h3 class="font-semibold text-xs md:text-sm mt-5 mb-3 uppercase">
+                        Pengiriman
+                    </h3>
+                    <div class="grid grid-cols-3 gap-1">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170722.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170607.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                        <img src="https://nl.hostinesia.my.id/public/image/20260608_170305.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-xs md:text-sm mb-3 uppercase">
+                        Ikuti Kami
+                    </h3>
+                    <ul class="space-y-2 text-xs md:text-sm text-gray-600">
+                        <li class="flex items-center gap-2 hover:text-blue-600">
+                            <img src="https://img.icons8.com/?size=100&id=TrRMlGqxzn7H&format=png&color=000000" class="w-5 h-5" alt="Facebook" loading="lazy">
+                            Facebook
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-blue-600">
+                            <img src="https://img.icons8.com/?size=100&id=YPtGQutUZQGi&format=png&color=000000" class="w-5 h-5" alt="Instagram" loading="lazy">
+                            Instagram
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-blue-600">
+                            <img src="https://img.icons8.com/?size=100&id=JmttimJ6OWmL&format=png&color=000000" class="w-5 h-5" alt="TikTok" loading="lazy">
+                            TikTok
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-blue-600">
+                            <img src="https://img.icons8.com/?size=100&id=31E2DL62HAMV&format=png&color=000000" class="w-5 h-5" alt="X" loading="lazy">
+                            Twitter
+                        </li>
+                        <li class="flex items-center gap-2 hover:text-blue-600">
+                            <img src="https://img.icons8.com/?size=100&id=GP0AgPAuQ2xA&format=png&color=000000" class="w-5 h-5" alt="LinkedIn" loading="lazy">
+                            LinkedIn
+                        </li>
+                    </ul>
+                    <h3 class="font-semibold text-xs md:text-sm mt-5 mb-3 uppercase">
+                        Keamanan
+                    </h3>
+                    <img src="https://nl.hostinesia.my.id/public/icons/NRTSECURITY.jpg?=v2"
+                        class="object-contain bg-white rounded shadow-md" style="height: 35px;" loading="lazy">
+                </div>
+                <div class="hidden md:block">
+                    <h3 class="font-semibold text-sm mb-4 uppercase">
+                        Download Aplikasi Northline
+                    </h3>
+                    <div class="flex items-start gap-1">
+                        <img src="https://nl.hostinesia.my.id/public/image/Northline App.png"
+                            class="shadow-md bg-white rounded" style="height: 100px;" loading="lazy">
+                        <div class="space-y-1">
+                            <img src="https://nl.hostinesia.my.id/public/image/20260608_204246.png"
+                                class="w-full h-8 object-contain bg-white shadow-md rounded px-1" loading="lazy">
+                            <img src="https://nl.hostinesia.my.id/public/image/20260608_204559.png"
+                                class="w-full h-8 object-contain bg-white shadow-md rounded px-1" loading="lazy">
+                            <img src="https://nl.hostinesia.my.id/public/image/20260608_204446.png"
+                                class="w-full h-8 object-contain bg-white shadow-md rounded px-1" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="border-t border-gray-300 mb-10 md:mb-0 mt-6 md:mt-10 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs md:text-sm text-gray-500">
+                <p class="text-center md:text-left">
+                    © 2026 Northline. Hak Cipta Dilindungi.
+                </p>
+                <div class="flex flex-wrap justify-center items-center gap-2">
+                    <span class="flex items-center gap-1">
+                        <img src="https://img.icons8.com/color/20/indonesia.png" alt="Indonesia" loading="lazy">
+                        Indonesia
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="wishlist-popup" class="fixed inset-0 z-50 pointer-events-none hidden transition-all duration-300">
+        <div onclick="toggleWishlistPopup()" class="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"></div>
+        
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl pointer-events-auto flex flex-col z-10 border-l border-gray-100">
+            <div class="px-4 h-[50px] border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div class="flex items-center gap-4">
+                    <button onclick="window.WishlistManager.togglePopup()" ><img src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F" style="height: 20px;" loading="lazy"></button>
+                    <span class="text-[13px] uppercase tracking-wider text-gray-950">Saved Wishlist</span>
+                    <span id="popup-wishlist-count" class="bg-[#DF414F] text-white text-[8px] -ml-2 w-3 h-3 flex items-center justify-center rounded-full hidden">0</span>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #f3f4f6;"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#374151;cursor:pointer;"><input type="checkbox" id="wl-select-all" style="accent-color:#DF414F;width:16px;height:16px;cursor:pointer;">Pilih Semua</label></div><div id="popup-items-container" class="flex-1 bg-gray-100 p-2 overflow-y-auto shadow-sm space-y-2">
+                <div id="popup-empty-state" class="text-center py-20 space-y-2">
+                    <p class="text-gray-400 text-xs font-medium">Your wishlist is empty.</p>
+                    <p class="text-gray-400 text-[10px]">Items loved from catalog will appear here.</p>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 bg-gray-50/50"><div id="wishlist-checkout-bar" class="p-4"></div></div>
+        </div>
+    </div>
+    
+    <div id="spa-orders-popup-wrapper" class="fixed inset-0 z-50 bg-[#f2f2f7] translate-y-full transition-transform duration-300 ease-out hidden flex flex-col"></div>
+
+    <div id="ios-warning-modal"
+        class="fixed top-0 left-1/2 -translate-x-1/2 z-[99999]
+        translate-y-[-120%] opacity-0
+        transition-all duration-500 ease-out">
+
+        <div id="notif-card"
+            class="w-[346px] mt-3 px-4 py-3
+            bg-white backdrop-blur-md shadow-xl
+            flex items-center gap-3
+            cursor-grab active:cursor-grabbing">
+            <img 
+                src="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2"
+                class="w-8 h-8" loading="lazy">
+            <div class="flex-1 min-w-0 text-white">
+                <div class="flex justify-between items-center">
+                    <h3 id="ios-modal-title"
+                        class="text-[13px] text-black">
+                        Northline
+                    </h3>
+                    <span id="notif-time"
+                        class="text-[11px] text-gray-300 cursor-pointer flex items-center gap-1">
+                        Just now 
+                        <img id="arrow"
+                            src="https://img.icons8.com/?size=100&id=40021&format=png&color=000000"
+                            class="w-2 h-2 transition-transform duration-200" loading="lazy">
+                    </span>
+                </div>
+                <p id="ios-modal-message"
+                    class="text-[11px] text-gray-500 truncate w-full">
+                    Message...
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <button id="chat-toggle-dekstop"
+        class="fixed z-40 bottom-20 right-4 md:bottom-5 md:right-5 px-1 w-8 h-8 md:w-10 md:h-10 bg-[#DF414F] text-white shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 hidden md:block
+        ">
+        <img
+            src="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png"
+            class="w-6 h-6 md:w-10 md:h-10 object-contain" loading="lazy">
+        <span class="absolute -bottom-1 right-2 w-2 h-2 bg-[#DF414F] rotate-45"></span>
+    </button>
+
+    <div id="chat-widget"class="fixed z-[999] bg-white md:border md:border-gray-300 shadow-2xl flex flex-col origin-bottom-right scale-0 opacity-0 pointer-events-none transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] w-full h-[100dvh] top-0 left-0 md:w-[380px] md:h-[600px]
+        md:bottom-20 md:right-5 md:left-auto md:top-auto">
+        <div class="h-[60px] md:h-14 bg-[#DF414F] text-white flex items-center justify-between px-4 border-b relative">
+            <div class="absolute inset-0 opacity-[0.20] overflow-hidden"
+                style="
+                    background-image:url('https://nl.hostinesia.my.id/public/image/batik.png');
+                    background-repeat:repeat;
+                    background-size:300px;
+                ">
+            </div>
+            <div class="absolute inset-y-0 left-0 w-16 z-[1] overflow-hidden"
+                style="
+                    background: linear-gradient(
+                        to right,
+                        #DF414F 0%,
+                        rgba(223,65,79,0.95) 30%,
+                        rgba(223,65,79,0) 100%
+                    );
+                ">
+            </div>
+            <div class="absolute inset-y-0 right-0 w-16 z-[1] overflow-hidden"
+                style="
+                    background: linear-gradient(
+                        to left,
+                        #DF414F 0%,
+                        rgba(223,65,79,0.95) 30%,
+                        rgba(223,65,79,0) 100%
+                    );
+                ">
+            </div>
+            <div class="relative z-10 flex items-center justify-between w-full">
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center">
+                        <img src="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png"
+                            class="w-[60px] h-[60px] md:w-15 md:h-15" loading="lazy">
+                    </div>
+                    <div>
+                        <div class="font-medium text-sm">
+                            Northline Support
+                        </div>
+                        <div id="chat-header-status" class="text-[11px] text-white/80 flex items-center gap-1">
+                            24/7 Support Center
+                        </div>
+                    </div>
+                </div>
+                <div class="relative flex items-center gap-1" id="chat-menu-wrapper">
+                    <button id="chat-menu-btn"
+                            class="w-8 h-8 flex items-center justify-center hover:bg-white/10 transition rounded">
+                        <img src="https://img.icons8.com/?size=100&id=84026&format=png&color=ffffff"
+                            class="w-5 h-5" loading="lazy">
+                    </button>
+
+                    <button id="menu-tutup"
+                            class="w-8 h-8 flex items-center justify-center hover:bg-white/10 transition rounded text-white border-0">
+                        <img src="https://img.icons8.com/?size=100&id=2760&format=png&color=ffffff" class="w-4 h-4" loading="lazy">
+                    </button>
+
+                    <div id="chat-dropdown"
+                        class="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 text-black text-xs shadow-xl z-[9999] opacity-0 invisible scale-95 origin-top-right transition-all duration-150 pointer-events-none">
+                        <div class="absolute -top-[5px] right-4 w-2.5 h-2.5 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                        <div class="py-1 relative bg-white">
+                            <button id="menu-hapus-riwayat"
+                                    class="w-full px-4 border-b border-gray-100 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 border-0">
+                                <img src="https://img.icons8.com/?size=100&id=11705&format=png&color=000000" class="w-5 h-5" loading="lazy">
+                                Hapus Riwayat
+                            </button>
+                            <button id="menu-chat-northline"
+                                    class="w-full px-4 border-b border-gray-100 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 border-0">
+                                <img src="https://img.icons8.com/?size=100&id=38977&format=png&color=000000" class="w-5 h-5" loading="lazy">
+                                Chat Northline
+                            </button>
+                            <button id="menu-share"
+                                    class="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700 border-0">
+                                <img src="https://img.icons8.com/?size=100&id=TDCU7KRViM2Q&format=png&color=000000" class="w-5 h-5" loading="lazy">
+                                Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-messages"
+            class="flex-1 overflow-y-auto bg-[#f6f6f6] px-4 py-3 space-y-3">
+            <div class="flex items-start gap-1.5 md:gap-2">
+                <div class="max-w-[85%] md:max-w-[80%]">
+                    <div class="overflow-hidden h-[35px] md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+                        <div id="welcome-text-page">
+                            Hi 👋 Selamat datang di Northline!
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-400 mt-1">
+                        Northline
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-t bg-white p-2">
+            <div id="quick-questions" class="flex gap-2 overflow-x-auto mb-2">
+                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                    Produk apa aja?
+                </button>
+
+                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                    Harga berapa?
+                </button>
+
+                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                    Ada size apa?
+                </button>
+
+                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                    Cara order gimana?
+                </button>
+
+                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                    Ready stock?
+                </button>
+            </div>
+            <div class="flex gap-1.5 md:gap-2">
+                <input
+                    id="chat-input"
+                    type="text"
+                    placeholder="Type a message..."
+                    class="flex-1 h-8 md:h-10 border border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
+                <button
+                    id="send-message"
+                    class="px-3 md:px-5 h-8 md:h-10 bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
+                    <img src="https://img.icons8.com/?size=100&id=bmqaSU1DN4QP&format=png&color=ffffff" class="h-6 w-6">
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="global-loader"
+        class="hidden fixed inset-0 z-[99999] md:hidden flex items-center justify-center bg-white/10 backdrop-blur-lg">
+        <div class="loader-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
+    <script src="/java/AppNorthAccount.js?v=0000v20acc"></script>
+    <script src="/java/AppNorthPayment.js?v=0000v13pay"></script>
+    <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
+    
+    <script src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
+    <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
+    <script src="/src/services/AppNorthSearch.js?v=0000v14cat"></script>
+    <script src="/src/services/AppNorthOrders.js?v=0000v11sec" defer></script>
+    <script src="/src/services/AppNorthWishlist.js?v=0000v19wl" defer></script>
+    <script src="/src/services/AppNorthGlobal.js?v=0000v11sec"></script>
+    <script src="/src/services/AppNorthAiService.js?v=0000v11ai"></script>
+    <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
+    <script>
+        const chatToggleDekstop = document.getElementById('chat-toggle-dekstop');
+        const chatWidget = document.getElementById('chat-widget');
+
+        function openChat() {
+            if (typeof hideChatNotification === 'function') hideChatNotification();
+            if (!chatWidget) return;
+            chatWidget.classList.remove('scale-0', 'opacity-0', 'pointer-events-none');
+            chatWidget.classList.add('scale-100', 'opacity-100');
+            history.replaceState(null, '', window.location.pathname + '?chat=1');
+            const chatMessages = document.getElementById('chat-messages');
+            const needsLoad = chatMessages && chatMessages.children.length <= 1;
+            if (needsLoad && typeof loadChatHistory === 'function') loadChatHistory();
+        }
+
+        if (chatToggleDekstop) chatToggleDekstop.onclick = openChat;
+
+        const chatMenuBtn = document.getElementById('chat-menu-btn');
+        const chatDropdown = document.getElementById('chat-dropdown');
+
+        if (chatMenuBtn) {
+            chatMenuBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isOpen = !chatDropdown.classList.contains('opacity-0');
+                chatDropdown.classList.toggle('opacity-0', isOpen);
+                chatDropdown.classList.toggle('invisible', isOpen);
+                chatDropdown.classList.toggle('scale-95', isOpen);
+                chatDropdown.classList.toggle('scale-100', !isOpen);
+                chatDropdown.classList.toggle('pointer-events-none', isOpen);
+            });
+        }
+
+        document.addEventListener('click', function () {
+            if (chatDropdown) {
+                chatDropdown.classList.add('opacity-0', 'invisible', 'scale-95', 'pointer-events-none');
+                chatDropdown.classList.remove('scale-100');
+            }
+        });
+
+        document.getElementById('menu-hapus-riwayat')?.addEventListener('click', function () {
+            if (typeof window.clearChatHistory === 'function') {
+                window.clearChatHistory().then(function (res) {
+                    if (res && res.success) {
+                        const container = document.getElementById('chat-messages');
+                        while (container.children.length > 1) container.removeChild(container.lastChild);
+                    }
+                });
+            } else {
+                const container = document.getElementById('chat-messages');
+                while (container.children.length > 1) container.removeChild(container.lastChild);
+            }
+            chatDropdown.classList.add('opacity-0', 'invisible', 'scale-95', 'pointer-events-none');
+            chatDropdown.classList.remove('scale-100');
+        });
+
+        document.getElementById('menu-chat-northline')?.addEventListener('click', function () {
+            window.location.href = '/nrtChatStore';
+        });
+
+        document.getElementById('menu-tutup')?.addEventListener('click', function () {
+            if (!chatWidget) return;
+            chatWidget.classList.remove('scale-100', 'opacity-100');
+            chatWidget.classList.add('scale-0', 'opacity-0', 'pointer-events-none');
+            chatDropdown.classList.add('opacity-0', 'invisible', 'scale-95', 'pointer-events-none');
+            chatDropdown.classList.remove('scale-100');
+            history.replaceState(null, '', window.location.pathname);
+        });
+
+        document.getElementById('menu-share')?.addEventListener('click', function () {
+            const url = window.location.origin + window.location.pathname + '?chat=1';
+            if (navigator.share) {
+                navigator.share({ url });
+            } else {
+                navigator.clipboard.writeText(url);
+            }
+            chatDropdown.classList.add('opacity-0', 'invisible', 'scale-95', 'pointer-events-none');
+            chatDropdown.classList.remove('scale-100');
+        });
+        function animateButton() {
+            chatToggle.animate([
+                {
+                    transform: 'scale(1) rotate(0deg)'
+                },
+                {
+                    transform: 'scale(.85) rotate(-15deg)'
+                },
+                {
+                    transform: 'scale(1) rotate(0deg)'
+                }
+            ], {
+                duration: 250,
+                easing: 'ease-out'
+            });
+        }
+        let deferredPrompt;
+        const installBtn = document.getElementById("installBtn");
+        const installedInfo = document.getElementById("installedInfo");
+        window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installBtn) installBtn.classList.remove("hidden");
+        });
+        if (installBtn) {
+            installBtn.addEventListener("click", async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === "accepted") {
+                    console.log("Northline installed");
+                }
+                deferredPrompt = null;
+            });
+        }
+        window.addEventListener("appinstalled", () => {
+            if (installBtn) installBtn.classList.add("hidden");
+            if (installedInfo) installedInfo.classList.remove("hidden");
+        });
+        if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("sw.js")
+            .then(() => console.log("SW Registered"))
+            .catch(err => console.log(err));
+        });
+        }
+        function showChatNotification() {
+            const dot = document.getElementById('chat-notification') || document.getElementById('chat-notification-store');
+            if (dot && !chatWidget.classList.contains('scale-100')) {
+                dot.classList.remove('hidden');
+            }
+        }
+        function hideChatNotification() {
+            const dot = document.getElementById('chat-notification') || document.getElementById('chat-notification-store');
+            if (dot) dot.classList.add('hidden');
+        }
+        function toggleProfileForm() {
+            const desktop = document.getElementById('profile-form-desktop');
+            const mobile = document.getElementById('profile-form-mobile');
+            const isDesktopHidden = desktop.classList.contains('hidden');
+            if (isDesktopHidden) {
+                desktop.classList.remove('hidden');
+                mobile.classList.add('hidden');
+            } else {
+                desktop.classList.add('hidden');
+                mobile.classList.remove('hidden');
+            }
+        }
+        function backToMobileForm() {
+            const desktop = document.getElementById('profile-form-desktop');
+            const mobile = document.getElementById('profile-form-mobile');
+            desktop.classList.add('hidden');
+            mobile.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

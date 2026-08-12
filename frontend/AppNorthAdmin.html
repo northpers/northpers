@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+    <title>Northline Admin</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        *{font-family:'DM Sans',sans-serif;margin:0;padding:0;box-sizing:border-box;border-radius:0!important}
+        body{background:#f3f4f6;overflow:hidden}
+        ::-webkit-scrollbar{width:6px;height:6px}
+        ::-webkit-scrollbar-thumb{background:#d1d5db}
+        ::-webkit-scrollbar-track{background:transparent}
+        /* ===== Sidebar ===== */
+        .sidebar{width:240px;background:#fff;border-right:1px solid #e5e7eb;height:100vh;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:50;transition:transform .2s ease}
+        .sidebar .logo{height:56px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #e5e7eb;gap:10px}
+        .sidebar .logo img{height:32px}
+        .sidebar .logo span{font-size:16px;font-weight:700;color:#111}
+        .sidebar nav{flex:1;overflow-y:auto;padding:8px 0}
+        .nav-group-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 16px 6px;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;background:none;border:none;cursor:pointer;transition:color .15s}
+        .nav-group-toggle:hover{color:#374151}
+        .nav-group-toggle img{width:13px;height:13px;transition:transform .2s}
+        .nav-group.collapsed .nav-group-toggle img{transform:rotate(-90deg)}
+        .nav-group.collapsed .nav-group-content{display:none}
+        .sidebar nav a{display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#4b5563;text-decoration:none;transition:all .15s;border-left:3px solid transparent}
+        .nav-group-content a{padding-left:38px}
+        .sidebar nav a:hover{background:#f9fafb;color:#111}
+        .sidebar nav a.active{background:#f9fafb;}
+        .sidebar nav a img{width:18px;height:18px;opacity:.7}
+        .sidebar nav a.active img{opacity:1}
+        .sidebar .logout-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:#4b5563;text-decoration:none;border-top:1px solid #e5e7eb;transition:all .15s;cursor:pointer}
+        .sidebar .logout-item:hover{background:#f9fafb;color:#ef4444}
+        .sidebar .logout-item img{width:18px;height:18px}
+        .sidebar-close{display:none}
+        .sidebar-overlay{display:none}
+        /* ===== Main ===== */
+        .main{margin-left:240px;height:100vh;display:flex;flex-direction:column}
+        .topbar{height:56px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:12px}
+        .topbar-left{display:flex;align-items:center;gap:10px;min-width:0}
+        .hamburger{display:none;width:34px;height:34px;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;cursor:pointer;flex-shrink:0}
+        .hamburger img{width:18px;height:18px}
+        .topbar h1{font-size:16px;font-weight:600;color:#111;line-height:1.2}
+        .breadcrumb{font-size:11px;color:#9ca3af;margin-top:1px}
+        .admin-info{display:flex;align-items:center;gap:12px;flex-shrink:0}
+        .admin-avatar{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fef2f2;border:1px solid #DF414F;color:#DF414F;font-size:12px;font-weight:700}
+        .admin-detail{display:flex;flex-direction:column;line-height:1.3}
+        .admin-name{font-size:13px;font-weight:600;color:#111}
+        .admin-role{font-size:10px;color:#9ca3af}
+        .content{flex:1;overflow-y:auto;padding:24px}
+        /* ===== Cards ===== */
+        .card{background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:16px}
+        .stat-card{display:flex;align-items:center;gap:14px;padding:18px}
+        .stat-card .icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;flex-shrink:0}
+        .stat-card .icon img{width:22px;height:22px}
+        .stat-card .info h3{font-size:22px;font-weight:700;color:#111;line-height:1.2}
+        .stat-card .info p{font-size:11px;color:#6b7280;margin-top:2px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        table th{text-align:left;padding:10px 12px;background:#f9fafb;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+        table td{padding:10px 12px;border-bottom:1px solid #f3f4f6;color:#374151}
+        table tr:hover td{background:#f9fafb}
+        .badge{display:inline-block;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+        .badge-success{background:#dcfce7;color:#166534}
+        .badge-pending{background:#fef3c7;color:#92400e}
+        .badge-danger{background:#fee2e2;color:#991b1b}
+        .badge-info{background:#dbeafe;color:#1e40af}
+        .badge-gray{background:#f3f4f6;color:#6b7280}
+        .btn{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+        .btn-primary{background:#DF414F;color:#fff}
+        .btn-primary:hover{background:#c93643}
+        .btn-outline{border:1px solid #d1d5db;color:#374151;background:#fff}
+        .btn-outline:hover{background:#f9fafb}
+        .btn-danger{background:#ef4444;color:#fff}
+        .btn-danger:hover{background:#dc2626}
+        .btn-success{background:#16a34a;color:#fff}
+        .btn-success:hover{background:#15803d}
+        .btn-sm{padding:4px 10px;font-size:11px}
+        input,select,textarea{outline:none;font-size:13px;font-family:'DM Sans',sans-serif}
+        input:focus,select:focus,textarea:focus{border-color:#DF414F!important}
+        /* ===== Tabs ===== */
+        .tab-bar{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #e5e7eb;overflow-x:auto}
+        .tab-btn{padding:10px 20px;border:none;background:transparent;color:#374151;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+        .tab-btn:hover{color:#DF414F}
+        .tab-btn.active{background:#DF414F;color:#fff}
+        /* ===== Modal ===== */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center}
+        .modal-overlay.show{display:flex}
+        .modal-content{background:#fff;width:90%;max-width:560px;max-height:80vh;overflow-y:auto;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+        .modal-content h2{font-size:16px;font-weight:600;margin-bottom:16px}
+        .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+        .section-title{font-size:14px;font-weight:600;color:#111;margin-bottom:12px}
+        .pagination{display:flex;align-items:center;gap:8px;margin-top:16px;justify-content:center}
+        .pagination button{padding:4px 12px;font-size:12px;border:1px solid #d1d5db;background:#fff;cursor:pointer}
+        .pagination button:hover{background:#f9fafb}
+        .pagination button:disabled{opacity:.4;cursor:default}
+        .pagination span{font-size:12px;color:#6b7280}
+        .filter-bar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+        .filter-bar input,.filter-bar select{height:36px;border:1px solid #d1d5db;padding:0 12px;font-size:13px;background:#fff}
+        .filter-bar input{flex:1;min-width:200px}
+        .star{color:#f59e0b;font-size:14px}
+        .star-empty{color:#d1d5db;font-size:14px}
+        .wa-connected{color:#16a34a;font-weight:600;font-size:12px}
+        .wa-disconnected{color:#ef4444;font-weight:600;font-size:12px}
+        .loading-state{text-align:center;padding:60px 0;color:#9ca3af;font-size:14px}
+        /* ===== Chat ===== */
+        .chat-container{display:flex;height:calc(100vh - 160px);border:1px solid #e5e7eb;background:#fff}
+        .chat-users{width:300px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;background:#fff;flex-shrink:0}
+        .chat-users-head{padding:12px;border-bottom:1px solid #e5e7eb}
+        .chat-users-head .chat-title{font-size:13px;font-weight:700;color:#111;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+        .chat-user-search{width:100%;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px;background:#fff}
+        .chat-user-select{width:100%;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px;margin-top:8px;background:#fff}
+        .chat-user-list{flex:1;overflow-y:auto}
+        .chat-user-item{display:flex;gap:10px;padding:12px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .15s}
+        .chat-user-item:hover{background:#f9fafb}
+        .chat-user-item.active{background:#fef2f2}
+        .chat-user-avatar{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border:1px solid #e5e7eb;font-size:13px;font-weight:700;color:#374151;flex-shrink:0}
+        .chat-user-item.active .chat-user-avatar{background:#fff;border-color:#DF414F;color:#DF414F}
+        .chat-user-body{flex:1;min-width:0}
+        .chat-user-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .chat-user-name{font-size:13px;font-weight:600;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .chat-user-time{font-size:10px;color:#9ca3af;flex-shrink:0}
+        .chat-user-preview{font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+        .chat-unread{background:#DF414F;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0}
+        .chat-empty{text-align:center;padding:40px 16px;color:#9ca3af;font-size:12px}
+        .chat-main{flex:1;display:flex;flex-direction:column;background:#f9fafb;min-width:0}
+        .chat-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #e5e7eb}
+        .chat-back-btn{display:none;width:32px;height:32px;align-items:center;justify-content:center;border:1px solid #e5e7eb;background:#fff;cursor:pointer;flex-shrink:0}
+        .chat-back-btn img{width:16px;height:16px}
+        .chat-header-avatar{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border:1px solid #e5e7eb;font-size:12px;font-weight:700;color:#374151;flex-shrink:0}
+        .chat-header-info{min-width:0}
+        .chat-header-name{font-size:14px;font-weight:600;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .chat-header-sub{font-size:11px;color:#6b7280;margin-top:1px}
+        .chat-msg{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+        .bubble-user{background:#DF414F;color:#fff;padding:8px 12px;max-width:70%;margin-left:auto;border:1px solid #DF414F;align-self:flex-end}
+        .bubble-user .bubble-time{font-size:10px;color:rgba(255,255,255,.75);text-align:right;margin-top:4px}
+        .bubble-admin{background:#fff;padding:8px 12px;max-width:70%;border:1px solid #e5e7eb;align-self:flex-start}
+        .bubble-admin .bubble-time{font-size:10px;color:#9ca3af;text-align:right;margin-top:4px}
+        .chat-input{padding:12px;border-top:1px solid #e5e7eb;display:flex;gap:8px;background:#fff}
+        .chat-input input{flex:1;height:38px;border:1px solid #d1d5db;padding:0 12px;font-size:13px;min-width:0}
+        .chat-input button{width:44px;height:38px;background:#DF414F;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .chat-input button:hover{background:#c93643}
+        /* ===== Responsive ===== */
+        @media(max-width:768px){
+            .sidebar{transform:translateX(-100%);width:260px}
+            .sidebar.open{transform:translateX(0);box-shadow:0 0 24px rgba(0,0,0,.25)}
+            .sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45;opacity:0;pointer-events:none;transition:opacity .2s}
+            .sidebar-overlay.show{opacity:1;pointer-events:auto}
+            .sidebar-close{display:flex;width:28px;height:28px;align-items:center;justify-content:center;border:1px solid #e5e7eb;background:#fff;cursor:pointer;margin-left:auto}
+            .main{margin-left:0}
+            .hamburger{display:flex}
+            .content{padding:12px}
+            .topbar{padding:0 12px}
+            .admin-role{display:none}
+            .two-col{grid-template-columns:1fr}
+            .grid-stats{grid-template-columns:repeat(2,1fr);gap:10px}
+            .grid-stats .stat-card{padding:12px;gap:10px}
+            .grid-stats .stat-card .icon{width:36px;height:36px}
+            .grid-stats .stat-card .info h3{font-size:16px}
+            .card{overflow-x:auto}
+            .filter-bar input{min-width:0;flex:1 1 100%}
+            .modal-content{width:100%;max-width:100%;max-height:92vh;padding:16px}
+            .breadcrumb{display:none}
+            .chat-container{height:calc(100vh - 136px)}
+            .chat-users{width:100%;border-right:none;display:flex}
+            .chat-main{display:none}
+            .chat-container.show-thread .chat-users{display:none}
+            .chat-container.show-thread .chat-main{display:flex}
+            .chat-back-btn{display:flex}
+            .chat-header-name{font-size:13px}
+            .chat-msg{padding:12px}
+            .bubble-user,.bubble-admin{max-width:85%}
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+    <div class="logo">
+        <img src="https://nl.hostinesia.my.id/public/icons/nrtFaviconBlack.png" style="height:60px;">
+        <span>NORTHLINE</span>
+        <button class="sidebar-close" id="sidebar-close" onclick="closeSidebar()"><img src="https://img.icons8.com/?size=100&id=61&format=png&color=6B7280"></button>
+    </div>
+    <nav id="sidebar-nav">
+        <div class="nav-group" data-group="summary">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('summary')">Ringkasan<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="dashboard" class="active"><img src="https://img.icons8.com/?size=100&id=F28yEPaIjm4o&format=png&color=000000"><span>Dashboard</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="transactions">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('transactions')">Transaksi<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="orders"><img src="https://img.icons8.com/?size=100&id=9671&format=png&color=000000"><span>Orders</span></a>
+                <a href="#" data-page="northpay"><img src="https://img.icons8.com/?size=100&id=22126&format=png&color=000000"><span>NorthPay</span></a>
+                <a href="#" data-page="affiliate"><img src="https://img.icons8.com/?size=100&id=123478&format=png&color=000000"><span>Affiliate</span></a>
+                <a href="#" data-page="seller-earnings"><img src="https://img.icons8.com/?size=100&id=202&format=png&color=000000"><span>Penghasilan Seller</span></a>
+                <a href="#" data-page="reports"><img src="https://img.icons8.com/?size=100&id=4720&format=png&color=000000"><span>Laporan</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="products">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('products')">Produk &amp; Toko<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="products"><img src="https://img.icons8.com/?size=100&id=1846&format=png&color=000000"><span>Products</span></a>
+                <a href="#" data-page="reviews"><img src="https://img.icons8.com/?size=100&id=52209&format=png&color=000000"><span>Reviews</span></a>
+                <a href="#" data-page="sellers"><img src="https://img.icons8.com/?size=100&id=idm9lNFle9TG&format=png&color=000000"><span>Sellers</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="customers">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('customers')">Pelanggan<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="users"><img src="https://img.icons8.com/?size=100&id=7820&format=png&color=000000"><span>Users</span></a>
+                <a href="#" data-page="chat"><img src="https://img.icons8.com/?size=100&id=d7iUgF8ZrDaO&format=png&color=000000"><span>Chat</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="platform">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('platform')">Platform<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="notifications"><img src="https://img.icons8.com/?size=100&id=11642&format=png&color=000000"><span>Notifikasi</span></a>
+                <a href="#" data-page="whatsapp"><img src="https://img.icons8.com/?size=100&id=16712&format=png&color=000000"><span>WA Notifikasi</span></a>
+                <a href="#" data-page="npinjam"><img src="https://img.icons8.com/?size=100&id=215&format=png&color=000000"><span>NPinjam</span></a>
+                <a href="#" data-page="settings"><img src="https://img.icons8.com/?size=100&id=364&format=png&color=000000"><span>Pengaturan</span></a>
+            </div>
+        </div>
+    </nav>
+    <a href="#" id="logout-btn" class="logout-item"><img src="https://img.icons8.com/?size=100&id=2445&format=png&color=000000"><span>Logout</span></a>
+</div>
+<div class="main">
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="hamburger" id="sidebar-toggle" onclick="openSidebar()"><img src="https://img.icons8.com/?size=100&id=135&format=png&color=6B7280"></button>
+            <div>
+                <h1 id="page-title">Dashboard</h1>
+                <p class="breadcrumb" id="breadcrumb">Ringkasan / Dashboard</p>
+            </div>
+        </div>
+        <div class="admin-info">
+            <span id="wa-status-indicator" class="wa-disconnected">Status: Offline</span>
+            <div class="admin-avatar" id="admin-avatar">AD</div>
+            <div class="admin-detail">
+                <span class="admin-name" id="admin-name">Admin</span>
+                <span class="admin-role">Administrator</span>
+            </div>
+        </div>
+    </div>
+    <div class="content" id="page-content"></div>
+</div>
+<div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-content" id="modal-body"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="/java/AppNorthAdmin.js?v=0000v6panel"></script>
+</body>
+</html>

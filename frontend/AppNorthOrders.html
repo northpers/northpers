@@ -1,0 +1,91 @@
+<header class="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-neutral-200/50 flex items-center w-full">
+    
+    <div class="px-4 h-[50px] border-b border-gray-100 gap-4 flex justify-between items-center bg-gray-50/50">
+        <button onclick="window.handleHeaderClose()">
+            <img src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F" style="height: 20px;">
+        </button>
+        <h1 class="text-[13px] text-black">MY ORDERS</h1>
+    </div>
+
+</header>
+
+<main class="flex-1 overflow-y-auto px-2 py-2 pb-24 w-full space-y-3" id="orders-list-container">
+    <div class="flex flex-col items-center justify-center py-20 gap-2 text-neutral-400">
+        <div class="w-5 h-5 border-2 border-neutral-300 border-t-black rounded-full animate-spin"></div>
+        <p class="text-[11px] font-medium">Preparing your order invoices...</p>
+    </div>
+</main>
+
+
+<div id="detail-popup-modal" class="fixed inset-0 z-55 bg-[#f2f2f7] translate-y-full transition-transform duration-300 ease-out flex flex-col hidden w-full">>
+
+    <main class="flex-1 overflow-y-auto p-2 space-y-2">
+        <div class="bg-white mt-7 p-4 border border-neutral-200 shadow-xs flex items-center gap-3">
+            <div class="flex-1">
+                <h2 class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider border-b border-neutral-100 pb-1.5">Details Invoice</h2>
+                <h1 class="text-sm text-neutral-400 tracking-tight mt-2" id="pop-order-id">NL-XXXXX</h1>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 border border-neutral-200 shadow-xs flex items-center gap-3">
+            <div class="flex-1">
+                <span class="text-[10px] text-neutral-400 block font-bold uppercase border-b border-neutral-100 pb-1.5">Work Status</span>
+                <span class="text-sm font-black text-neutral-800 mt-1" id="pop-delivery-status">Pesanan Diproses</span>
+                <p class="text-[11px] text-neutral-500" id="pop-estimated-arrival">Estimasi tiba:</p>
+                <div id="pop-tracking-box" class="hidden mt-2 border border-neutral-200 rounded-sm p-2 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-neutral-500">Kurir</span>
+                        <span class="text-[10px] font-bold text-neutral-800" id="pop-courier">-</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-neutral-500">No. Resi</span>
+                        <span class="text-[10px] font-bold text-[#DF414F] tracking-wider" id="pop-resi">-</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-neutral-500">Tanggal Kirim</span>
+                        <span class="text-[10px] font-bold text-neutral-800" id="pop-shipped-at">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 border border-neutral-200 shadow-xs space-y-3">
+            <span class="text-[10px] text-neutral-400 block font-bold uppercase border-b border-neutral-100 pb-1.5">Item Detail</span>
+            
+            <div class="flex items-start gap-3.5">
+                
+                <div class="w-14 h-14 bg-neutral-50 border border-neutral-200/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    <img id="pop-product-img" src="" class="w-full h-full object-contain" alt="Product Image" onerror="this.src='https://img.icons8.com/?size=100&id=84024&format=png&color=737373'">
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-sm border-b mb-1 pb-1 border-neutral-100 text-black leading-tight" id="pop-product-name">Product Name</h3>
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
+                            <span id="pop-color">-</span>
+                        </span>
+                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
+                            <span id="pop-size">-</span>
+                        </span>
+                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
+                            <span id="pop-model">-</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-black tracking-tight mt-2" id="pop-total-price">IDR 0</p>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="bg-white p-4 border border-neutral-200 shadow-xs text-xs space-y-2 text-neutral-500">
+            <div class="flex justify-between border-b border-neutral-100 pb-1.5">
+                <span>Payments Methode</span>
+                <span class="font-bold text-neutral-800">NORTHLINE QRIS</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Transaction Date</span>
+                <span class="text-neutral-800" id="pop-date">-</span>
+            </div>
+        </div>
+    </main>
+</div>

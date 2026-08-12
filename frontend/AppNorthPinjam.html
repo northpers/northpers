@@ -1,0 +1,2527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+    <title>NPinjam | Pinjaman Online</title>
+    <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
+    <link rel="stylesheet" href="/css/style.css?v=0000v1css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="/models/face-api/face-api.min.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .no-rounded { border-radius: 0 !important; }
+        .no-rounded-t-lg { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+        .no-rounded-bottom { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+        .n-border { border: 1px solid #e5e7eb; }
+        .n-border-red { border-color: #DF414F; }
+        .active-tab { border-bottom: 2px solid #DF414F; color: #DF414F; font-weight: 700; }
+        .inactive-tab { border-bottom: 2px solid transparent; color: #9ca3af; }
+        .progress-bar { background: #e5e7eb; border-radius: 0; height: 8px; overflow: hidden; }
+        .progress-fill { background: #DF414F; height: 100%; transition: width 0.3s; }
+        .step-done { color: #DF414F; }
+        .step-active { color: #DF414F; border-bottom: 2px solid #DF414F; }
+        .step-pending { color: #d1d5db; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        .n-input { border: 1px solid #d1d5db; border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; width: 100%; background: #fff; outline: none; box-shadow: none; transition: border-color 0.15s; }
+        .n-input:focus { border-color: #DF414F; outline: none; box-shadow: none; ring: none; }
+        .n-input-upper { text-transform: uppercase; }
+        .n-select { border: 1px solid #d1d5db; border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; width: 100%; background: #fff; outline: none; box-shadow: none; }
+        .n-select:focus { border-color: #DF414F; outline: none; box-shadow: none; ring: none; }
+        .n-textarea { border: 1px solid #d1d5db; border-radius: 0; padding: 0.5rem 0.75rem; font-size: 0.75rem; width: 100%; background: #fff; outline: none; box-shadow: none; resize: vertical; }
+        .n-textarea:focus { border-color: #DF414F; outline: none; box-shadow: none; ring: none; }
+        .n-file { font-size: 0.75rem; outline: none; }
+        .n-label { font-weight: 700; color: #374151; display: block; margin-bottom: 0.25rem; font-size: 0.75rem; text-transform: uppercase; }
+        #apply-content input, #apply-content select, #apply-content textarea,
+        #loan-content input, #loan-content select, #loan-content textarea { text-transform: uppercase; }
+        .n-section { display: flex; flex-direction: column; max-height: 85vh; }
+        .n-section-header { flex-shrink: 0; position: sticky; top: 0; background: #fff; z-index: 10; padding: 1rem; border-bottom: 1px solid #e5e7eb; }
+        .n-section-body { flex: 1; overflow-y: auto; padding: 1rem; }
+        .n-section-footer { flex-shrink: 0; padding: 1rem; border-top: 1px solid #e5e7eb; background: #fff; }
+        .main-offset { padding-top: 170px; }
+        #ios-warning-modal { z-index: 99999; }
+        #notif-card { width: 346px; max-width: calc(100vw - 24px); }
+        #npay-overlay { z-index: 99990; }
+        .bg-\[\#DF414F\]\/10 { background-color: rgba(223, 65, 79, 0.1); }
+        .bg-\[\#DF414F\]\/30 { background-color: rgba(223, 65, 79, 0.3); }
+        .bg-\[\#DF414F\]\/5 { background-color: rgba(223, 65, 79, 0.05); }
+        .border-\[\#DF414F\]\/30 { border-color: rgba(223, 65, 79, 0.3); }
+        .text-\[24px\] { font-size: 24px; }
+        .tracking-\[10px\] { letter-spacing: 10px; }
+        .w-\[14px\] { width: 14px; }
+        .max-h-48 { max-height: 12rem; }
+    </style>
+</head>
+<body class="bg-gray-100 text-[#333] text-sm min-h-screen pb-20">
+
+    <!-- HEADER -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white text-gray-700 text-xs no-rounded border-b border-gray-200" style="border-radius:0;">
+        <div class="max-w-6xl mx-auto px-4 py-2 relative flex items-center">
+            <a href="/" class="flex items-center">
+                <img src="https://img.icons8.com/?size=100&id=357&format=png&color=DF414F" class="w-6 h-6">
+            </a>
+            <h1 class="absolute left-1/2 -translate-x-1/2 font-bold text-[14px] text-gray-800">NPinjam</h1>
+        </div>
+    </header>
+
+    <!-- STATUS BAR -->
+    <div class="fixed top-0 left-0 right-0 bg-white border-b z-40" style="padding-top:36px;">
+        <div class="max-w-6xl mx-auto px-4 py-3" id="status-bar">
+            <div class="text-[11px] text-gray-400 mb-1">Halo, <span class="font-semibold text-gray-600" id="greeting-name"></span></div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px]text-gray-500">Limit Pinjaman</span>
+                <span class="text-sm text-[#DF414F] font-bold" id="available-limit">Rp 0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="limit-progress" style="width:0%"></div>
+            </div>
+            <div class="flex justify-between mt-1">
+                <span class="text-[10px] text-gray-400">Terpakai: Rp <span id="used-limit">0</span></span>
+                <span class="text-[10px] text-gray-400">Maks: Rp <span id="max-limit">0</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-offset pb-4 px-4">
+        <!-- TAB NAV -->
+        <div class="flex bg-white border-b no-rounded mb-4" style="border-radius:0;">
+            <button onclick="switchTab('loans')" class="flex-1 py-3 text-[12px] font-bold text-center no-rounded active-tab" id="tab-loans">Pinjaman</button>
+            <button onclick="switchTab('bills')" class="flex-1 py-3 text-[12px] font-bold text-center no-rounded inactive-tab" id="tab-bills">Tagihan</button>
+            <button onclick="switchTab('limit')" class="flex-1 py-3 text-[12px] font-bold text-center no-rounded inactive-tab" id="tab-limit">Limit</button>
+        </div>
+
+        <!-- LOANS TAB -->
+        <div id="content-loans" class="space-y-3">
+            <div id="loans-loading" class="text-center py-2 text-gray-400 text-xs">Memuat...</div>
+            <div id="loans-empty" class="hidden text-center py-8">
+                <div class="w-16 h-16 bg-gray-100 no-rounded flex items-center justify-center mx-auto mb-3">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path d="M3 10h18M7 15h4"/></svg>
+                </div>
+                <p class="text-gray-600 text-xs font-bold mb-1">Belum Ada Pinjaman Aktif</p>
+                <p class="text-gray-400 text-[11px] mb-1">Aktifkan NPinjam untuk mengajukan pinjaman</p>
+                <p class="text-gray-400 text-[10px]">Verifikasi KTP &amp; selfie untuk memulai</p>
+            </div>
+            <div id="loans-list"></div>
+            <button id="apply-loan-btn" onclick="openApplyOrLoan()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded mt-4">Ajukan Pinjaman Baru</button>
+        </div>
+
+        <!-- BILLS TAB -->
+        <div id="content-bills" class="hidden space-y-3 pt-6">
+            <div id="bills-loading" class="text-center py-8 text-gray-400 text-xs">Memuat...</div>
+            <div id="bills-empty" class="hidden text-center py-8 text-gray-400 text-xs">Tidak ada tagihan jatuh tempo</div>
+            <div id="bills-list"></div>
+        </div>
+
+        <!-- LIMIT TAB -->
+        <div id="content-limit" class="hidden space-y-3">
+            <div id="limit-loading" class="text-center py-8 text-gray-400 text-xs">Memuat...</div>
+            <div id="limit-content"></div>
+        </div>
+    </div>
+
+    <!-- PAGE FOOTER -->
+    <div class="max-w-6xl mx-auto px-4 pb-8 pt-2">
+        <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-gray-400">
+            <span class="text-[#DF414F]">&middot;</span>
+            <button onclick="openTerms()" class="text-[#DF414F] hover:text-[#DF414F]">Syarat &amp; Ketentuan</button>
+            <span class="text-[#DF414F]">&middot;</span>
+            <button onclick="openTerms()" class="text-[#DF414F] hover:text-[#DF414F]">Kebijakan Privasi</button>
+        </div>
+        <p class="text-center text-[9px] text-gray-500 mt-2">© 2026 Northline &middot; NPinjam adalah layanan pinjaman digital dari Northline</p>
+    </div>
+
+    <!-- APPLICATION MODAL -->
+    <div id="apply-overlay" class="hidden fixed inset-0 z-[999] bg-white flex flex-col" onclick="if(event.target===this)closeApplyModal()">
+        <div class="flex-shrink-0 sticky top-0 bg-white z-10 p-4 flex justify-between items-center border-b border-gray-200">
+            <div class="flex items-center gap-3">
+                <button onclick="closeApplyModal()" class="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+                <h2 class="font-bold text-[13px]" id="apply-title">Aktifkan NPinjam</h2>
+            </div>
+        </div>
+        <div id="apply-content" class="flex-1 overflow-y-auto p-4"></div>
+        <div id="apply-footer" class="flex-shrink-0 sticky bottom-0 bg-white z-10 p-4 border-t border-gray-200 hidden">
+            <button type="button" onclick="document.getElementById('apply-form').requestSubmit()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Kirim Pengajuan</button>
+        </div>
+    </div>
+
+    <!-- LOAN DETAIL MODAL -->
+    <div id="loan-detail-overlay" class="hidden fixed inset-0 z-[999] bg-black/30 flex items-end justify-center" onclick="if(event.target===this)closeLoanDetail()">
+        <div class="fixed bottom-0 left-0 right-0 bg-white no-rounded-t-lg p-4 max-h-[85vh] overflow-y-auto" style="border-top-left-radius:0; border-top-right-radius:0;">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="font-bold text-[13px]" id="loan-detail-title">Detail Pinjaman</h2>
+                <button onclick="closeLoanDetail()" class="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div id="loan-detail-content"></div>
+        </div>
+    </div>
+
+    <!-- TERMS & POLICIES MODAL -->
+    <div id="terms-overlay" class="hidden fixed inset-0 z-[999] bg-black/40 flex items-end justify-center" onclick="if(event.target===this)closeTerms()">
+        <div class="fixed bottom-0 left-0 right-0 bg-white flex flex-col" style="border-top-left-radius:0; border-top-right-radius:0; max-height:85vh;">
+            <div class="flex-shrink-0 sticky top-0 bg-white z-10 p-4 flex justify-between items-center border-b border-[#DF414F]/20">
+                <h2 class="font-bold text-[14px] text-gray-700">Syarat &amp; Kebijakan NPinjam</h2>
+                <button onclick="closeTerms()" class="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div id="terms-content" class="flex-1 min-h-0 overflow-y-auto p-4 text-[11px] text-gray-600 leading-relaxed"></div>
+            <div class="flex-shrink-0 sticky bottom-0 bg-white z-10 p-4 border-t border-[#DF414F]/20">
+                <button onclick="closeTerms()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Mengerti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOAN MODAL -->
+    <div id="loan-overlay" class="hidden fixed inset-0 z-[999] bg-white flex flex-col" onclick="if(event.target===this)closeLoanModal()">
+        <div class="flex-shrink-0 sticky top-0 bg-white z-10 p-4 flex justify-between items-center border-b border-gray-200">
+            <div class="flex items-center gap-3">
+                <button onclick="closeLoanModal()" class="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+                <h2 class="font-bold text-[13px]" id="loan-title">Ajukan Pinjaman</h2>
+            </div>
+        </div>
+        <div id="loan-content" class="flex-1 overflow-y-auto p-4"></div>
+        <div id="loan-footer" class="flex-shrink-0 sticky bottom-0 bg-white z-10 p-4 border-t border-gray-200 hidden">
+            <button type="button" id="loan-submit-btn" onclick="submitLoan()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Ajukan Pinjaman</button>
+        </div>
+    </div>
+
+    <!-- BOTTOM CTA -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 z-50 md:hidden" id="bottom-cta">
+        <button id="apply-cta-btn" onclick="openApplyOrLoan()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Ajukan NPinjam</button>
+    </div>
+
+<script>function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.charCodeAt(i)-32-10+95)%95)+32);}return r;}
+
+let currentTab = 'loans';
+let npinjamState = { active: false, profile: null, loans: [], bills: [] };
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['loans','bills','limit'].forEach(t => {
+    const content = document.getElementById('content-' + t);
+    const btn = document.getElementById('tab-' + t);
+    if (t === tab) {
+      content.classList.remove('hidden');
+      btn.className = 'flex-1 py-3 text-[12px] font-bold text-center no-rounded active-tab';
+    } else {
+      content.classList.add('hidden');
+      btn.className = 'flex-1 py-3 text-[12px] font-bold text-center no-rounded inactive-tab';
+    }
+  });
+  if (tab === 'loans') renderLoans();
+  if (tab === 'bills') renderBills();
+  if (tab === 'limit') renderLimit();
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9}~k~ }'), { credentials: 'include' });
+    if (res.status === 401) {
+      window.location.href = '/auth?redirect=' + encodeURIComponent('/npinjam');
+      return;
+    }
+    const data = await res.json();
+    if (data.success) {
+      npinjamState = {
+        active: data.active !== undefined ? data.active : (data.profile && data.profile.is_active),
+        profile: data.profile,
+        application: data.application,
+        loans: data.activeLoans || [],
+        bills: data.bills || [],
+      };
+      updateStatusBar();
+      renderApplyCTA();
+      renderLoans();
+      renderBills();
+      renderLimit();
+      checkNotifications();
+    } else {
+      showApiError(data.message || 'Gagal memuat data');
+    }
+  } catch (e) {
+    showApiError('Gagal menghubungi server');
+    console.error('Load status error:', e);
+  }
+}
+
+function showApiError(msg) {
+  const el = document.getElementById('status-bar');
+  if (el) {
+    el.innerHTML = '<div class="text-red-500 text-[11px] text-center py-2">' + msg + '</div>';
+  }
+}
+
+function checkNotifications() {
+  const shownKey = 'npinjam_shown_notifs';
+  let shown = [];
+  try { shown = JSON.parse(localStorage.getItem(shownKey) || '[]'); } catch (e) {}
+  fetch(_d('9kzs9k ~r9xy~spsmk~syx}'), { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      const list = (data.notifications || data || []);
+      if (!Array.isArray(list)) return;
+      const fresh = list.filter(n => n && n.id && !shown.includes(n.id)).slice(0, 3);
+      if (fresh.length === 0) return;
+      fresh.forEach((n, i) => {
+        setTimeout(() => {
+          if (typeof showIosModal === 'function') {
+            const msg = (n.title ? n.title + ': ' : '') + (n.message || 'Anda memiliki notifikasi baru');
+            showIosModal(msg);
+          }
+        }, (i + 1) * 1500);
+      });
+      shown = shown.concat(fresh.map(n => n.id));
+      try { localStorage.setItem(shownKey, JSON.stringify(shown)); } catch (e) {}
+    })
+    .catch(() => {});
+}
+
+function renderApplyCTA() {
+  const app = npinjamState.application;
+  const pending = app && app.status === 'pending';
+  const active = !!(npinjamState.profile && npinjamState.profile.is_active);
+  const pendingLoan = npinjamState.loans.find(l => l.status === 'pending');
+  const activeLoan = npinjamState.loans.find(l => l.status === 'active');
+
+  const loanBtn = document.getElementById('apply-loan-btn');
+  if (loanBtn) {
+    loanBtn.onclick = () => openApplyOrLoan();
+    if (pending) {
+      loanBtn.className = 'w-full p-3 text-[11px] font-bold no-rounded mt-4 bg-amber-50 text-amber-700 border border-amber-200';
+      loanBtn.textContent = 'Pengajuan NPinjam Anda sedang diverifikasi. Mohon tunggu 1x24 jam kerja.';
+    } else if (pendingLoan) {
+      loanBtn.className = 'w-full p-3 text-[11px] font-bold no-rounded mt-4 bg-amber-50 text-amber-700 border border-amber-200';
+      loanBtn.textContent = 'Pengajuan pinjaman Anda sedang diverifikasi admin. Mohon tunggu 1x24 jam kerja.';
+    } else if (activeLoan) {
+      loanBtn.className = 'w-full p-3 text-[11px] font-bold no-rounded mt-4 bg-amber-50 text-amber-700 border border-amber-200';
+      loanBtn.textContent = 'Anda memiliki pinjaman aktif yang belum lunas. Selesaikan terlebih dahulu untuk mengajukan pinjaman baru.';
+    } else {
+      loanBtn.className = 'w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded mt-4';
+      loanBtn.textContent = active ? 'Ajukan Pinjaman Baru' : 'Ajukan NPinjam';
+    }
+  }
+
+  const ctaBtn = document.getElementById('apply-cta-btn');
+  if (ctaBtn) {
+    ctaBtn.onclick = () => openApplyOrLoan();
+    if (pending) {
+      ctaBtn.className = 'w-full py-2 text-[11px] font-bold no-rounded bg-amber-50 text-amber-700 border border-amber-200';
+      ctaBtn.textContent = 'NPinjam Sedang Diverifikasi';
+    } else if (pendingLoan) {
+      ctaBtn.className = 'w-full py-2 text-[11px] font-bold no-rounded bg-amber-50 text-amber-700 border border-amber-200';
+      ctaBtn.textContent = 'Pinjaman Sedang Diverifikasi';
+    } else if (activeLoan) {
+      ctaBtn.className = 'w-full py-2 text-[11px] font-bold no-rounded bg-amber-50 text-amber-700 border border-amber-200';
+      ctaBtn.textContent = 'Lunasi Pinjaman Aktif Anda';
+    } else {
+      ctaBtn.className = 'w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded';
+      ctaBtn.textContent = active ? 'Ajukan Pinjaman' : 'Ajukan NPinjam';
+    }
+  }
+}
+
+function updateStatusBar() {
+  const p = npinjamState.profile;
+  const nameEl = document.getElementById('greeting-name');
+  if (nameEl && npinjamState.application && npinjamState.application.full_name) {
+    nameEl.textContent = npinjamState.application.full_name;
+  }
+  if (!p) return;
+  const available = parseFloat(p.available_limit || 0);
+  const max = parseFloat(p.max_limit || 0);
+  const used = max - available;
+  const pct = max > 0 ? Math.round((used / max) * 100) : 0;
+  document.getElementById('available-limit').textContent = 'Rp ' + Math.round(available).toLocaleString('id-ID');
+  document.getElementById('used-limit').textContent = Math.round(used).toLocaleString('id-ID');
+  document.getElementById('max-limit').textContent = Math.round(max).toLocaleString('id-ID');
+  document.getElementById('limit-progress').style.width = pct + '%';
+}
+
+function renderLoans() {
+  const list = document.getElementById('loans-list');
+  const loading = document.getElementById('loans-loading');
+  const empty = document.getElementById('loans-empty');
+  loading.classList.add('hidden');
+
+  if (npinjamState.loans.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  list.innerHTML = npinjamState.loans.map(loan => {
+    const isPending = loan.status === 'pending';
+    const isActive = loan.status === 'active';
+    const statusLabel = isPending ? 'MENUNGGU' : isActive ? 'AKTIF' : loan.status.toUpperCase();
+    return `
+    <div class="bg-white n-border no-rounded p-3 pt-5 fade-in cursor-pointer relative overflow-hidden" onclick="showLoanDetail('${loan.id}')">
+      <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#DF414F]"></div>
+      <div class="flex justify-between items-start mb-2">
+        <span class="text-[11px] font-bold text-[#DF414F]">${loan.loan_number}</span>
+        <span class="text-[10px] px-2 py-0.5 bg-[#DF414F]/10 text-[#DF414F] no-rounded font-bold">${statusLabel}</span>
+      </div>
+      <div class="text-[13px] font-bold mb-1">Rp ${Math.round(loan.principal).toLocaleString('id-ID')}</div>
+      <div class="text-[11px] text-gray-500 mb-2">${loan.tenor_months} minggu &middot; ${Math.round(loan.monthly_installment).toLocaleString('id-ID')}/minggu</div>
+      ${isPending ? `
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] text-[#DF414F] font-bold">MENUNGGU VERIFIKASI ADMIN</span>
+        </div>
+      ` : `
+        <div class="flex items-center justify-between">
+          <div class="flex-1 mr-2">
+            <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+              <span>${loan.paid_count || 0}/${loan.total_count || loan.tenor_months} cicilan lunas</span>
+              <span class="font-bold text-[#DF414F]">${Math.round((loan.paid_count || 0) / (loan.total_count || loan.tenor_months) * 100)}%</span>
+            </div>
+            <div class="progress-bar h-1.5">
+              <div class="progress-fill" style="width:${Math.round((loan.paid_count || 0) / (loan.total_count || loan.tenor_months) * 100)}%"></div>
+            </div>
+          </div>
+          <button onclick="event.stopPropagation(); openNPinjamPayment('${loan.id}')" class="bg-[#DF414F] text-white px-3 py-1.5 text-[10px] font-bold no-rounded shrink-0">Bayar Cicilan</button>
+        </div>
+      `}
+    </div>`;
+  }).join('');
+}
+
+function renderBills() {
+  const list = document.getElementById('bills-list');
+  const loading = document.getElementById('bills-loading');
+  const empty = document.getElementById('bills-empty');
+  loading.classList.add('hidden');
+
+  if (npinjamState.bills.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  list.innerHTML = npinjamState.bills.map(bill => {
+    const dueDate = new Date(bill.due_date);
+    const isOverdue = bill.status === 'overdue';
+    const diffDays = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+    const statusLabel = isOverdue ? 'TERLAMBAT' : 'Jatuh Tempo';
+    return `
+    <div class="bg-white n-border no-rounded p-3 fade-in relative overflow-hidden ${isOverdue ? 'border-[#DF414F]' : ''}">
+      <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#DF414F]"></div>
+      <div class="flex justify-between items-start mb-1">
+        <span class="text-[11px] font-bold text-[#DF414F]">${bill.loan_number}</span>
+        <span class="text-[10px] ${isOverdue ? 'text-[#DF414F] bg-[#DF414F]/10' : 'text-[#DF414F] bg-[#DF414F]/10'} px-1.5 py-0.5 no-rounded font-bold">${statusLabel}</span>
+      </div>
+      <div class="text-[11px] text-gray-500 mb-1">Cicilan ke-${bill.installment_no} &middot; ${bill.due_date}${isOverdue ? ' (' + Math.abs(diffDays) + ' hari terlambat)' : ' (' + diffDays + ' hari lagi)'}</div>
+      <div class="flex items-center justify-between">
+        <span class="text-[14px] font-bold">Rp ${Math.round(bill.total_amount).toLocaleString('id-ID')}</span>
+        <button onclick="payBill(${bill.id})" class="bg-[#DF414F] text-white px-3 py-1.5 text-[10px] font-bold no-rounded">Bayar Sekarang</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLimit() {
+  const el = document.getElementById('limit-content');
+  const loading = document.getElementById('limit-loading');
+  loading.classList.add('hidden');
+  const p = npinjamState.profile;
+  if (!p) { el.innerHTML = '<p class="text-center py-4 text-gray-400 text-xs">Data profil tidak ditemukan</p>'; return; }
+
+  el.innerHTML = `
+    <div class="bg-white n-border no-rounded p-4 fade-in">
+      <div class="text-center mb-4">
+        <div class="text-[10px] text-gray-400 mb-1">SKOR KREDIT</div>
+        <div class="text-3xl font-bold text-[#DF414F]">${p.score}</div>
+        <div class="text-[11px] font-bold text-gray-600">${p.tier ? p.tier.toUpperCase() : '-'}</div>
+      </div>
+      <div class="space-y-3 text-[11px]">
+        <div class="flex justify-between"><span class="text-gray-500">Riwayat Bayar Tepat Waktu</span><span class="font-bold">${p.repayment_rate || 0}%</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Rata-rata Saldo NorthPay</span><span class="font-bold">Rp ${Math.round(p.avg_northpay_balance || 0).toLocaleString('id-ID')}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Transaksi Bulanan</span><span class="font-bold">${p.monthly_tx_count || 0}x</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Usia Akun</span><span class="font-bold">${p.account_age_days || 0} hari</span></div>
+      </div>
+    </div>
+    <div class="bg-white n-border no-rounded p-4">
+      <div class="text-[12px] font-bold mb-2">Detail Limit</div>
+      <div class="space-y-2 text-[11px]">
+        <div class="flex justify-between"><span class="text-gray-500">Max Limit</span><span class="font-bold">Rp ${Math.round(p.max_limit || 0).toLocaleString('id-ID')}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Limit Tersedia</span><span class="font-bold text-[#DF414F]">Rp ${Math.round(p.available_limit || 0).toLocaleString('id-ID')}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Sudah Dipakai</span><span class="font-bold">Rp ${Math.round(p.used_limit || 0).toLocaleString('id-ID')}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Total Outstanding</span><span class="font-bold">Rp ${Math.round(p.total_outstanding || 0).toLocaleString('id-ID')}</span></div>
+      </div>
+    </div>
+    <div class="n-border no-rounded p-4 bg-gray-50">
+      <div class="text-[11px] font-bold mb-2">Cara Tingkatkan Skor</div>
+      <ul class="space-y-1.5 text-[11px] text-gray-600">
+        <li>&bull; Bayar cicilan tepat waktu setiap bulan</li>
+        <li>&bull; Pertahankan saldo NorthPay minimal Rp 100.000</li>
+        <li>&bull; Lakukan transaksi minimal 5x per bulan</li>
+        <li>&bull; Verifikasi KTP dan data diri lengkap</li>
+        <li>&bull; Pertahankan akun aktif minimal 3 bulan</li>
+      </ul>
+    </div>
+  `;
+}
+
+async function payBill(billId) {
+  const bill = (npinjamState.bills || []).find(b => b.id == billId);
+  if (bill) return openNPinjamPayment(bill);
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9lsvv}'), { credentials: 'include' });
+    const data = await res.json();
+    const found = (data.bills || []).find(b => b.id == billId);
+    if (found) return openNPinjamPayment(found);
+    alert('Cicilan tidak ditemukan.');
+  } catch (e) {
+    alert('Gagal memuat data cicilan');
+  }
+}
+
+let npinjamNpayBill = null;
+let npinjamNpaySettings = { hasPin: false };
+
+function openNPinjamPayment(bill) {
+  npinjamNpayBill = bill;
+  closeNPinjamPayment();
+  const overlay = document.createElement('div');
+  overlay.id = 'npay-overlay';
+  overlay.className = 'fixed inset-0 bg-white z-[9999]';
+  overlay.innerHTML = `
+    <div class="flex flex-col h-full">
+      <div class="flex items-center justify-between px-4 py-3 n-border">
+        <button onclick="closeNPinjamPayment()" class="text-gray-500 text-[14px] font-bold">✕</button>
+        <div class="text-[13px] font-bold">Bayar Cicilan</div>
+        <div class="w-[14px]"></div>
+      </div>
+      <div id="npay-body" class="flex-1 overflow-y-auto p-4"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  npayRenderMethods(bill);
+}
+
+function closeNPinjamPayment() {
+  const overlay = document.getElementById('npay-overlay');
+  if (overlay) overlay.remove();
+  document.body.style.overflow = '';
+}
+
+async function npayRenderMethods(bill) {
+  const body = document.getElementById('npay-body');
+  try {
+    const s = await fetch(_d('9kzs9xy|~rzk$9}o~~sxq}'), { credentials: 'include' }).then(r => r.json());
+    npinjamNpaySettings = s.settings || npinjamNpaySettings;
+  } catch (e) {}
+  body.innerHTML = `
+    <div class="text-center mb-5">
+      <div class="text-[10px] text-gray-400 mb-1">CICILAN NPINJAM</div>
+      <div class="text-[24px] font-bold text-[#DF414F]">Rp ${Math.round(bill.total_amount).toLocaleString('id-ID')}</div>
+      <div class="text-[11px] text-gray-400 mt-1">${bill.loan_number} &middot; Cicilan ke-${bill.installment_no} &middot; Jatuh tempo ${bill.due_date}</div>
+    </div>
+    <div class="text-[11px] font-bold mb-2">Pilih Metode Pembayaran</div>
+    <div onclick="npayNorthPay()" class="flex items-center gap-3 bg-white n-border no-rounded p-3 mb-2 cursor-pointer active:bg-gray-50">
+      <div class="w-9 h-9 bg-[#DF414F] rounded-full flex items-center justify-center text-white font-bold text-[10px]">NP</div>
+      <div class="flex-1">
+        <div class="text-[12px] font-bold">NorthPay</div>
+        <div class="text-[10px] text-gray-400">Bayar dengan saldo NorthPay Anda</div>
+      </div>
+      <span class="text-[10px] text-[#DF414F] font-bold">BAYAR &rsaquo;</span>
+    </div>
+    <div onclick="npayQRIS()" class="flex items-center gap-3 bg-white n-border no-rounded p-3 mb-2 cursor-pointer active:bg-gray-50">
+      <div class="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold">QR</div>
+      <div class="flex-1">
+        <div class="text-[12px] font-bold">QRIS</div>
+        <div class="text-[10px] text-gray-400">Scan kode QR lewat e-wallet / mobile banking</div>
+      </div>
+      <span class="text-[10px] text-[#DF414F] font-bold">BAYAR &rsaquo;</span>
+    </div>
+  `;
+}
+
+async function npayNorthPay() {
+  const bill = npinjamNpayBill;
+  if (!bill) return;
+  if (!npinjamNpaySettings.hasPin) {
+    showIosModal('PIN NorthPay belum diatur', 'Silakan atur PIN NorthPay terlebih dahulu melalui menu Profil > NorthPay.');
+    return;
+  }
+  npayPinModal(bill);
+}
+
+function npayPinModal(bill) {
+  const body = document.getElementById('npay-body');
+  body.innerHTML = `
+    <div class="text-center mb-4">
+      <div class="text-[11px] text-gray-400 mb-1">Masukkan PIN NorthPay</div>
+      <div class="text-[22px] font-bold text-[#DF414F]">Rp ${Math.round(bill.total_amount).toLocaleString('id-ID')}</div>
+      <div class="text-[11px] text-gray-400">${bill.loan_number} &middot; Cicilan ke-${bill.installment_no}</div>
+    </div>
+    <input id="npay-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full text-center text-[20px] tracking-[10px] n-border no-rounded p-3 mb-3 outline-none" autofocus />
+    <button id="npay-pin-btn" onclick="npaySubmitPin()" class="w-full bg-[#DF414F] text-white font-bold py-3 text-[13px] no-rounded">Konfirmasi Pembayaran</button>
+    <div class="text-center mt-3">
+      <button onclick="npayRenderMethods(npinjamNpayBill)" class="text-[11px] text-gray-400 underline">Pilih metode lain</button>
+    </div>
+  `;
+  const pinEl = document.getElementById('npay-pin');
+  pinEl.focus();
+  pinEl.addEventListener('keydown', e => { if (e.key === 'Enter') npaySubmitPin(); });
+}
+
+async function npaySubmitPin() {
+  const pin = document.getElementById('npay-pin').value;
+  if (!pin || !/^\d{6}$/.test(pin)) {
+    showIosModal('PIN Tidak Valid', 'PIN NorthPay harus 6 digit angka.');
+    return;
+  }
+  const btn = document.getElementById('npay-pin-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const bill = npinjamNpayBill;
+  try {
+    const verify = await fetch(_d('9kzs9xy|~rzk$9}o~~sxq}9zsx9!o|sp$'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ pin })
+    }).then(r => r.json());
+    if (!verify.success) {
+      showIosModal('PIN Salah', verify.message || 'PIN NorthPay salah.');
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+      return;
+    }
+    const res = await fetch(_d('9kzs9xzsxtkw9zk$9') + bill.id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ payment_method: 'northpay' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      npaySuccess(bill, 'NorthPay', 'TXN-' + data.paymentId);
+    } else {
+      showIosModal('Pembayaran Gagal', data.message || 'Gagal memproses pembayaran.');
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+  } catch (e) {
+    showIosModal('Error', 'Terjadi kesalahan. Silakan coba lagi.');
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+async function npayQRIS() {
+  const bill = npinjamNpayBill;
+  if (!bill) return;
+  const body = document.getElementById('npay-body');
+  const amount = Math.round(bill.total_amount);
+  const qrisImage = 'https://nl.hostinesia.my.id/public/image/Northline_Qr.jpeg';
+  body.innerHTML = `
+    <div class="text-center mb-4">
+      <div class="text-[10px] text-gray-400 mb-1">BAYAR VIA QRIS</div>
+      <div class="text-[22px] font-bold text-[#DF414F]">Rp ${amount.toLocaleString('id-ID')}</div>
+      <div class="text-[11px] text-gray-400 mt-1">${bill.loan_number} &middot; Cicilan ke-${bill.installment_no}</div>
+    </div>
+    <div class="bg-white n-border no-rounded p-4 flex justify-center mb-3">
+      <img src="${qrisImage}" alt="QRIS" class="w-56 h-56 object-contain" loading="lazy" />
+    </div>
+    <div class="text-center text-[10px] text-gray-400 mb-4">
+      Buka aplikasi e-wallet / mobile banking, pilih menu QRIS / Scan, lalu pindai kode QR di atas.
+    </div>
+    <button id="npay-qris-btn" onclick="npayConfirmQRIS()" class="w-full bg-[#DF414F] text-white font-bold py-3 text-[13px] no-rounded">Saya Sudah Bayar</button>
+    <div class="text-center mt-3">
+      <button onclick="npayRenderMethods(npinjamNpayBill)" class="text-[11px] text-gray-400 underline">Pilih metode lain</button>
+    </div>
+  `;
+}
+
+async function npayConfirmQRIS() {
+  const btn = document.getElementById('npay-qris-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const bill = npinjamNpayBill;
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9zk$9') + bill.id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ payment_method: 'qris' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      npaySuccess(bill, 'QRIS', 'TXN-' + data.paymentId);
+    } else {
+      showIosModal('Pembayaran Gagal', data.message || 'Gagal memproses pembayaran.');
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+  } catch (e) {
+    showIosModal('Error', 'Terjadi kesalahan. Silakan coba lagi.');
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+function npaySuccess(bill, method, txnId) {
+  const body = document.getElementById('npay-body');
+  const amount = Math.round(bill.total_amount);
+  body.innerHTML = `
+    <div class="text-center pt-10">
+      <div class="w-16 h-16 mx-auto rounded-full bg-[#DF414F] flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div class="text-[13px] font-bold mb-1">Pembayaran Berhasil</div>
+      <div class="text-[24px] font-bold text-[#DF414F] mb-1">Rp ${amount.toLocaleString('id-ID')}</div>
+      <div class="text-[11px] text-gray-400 mb-5">${method} &middot; ${txnId}</div>
+      <div class="bg-gray-50 n-border no-rounded p-3 text-[11px] mb-6">
+        <div class="flex justify-between mb-1"><span class="text-gray-400">Pinjaman</span><span class="font-bold">${bill.loan_number}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Cicilan</span><span class="font-bold">Ke-${bill.installment_no}</span></div>
+      </div>
+      <button onclick="closeNPinjamPayment(); loadStatus();" class="w-full bg-[#DF414F] text-white font-bold py-3 text-[13px] no-rounded">Selesai</button>
+    </div>
+  `;
+}
+
+function showApplySection() {
+  const overlay = document.getElementById('apply-overlay');
+  const content = document.getElementById('apply-content');
+  const title = document.getElementById('apply-title');
+  const footer = document.getElementById('apply-footer');
+  footer.classList.add('hidden');
+  const app = npinjamState.application;
+  const hasProfile = npinjamState.profile;
+
+  if (app && app.status === 'pending') {
+    title.textContent = 'Pengajuan Sedang Diproses';
+    content.innerHTML = `
+      <div class="text-center py-6">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DF414F" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <p class="font-bold text-sm mb-1">Pengajuan NPinjam Anda</p>
+        <p class="text-xs text-gray-500 mb-4">NPinjam Anda sedang dalam proses verifikasi</p>
+        <div class="bg-gray-50 n-border no-rounded p-3 text-left text-[11px] mb-4">
+          <div class="flex justify-between mb-1"><span class="text-gray-500">NIK</span><span class="font-bold">${app.nik}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-gray-500">Nama</span><span class="font-bold">${app.full_name}</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">Status</span><span class="font-bold text-amber-600">PENDING</span></div>
+        </div>
+        <p class="text-[10px] text-gray-400">Mohon tunggu, verifikasi selesai maksimal 1x24 jam kerja.</p>
+      </div>
+    `;
+  } else if (app && app.status === 'approved' && !hasProfile) {
+    title.textContent = 'Aktivasi NPinjam';
+    content.innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-xs mb-3">Pengajuan Anda disetujui! Selesaikan aktivasi berikut:</p>
+        <button onclick="activateAccount()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Aktifkan NPinjam Sekarang</button>
+      </div>
+    `;
+  } else if (app && app.status === 'rejected') {
+    title.textContent = 'Pengajuan Ditolak';
+    content.innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-xs text-red-500 mb-2">Pengajuan Anda ditolak</p>
+        <p class="text-[11px] text-gray-500 mb-3">${app.reject_reason || 'Alasan tidak disebutkan'}</p>
+        <p class="text-[11px] text-gray-400">Akun ini sudah memiliki pengajuan NPinjam dan tidak dapat mengajukan kembali.</p>
+      </div>
+    `;
+  } else {
+    title.textContent = 'Aktifkan NPinjam';
+    content.innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-xs mb-3">Selesaikan verifikasi KTP untuk mengaktifkan NPinjam</p>
+        <button onclick="showApplyForm()" class="w-full bg-[#DF414F] text-white py-2 text-[12px] font-bold no-rounded">Mulai Pengajuan</button>
+      </div>
+    `;
+  }
+  overlay.classList.remove('hidden');
+}
+
+function showApplyForm() {
+  if (npinjamState.application) {
+    showApplySection();
+    return;
+  }
+  const title = document.getElementById('apply-title');
+  const content = document.getElementById('apply-content');
+  const footer = document.getElementById('apply-footer');
+  title.textContent = 'Pengajuan NPinjam';
+  footer.classList.remove('hidden');
+  content.innerHTML = `
+    <form id="apply-form" onsubmit="return submitApplication(event)">
+      <div id="apply-error" class="hidden text-red-500 text-[10px] mb-2 p-2 bg-red-50 no-rounded"></div>
+      <div class="space-y-3">
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">NIK (16 digit) *</label>
+          <input type="text" id="nik" maxlength="16" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F] n-input-upper" placeholder="Contoh: 3273xxxxxx">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Nama Lengkap (sesuai KTP) *</label>
+          <input type="text" id="full_name" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F] n-input-upper" placeholder="Nama lengkap">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Tempat / Tanggal Lahir</label>
+          <div class="flex gap-2">
+            <input type="text" id="birth_place" class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F] n-input-upper" placeholder="Kota">
+            <input type="date" id="birth_date" class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+          </div>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Jenis Kelamin *</label>
+          <select id="gender" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="">Pilih...</option>
+            <option value="L">Laki-laki</option>
+            <option value="P">Perempuan</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Provinsi *</label>
+          <select id="address_province" required onchange="loadCities()" class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="">Pilih Provinsi...</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kota / Kabupaten *</label>
+          <select id="address_city" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="">Pilih Kota...</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kecamatan</label>
+          <input type="text" id="address_district" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Kecamatan">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kelurahan / Desa</label>
+          <input type="text" id="address_village" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Kelurahan">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">RT / RW</label>
+          <input type="text" id="address_rt_rw" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="001/002">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kode Pos</label>
+          <input type="text" id="address_postal_code" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="41xxx">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Alamat Lengkap *</label>
+          <textarea id="address_detail" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" rows="2" placeholder="Nama jalan, no rumah, RT/RW, kelurahan..."></textarea>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Pekerjaan *</label>
+          <select id="job_type" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="">Pilih...</option>
+            <option value="Karyawan Swasta">Karyawan Swasta</option>
+            <option value="Karyawan BUMN">Karyawan BUMN</option>
+            <option value="PNS">PNS / Pegawai Negeri</option>
+            <option value="Wiraswasta">Wiraswasta</option>
+            <option value="Pedagang">Pedagang</option>
+            <option value="Buruh Harian Lepas">Buruh Harian Lepas</option>
+            <option value="Ibu Rumah Tangga">Ibu Rumah Tangga</option>
+            <option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Industri</label>
+          <input type="text" id="job_industry" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Contoh: Fashion, Teknologi...">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Penghasilan / Bulan *</label>
+          <select id="monthly_income_range" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="">Pilih...</option>
+            <option value="<3jt">Di bawah Rp 3.000.000</option>
+            <option value="3jt-5jt">Rp 3.000.000 - 5.000.000</option>
+            <option value="5jt-10jt">Rp 5.000.000 - 10.000.000</option>
+            <option value="10jt-20jt">Rp 10.000.000 - 20.000.000</option>
+            <option value=">20jt">Di atas Rp 20.000.000</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Sumber Dana Utama</label>
+          <select id="income_source" class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:ring-0 focus:border-[#DF414F]">
+            <option value="Gaji">Gaji</option>
+            <option value="Usaha">Usaha Sendiri</option>
+            <option value="Bantuan Keluarga">Bantuan Keluarga</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Nama Gadis Ibu Kandung *</label>
+          <input type="text" id="mother_maiden_name" required class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Nama ibu kandung">
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kontak Darurat 1 *</label>
+          <div class="flex gap-2">
+            <input type="text" id="emergency_contact_1_name" required class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Nama">
+            <input type="tel" id="emergency_contact_1_phone" required class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="No. HP">
+          </div>
+        </div>
+        <div>
+          <label class="font-bold text-gray-700 block mb-1 uppercase tracking-wider text-[10px]">Kontak Darurat 2 *</label>
+          <div class="flex gap-2">
+            <input type="text" id="emergency_contact_2_name" required class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="Nama">
+            <input type="tel" id="emergency_contact_2_phone" required class="flex-1 border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:ring-0 focus:border-[#DF414F]" placeholder="No. HP">
+          </div>
+        </div>
+        <div class="border n-border no-rounded p-3">
+          <label class="font-bold text-gray-700 block mb-2 uppercase tracking-wider text-[10px]">Verifikasi Identitas (Kamera Saja)</label>
+          <p class="text-[10px] text-gray-500 mb-3">Gunakan kamera untuk scan KTP dan selfie. File upload dinonaktifkan untuk keamanan.</p>
+          
+          <!-- KTP SCANNER SECTION -->
+          <div class="mb-4">
+            <label class="font-bold text-gray-700 block mb-2 uppercase tracking-wider text-[10px]">1. Scan KTP Depan (Kamera Belakang)</label>
+            <div id="ktp-scanner-container" class="relative bg-gray-900 no-rounded overflow-hidden" style="aspect-ratio: 4/3;">
+              <video id="ktp-video" class="w-full h-full object-cover" playsinline muted></video>
+              <canvas id="ktp-overlay" class="absolute top-0 left-0 w-full h-full" style="pointer-events:none;"></canvas>
+              <img id="ktp-captured-preview" class="hidden absolute inset-0 w-full h-full object-cover" alt="hasil scan ktp">
+              <div id="ktp-guide" class="absolute inset-0 hidden items-center justify-center pointer-events-none">
+                <div class="relative w-[92%]" style="aspect-ratio: 85.6/53.98;">
+                  <div class="absolute inset-0 border-4 border-white"></div>
+                  <div class="absolute border-2 border-white/70" style="right:3%; top:14%; bottom:14%; width:32%;"></div>
+                  <div class="absolute bottom-1 left-0 right-0 text-center">
+                    <span class="inline-block bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 no-rounded">Arahkan KTP ke dalam frame</span>
+                  </div>
+                </div>
+              </div>
+              <div id="ktp-status" class="absolute bottom-4 left-4 right-4 hidden justify-center">
+                <span id="ktp-status-text" class="bg-black/70 text-white text-[10px] font-bold px-3 py-1 no-rounded">Menunggu KTP...</span>
+              </div>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <button type="button" id="ktp-start-btn" class="flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded" onclick="startKTPScanner()">Mulai Scan KTP</button>
+              <button type="button" id="ktp-capture-btn" class="hidden flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded" onclick="captureKTP()">Ambil Foto KTP</button>
+              <button type="button" id="ktp-retake-btn" class="hidden flex-1 bg-gray-100 text-gray-600 py-2 text-[11px] font-bold no-rounded" onclick="retakeKTP()">Ulangi Scan</button>
+            </div>
+            <canvas id="ktp-capture-canvas" class="hidden"></canvas>
+          </div>
+          
+          <!-- SELFIE VERIFICATION SECTION -->
+          <div class="mt-4 pt-4">
+            <label class="font-bold text-gray-700 block mb-2 uppercase tracking-wider text-[10px]">2. Selfie Verifikasi Wajah (Kamera Depan)</label>
+            <p class="text-[10px] text-gray-500 mb-2">Kedipkan mata & putar kepala saat diminta untuk liveness check</p>
+            <div id="selfie-container" class="relative bg-gray-900 no-rounded overflow-hidden" style="aspect-ratio: 1/1;">
+              <video id="selfie-video" class="w-full h-full object-cover" style="transform: scaleX(-1);" playsinline muted></video>
+              <canvas id="selfie-overlay" class="absolute top-0 left-0 w-full h-full" style="pointer-events:none;"></canvas>
+              <img id="selfie-captured-preview" class="hidden absolute inset-0 w-full h-full object-cover" alt="hasil selfie">
+              <div id="selfie-guide" class="absolute inset-0 hidden items-center justify-center pointer-events-none">
+                <div class="relative w-[80%]" style="aspect-ratio: 4/5;">
+                  <div class="absolute inset-0 border-4 border-white rounded-full bg-transparent"></div>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="bg-black/50 text-white text-[10px] font-bold px-3 py-1 no-rounded text-center">Posisikan wajah di dalam frame</div>
+                  </div>
+                </div>
+              </div>
+              <div id="selfie-status" class="absolute bottom-4 left-4 right-4 hidden justify-center">
+                <span id="selfie-status-text" class="bg-black/70 text-white text-[10px] font-bold px-3 py-1 no-rounded">Menunggu wajah...</span>
+              </div>
+              <div id="liveness-indicator" class="absolute top-2 right-2 hidden gap-1">
+                <span id="blink-status" class="bg-black/70 text-white text-[9px] px-2 py-0.5 no-rounded">👁 Blink: -</span>
+                <span id="pose-status" class="bg-black/70 text-white text-[9px] px-2 py-0.5 no-rounded">🔄 Pose: -</span>
+                <span id="liveness-pct" class="bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 no-rounded">0%</span>
+              </div>
+            </div>
+            <div class="flex gap-2 mt-2">
+              <button type="button" id="selfie-start-btn" class="flex-1 bg-gray-400 text-white py-2 text-[11px] font-bold no-rounded" onclick="startSelfieVerify()" disabled>Mulai Selfie</button>
+              <button type="button" id="selfie-capture-btn" class="hidden flex-1 bg-gray-400 text-white py-2 text-[11px] font-bold no-rounded" onclick="captureSelfie()" disabled>Ambil Selfie</button>
+              <button type="button" id="selfie-retake-btn" class="hidden flex-1 bg-gray-100 text-gray-600 py-2 text-[11px] font-bold no-rounded" onclick="retakeSelfie()">Ulangi Selfie</button>
+            </div>
+            <canvas id="selfie-capture-canvas" class="hidden"></canvas>
+          </div>
+          
+          <!-- FACE MATCH RESULT -->
+          <div id="face-match-section" class="hidden mt-4 pt-4">
+            <label class="font-bold text-gray-700 block mb-2 uppercase tracking-wider text-[10px]">3. Hasil Face Match</label>
+            <div class="flex gap-4 mb-3">
+              <div class="flex-1">
+                <label class="text-[9px] text-gray-400 block mb-1">KTP Face</label>
+                <div class="relative bg-gray-100 no-rounded overflow-hidden" style="aspect-ratio: 1/1;">
+                  <img id="ktp-face-preview" class="w-full h-full object-contain" alt="ktp face">
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col items-center justify-center">
+                <div class="text-[10px] text-gray-400 mb-1">vs</div>
+                <div id="match-badge" class="px-3 py-1 text-[10px] font-bold no-rounded bg-gray-100 text-gray-500">Menunggu...</div>
+              </div>
+              <div class="flex-1">
+                <label class="text-[9px] text-gray-400 block mb-1">Selfie Face</label>
+                <div class="relative bg-gray-100 no-rounded overflow-hidden" style="aspect-ratio: 1/1;">
+                  <img id="selfie-face-preview" class="w-full h-full object-contain" alt="selfie face">
+                </div>
+              </div>
+            </div>
+            <div id="match-result" class="text-center text-[10px] font-bold p-2 no-rounded">Menunggu verifikasi...</div>
+            <div class="flex gap-2 mt-3">
+              <button type="button" id="verify-match-btn" class="hidden flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded" onclick="verifyFaceMatch()">Verifikasi & Lanjutkan</button>
+              <button type="button" id="rematch-btn" class="hidden flex-1 bg-gray-100 text-gray-600 py-2 text-[11px] font-bold no-rounded" onclick="rematchFace()">Ulangi Selfie</button>
+            </div>
+          </div>
+          
+          <div id="camera-error" class="hidden text-red-500 text-[10px] mb-2 text-center"></div>
+        </div>
+
+        <div class="border n-border no-rounded p-3 bg-gray-50">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" id="agree-terms" class="mt-0.5 accent-[#DF414F]" required>
+            <span class="text-[10px] text-gray-600">Saya telah membaca dan menyetujui
+              <button type="button" onclick="openTerms()" class="text-[#DF414F] font-bold underline">Syarat &amp; Ketentuan</button>
+              dan
+              <button type="button" onclick="openTerms()" class="text-[#DF414F] font-bold underline">Kebijakan Privasi</button>
+              NPinjam. *</span>
+          </label>
+        </div>
+      </div>
+    </form>
+  `;
+  loadProvinces();
+  
+  // Init camera capture modules
+  initKTPScanner();
+  initSelfieVerify();
+}
+
+function loadProvinces() {
+  fetch(_d('9kzs9xzsxtkw9z|y!sxmo}'))
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const sel = document.getElementById('address_province');
+        sel.innerHTML = '<option value="">Pilih Provinsi...</option>' +
+          data.provinces.map(p => `<option value="${p}">${p}</option>`).join('');
+      }
+    })
+    .catch(() => {});
+}
+
+function loadCities() {
+  const province = document.getElementById('address_province').value;
+  const citySel = document.getElementById('address_city');
+  citySel.innerHTML = '<option value="">Pilih Kota...</option>';
+  if (!province) return;
+  fetch(_d('9kzs9xzsxtkw9ms~so}Iz|y!sxmoG') + encodeURIComponent(province))
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        citySel.innerHTML = '<option value="">Pilih Kota...</option>' +
+          data.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+    })
+    .catch(() => {});
+}
+
+async function submitApplication(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('apply-error');
+  errorEl.classList.add('hidden');
+
+  if (npinjamState.application) {
+    errorEl.textContent = 'Akun ini sudah memiliki pengajuan NPinjam. Tidak dapat mengajukan kembali.';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+
+  const agreeTerms = document.getElementById('agree-terms');
+  if (!agreeTerms || !agreeTerms.checked) {
+    errorEl.textContent = 'Anda harus menyetujui Syarat & Kebijakan NPinjam terlebih dahulu.';
+    errorEl.classList.remove('hidden');
+    return false;
+  }
+
+  const formData = new FormData();
+  formData.append('nik', document.getElementById('nik').value.trim());
+  formData.append('full_name', document.getElementById('full_name').value.trim());
+  formData.append('birth_place', document.getElementById('birth_place').value.trim());
+  formData.append('birth_date', document.getElementById('birth_date').value);
+  formData.append('gender', document.getElementById('gender').value);
+  formData.append('address_province', document.getElementById('address_province').value);
+  formData.append('address_city', document.getElementById('address_city').value);
+  formData.append('address_district', document.getElementById('address_district').value.trim());
+  formData.append('address_village', document.getElementById('address_village').value.trim());
+  formData.append('address_rt_rw', document.getElementById('address_rt_rw').value.trim());
+  formData.append('address_postal_code', document.getElementById('address_postal_code').value.trim());
+  formData.append('address_detail', document.getElementById('address_detail').value.trim());
+  formData.append('job_type', document.getElementById('job_type').value);
+  formData.append('job_industry', document.getElementById('job_industry').value.trim());
+  formData.append('monthly_income_range', document.getElementById('monthly_income_range').value);
+  formData.append('income_source', document.getElementById('income_source').value);
+  formData.append('mother_maiden_name', document.getElementById('mother_maiden_name').value.trim());
+  formData.append('emergency_contact_1_name', document.getElementById('emergency_contact_1_name').value.trim());
+  formData.append('emergency_contact_1_phone', document.getElementById('emergency_contact_1_phone').value.trim());
+  formData.append('emergency_contact_2_name', document.getElementById('emergency_contact_2_name').value.trim());
+  formData.append('emergency_contact_2_phone', document.getElementById('emergency_contact_2_phone').value.trim());
+
+  if (ktpBlob) formData.append('ktp_front', ktpBlob, 'ktp_front.jpg');
+  if (selfieBlob) formData.append('ktp_selfie', selfieBlob, 'selfie.jpg');
+
+  const faceMatchInput = document.querySelector('[name="face_match_score"]');
+  const livenessInput = document.querySelector('[name="liveness_passed"]');
+  formData.append('face_match_score', faceMatchInput ? faceMatchInput.value : '0');
+  formData.append('liveness_passed', livenessInput ? livenessInput.value : 'true');
+
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9kzzv$'), { method: 'POST', credentials: 'include', body: formData });
+    const data = await res.json();
+    if (data.success) {
+      alert('Pengajuan berhasil dikirim! Tunggu verifikasi 1-2 hari kerja.');
+      closeApplyModal();
+      loadStatus();
+    } else {
+      errorEl.textContent = data.message || 'Gagal mengirim pengajuan';
+      errorEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorEl.textContent = 'Terjadi kesalahan, coba lagi';
+    errorEl.classList.remove('hidden');
+  }
+  return false;
+}
+
+async function activateAccount() {
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9km~s!k~o'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
+    const data = await res.json();
+    if (data.success) {
+      alert('NPinjam berhasil diaktifkan!');
+      closeApplyModal();
+      loadStatus();
+    } else {
+      alert(data.message || 'Gagal mengaktifkan');
+    }
+  } catch (e) { alert('Terjadi kesalahan'); }
+}
+
+let ktpBlob = null;
+let selfieBlob = null;
+let ktpFaceDescriptor = null;
+let selfieFaceDescriptor = null;
+let faceApiLoaded = false;
+
+// Load face-api.js models
+async function loadFaceApiModels() {
+  if (faceApiLoaded) return;
+  try {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('/models/face-api/weights'),
+      faceapi.nets.faceRecognitionNet.loadFromUri('/models/face-api/weights'),
+      faceapi.nets.faceLandmark68Net.loadFromUri('/models/face-api/weights')
+    ]);
+    faceApiLoaded = true;
+    console.log('face-api.js models loaded');
+  } catch (e) {
+    console.error('Failed to load face-api models:', e);
+  }
+}
+
+// Load face-api on page load
+loadFaceApiModels();
+
+// ===== KTP SCANNER =====
+let ktpStream = null;
+let ktpVideo = null;
+let ktpOverlay = null;
+let ktpOverlayCtx = null;
+let ktpScannerActive = false;
+let ktpAnimationFrame = null;
+let ktpCaptured = false;
+let ktpDetectCanvas = null;
+let ktpStableCount = 0;
+let ktpLastDetectRect = null;
+let ktpAutoCaptured = false;
+let ktpLastDetectTime = 0;
+
+async function initKTPScanner() {
+  ktpVideo = document.getElementById('ktp-video');
+  ktpOverlay = document.getElementById('ktp-overlay');
+  ktpOverlayCtx = ktpOverlay?.getContext('2d');
+  
+  // Initialize OpenCV if available
+  if (typeof cv !== 'undefined') {
+    console.log('OpenCV.js loaded');
+  }
+}
+
+async function startKTPScanner() {
+  const errorEl = document.getElementById('camera-error');
+  errorEl.classList.add('hidden');
+  
+  try {
+    let videoConstraint = { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+    try {
+      ktpStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    } catch (facingErr) {
+      videoConstraint = { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } };
+      ktpStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    }
+    
+    const video = document.getElementById('ktp-video');
+    video.srcObject = ktpStream;
+    await video.play();
+    
+    // Setup overlay canvas
+    const overlay = document.getElementById('ktp-overlay');
+    const resizeOverlay = () => {
+      if (ktpVideo.videoWidth > 0) {
+        overlay.width = ktpVideo.videoWidth;
+        overlay.height = ktpVideo.videoHeight;
+      }
+    };
+    
+    video.onloadedmetadata = () => {
+      resizeOverlay();
+      video.onresize = resizeOverlay;
+    };
+    
+    document.getElementById('ktp-guide').style.display = 'flex';
+    document.getElementById('ktp-status').style.display = 'flex';
+    document.getElementById('ktp-start-btn').classList.add('hidden');
+    document.getElementById('ktp-capture-btn').classList.remove('hidden');
+    document.getElementById('ktp-retake-btn').classList.remove('hidden');
+    document.getElementById('ktp-status-text').textContent = 'Arahkan KTP ke dalam frame';
+    
+    startKTPFrameLoop();
+  } catch (err) {
+    console.error('KTP Scanner error:', err);
+    const errorEl = document.getElementById('camera-error');
+    errorEl.textContent = 'Gagal mengakses kamera belakang: ' + err.message;
+    errorEl.classList.remove('hidden');
+  }
+}
+
+let ktpFrameLoopId = null;
+
+function drawVideoObjectCover(ctx, video, cw, ch) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return;
+  const dstAspect = cw / ch;
+  const srcAspect = vw / vh;
+  let sw, sh, sx, sy;
+  if (srcAspect > dstAspect) {
+    sh = vh; sw = vh * dstAspect; sx = (vw - sw) / 2; sy = 0;
+  } else {
+    sw = vw; sh = vw / dstAspect; sx = 0; sy = (vh - sh) / 2;
+  }
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cw, ch);
+}
+
+function detectKTPInGuide() {
+  const cw = ktpVideo.clientWidth || ktpOverlay.width;
+  const ch = ktpVideo.clientHeight || ktpOverlay.height;
+  if (cw === 0 || ch === 0) return null;
+
+  if (!ktpDetectCanvas) ktpDetectCanvas = document.createElement('canvas');
+  if (ktpDetectCanvas.width !== cw || ktpDetectCanvas.height !== ch) {
+    ktpDetectCanvas.width = cw;
+    ktpDetectCanvas.height = ch;
+  }
+  const ctx = ktpDetectCanvas.getContext('2d', { willReadFrequently: true });
+  drawVideoObjectCover(ctx, ktpVideo, cw, ch);
+
+  const w = Math.round(cw * 0.92);
+  const h = Math.round(w / 1.585);
+  const gx = Math.round((cw - w) / 2);
+  const gy = Math.round((ch - h) / 2);
+
+  let imageData;
+  try {
+    imageData = ctx.getImageData(gx, gy, w, h);
+  } catch (e) {
+    return null;
+  }
+  const data = imageData.data;
+
+  const lum = new Float32Array(w * h);
+  const rowFill = new Float32Array(h);
+  const colFill = new Float32Array(w);
+  let bright = 0;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = (y * w + x) * 4;
+      const L = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      lum[y * w + x] = L;
+      if (L > 175) {
+        bright++;
+        rowFill[y]++;
+        colFill[x]++;
+      }
+    }
+  }
+
+  const total = w * h;
+  const brightRatio = bright / total;
+  if (brightRatio < 0.3 || brightRatio > 0.97) return null;
+
+  let edgeCount = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (Math.abs(lum[i - w] - lum[i + w]) + Math.abs(lum[i - 1] - lum[i + 1]) > 40) edgeCount++;
+    }
+  }
+  const edgeRatio = edgeCount / total;
+  if (edgeRatio < 0.02 || edgeRatio > 0.5) return null;
+
+  const rowThresh = w * 0.3;
+  const colThresh = h * 0.3;
+  let r0 = -1, r1 = -1, bestRows = 0;
+  let i = 0;
+  while (i < h) {
+    if (rowFill[i] > rowThresh) {
+      let j = i;
+      while (j < h && rowFill[j] > rowThresh) j++;
+      if ((j - i) > bestRows) { bestRows = j - i; r0 = i; r1 = j - 1; }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  let c0 = -1, c1 = -1, bestCols = 0;
+  i = 0;
+  while (i < w) {
+    if (colFill[i] > colThresh) {
+      let j = i;
+      while (j < w && colFill[j] > colThresh) j++;
+      if ((j - i) > bestCols) { bestCols = j - i; c0 = i; c1 = j - 1; }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+
+  if (r0 < 0 || c0 < 0) return null;
+
+  const rectW = c1 - c0 + 1;
+  const rectH = r1 - r0 + 1;
+  const aspect = rectW / rectH;
+  const coverage = (rectW * rectH) / total;
+  if (aspect < 0.85 || aspect > 2.2) return null;
+  if (coverage < 0.28 || coverage > 0.98) return null;
+
+  let innerBright = 0, innerCount = 0;
+  for (let y = r0; y <= r1; y++) {
+    for (let x = c0; x <= c1; x++) {
+      if (lum[y * w + x] > 175) innerBright++;
+      innerCount++;
+    }
+  }
+  if (innerCount === 0 || innerBright / innerCount < 0.5) return null;
+
+  return { x: c0 / w, y: r0 / h, w: rectW / w, h: rectH / h };
+}
+
+function isKTPRectStable(rect, last) {
+  if (!last) return false;
+  return Math.abs(rect.x - last.x) < 0.05 &&
+         Math.abs(rect.y - last.y) < 0.05 &&
+         Math.abs(rect.w - last.w) < 0.05 &&
+         Math.abs(rect.h - last.h) < 0.05;
+}
+
+function startKTPFrameLoop() {
+  const drawKTPFrame = () => {
+    if (ktpVideo.paused || ktpVideo.ended) return;
+
+    const cw = ktpVideo.clientWidth || ktpOverlay.width;
+    const ch = ktpVideo.clientHeight || ktpOverlay.height;
+    if (cw === 0 || ch === 0) {
+      ktpAnimationFrame = requestAnimationFrame(drawKTPFrame);
+      return;
+    }
+    ktpOverlay.width = cw;
+    ktpOverlay.height = ch;
+
+    const ctx2d = ktpOverlayCtx;
+    ctx2d.clearRect(0, 0, cw, ch);
+
+    const w = cw;
+    const h = ch;
+    const guideW = w * 0.92;
+    const guideH = guideW / 1.585;
+    const gx = (w - guideW) / 2;
+    const gy = (h - guideH) / 2;
+
+    ctx2d.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx2d.fillRect(0, 0, w, h);
+    ctx2d.clearRect(gx, gy, guideW, guideH);
+
+    ctx2d.strokeStyle = '#00FF00';
+    ctx2d.lineWidth = 4;
+    ctx2d.lineCap = 'round';
+
+    const corners = [
+      [gx, gy], [gx + guideW, gy],
+      [gx, gy + guideH], [gx + guideW, gy + guideH]
+    ];
+
+    for (const [cx, cy] of corners) {
+      ctx2d.beginPath();
+      ctx2d.moveTo(cx - 22, cy);
+      ctx2d.lineTo(cx + 22, cy);
+      ctx2d.moveTo(cx, cy - 22);
+      ctx2d.lineTo(cx, cy + 22);
+      ctx2d.stroke();
+    }
+
+    if (!ktpAutoCaptured && Date.now() - ktpLastDetectTime > 150) {
+      ktpLastDetectTime = Date.now();
+      const rect = detectKTPInGuide();
+      if (rect) {
+        if (isKTPRectStable(rect, ktpLastDetectRect)) {
+          ktpStableCount++;
+          if (ktpStableCount >= 6) {
+            ktpAutoCaptured = true;
+            ktpStableCount = 0;
+            ktpLastDetectRect = null;
+            const statusEl = document.getElementById('ktp-status-text');
+            statusEl.textContent = 'KTP terdeteksi! Mengambil foto...';
+            statusEl.style.background = 'rgba(0, 200, 0, 0.8)';
+            captureKTP();
+          } else {
+            document.getElementById('ktp-status-text').textContent = 'KTP terdeteksi...';
+          }
+        } else {
+          ktpStableCount = 0;
+        }
+        ktpLastDetectRect = rect;
+      } else {
+        ktpStableCount = 0;
+        ktpLastDetectRect = null;
+      }
+    }
+
+    ktpAnimationFrame = requestAnimationFrame(drawKTPFrame);
+  };
+
+  drawKTPFrame();
+}
+
+function canvasToBlob(canvas) {
+  return new Promise(resolve => {
+    canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+  });
+}
+
+async function captureKTP() {
+  const video = document.getElementById('ktp-video');
+  const canvas = document.getElementById('ktp-capture-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Capture at native video resolution for better face quality
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  canvas.width = vw;
+  canvas.height = vh;
+  drawVideoObjectCover(ctx, video, vw, vh);
+
+  // Map the guide rect from client space to native video space
+  const cw = video.clientWidth || vw;
+  const ch = video.clientHeight || vh;
+  const dstAspect = cw / ch;
+  const srcAspect = vw / vh;
+  let sw, sh, sx, sy;
+  if (srcAspect > dstAspect) {
+    sh = vh; sw = vh * dstAspect; sx = (vw - sw) / 2; sy = 0;
+  } else {
+    sw = vw; sh = vw / dstAspect; sx = 0; sy = (vh - sh) / 2;
+  }
+  const guideW = cw * 0.92;
+  const guideH = guideW / 1.585;
+  const gx = (cw - guideW) / 2;
+  const gy = (ch - guideH) / 2;
+  const nx = sx + (gx / cw) * sw;
+  const ny = sy + (gy / ch) * sh;
+  const nw = (guideW / cw) * sw;
+  const nh = (guideH / ch) * sh;
+
+  // Crop to KTP area
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = Math.max(1, nw);
+  cropCanvas.height = Math.max(1, nh);
+  const cropCtx = cropCanvas.getContext('2d');
+  cropCtx.drawImage(canvas, nx, ny, nw, nh, 0, 0, cropCanvas.width, cropCanvas.height);
+
+  let blob = await canvasToBlob(cropCanvas);
+  if (!blob) {
+    blob = await (await fetch(cropCanvas.toDataURL('image/jpeg', 0.9))).blob();
+  }
+  ktpBlob = blob;
+  const url = URL.createObjectURL(blob);
+  // Show preview in face match section
+  const preview = document.getElementById('ktp-face-preview');
+  preview.src = url;
+
+  // Show captured photo directly in the scanner UI
+  const capPrev = document.getElementById('ktp-captured-preview');
+  capPrev.src = url;
+  capPrev.classList.remove('hidden');
+  document.getElementById('ktp-video').classList.add('hidden');
+  document.getElementById('ktp-overlay').classList.add('hidden');
+  document.getElementById('ktp-guide').style.display = 'none';
+
+  // Update UI
+  document.getElementById('ktp-capture-btn').classList.add('hidden');
+  document.getElementById('ktp-retake-btn').classList.remove('hidden');
+  document.getElementById('ktp-status-text').textContent = 'KTP berhasil diambil!';
+  document.getElementById('ktp-status-text').style.background = 'rgba(0, 200, 0, 0.8)';
+
+  const selfieBtn = document.getElementById('selfie-start-btn');
+  selfieBtn.disabled = false;
+  selfieBtn.className = 'flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded';
+}
+
+function retakeKTP() {
+  ktpBlob = null;
+  ktpAutoCaptured = false;
+  ktpStableCount = 0;
+  ktpLastDetectRect = null;
+  const capPrev = document.getElementById('ktp-captured-preview');
+  capPrev.classList.add('hidden');
+  capPrev.src = '';
+  document.getElementById('ktp-video').classList.remove('hidden');
+  document.getElementById('ktp-overlay').classList.remove('hidden');
+  document.getElementById('ktp-guide').style.display = 'flex';
+  document.getElementById('ktp-capture-btn').classList.remove('hidden');
+  document.getElementById('ktp-retake-btn').classList.add('hidden');
+  document.getElementById('ktp-status-text').textContent = 'Arahkan KTP ke dalam frame';
+  document.getElementById('ktp-status-text').style.background = 'rgba(0, 0, 0, 0.8)';
+  const selfieBtn = document.getElementById('selfie-start-btn');
+  selfieBtn.disabled = true;
+  selfieBtn.className = 'flex-1 bg-gray-400 text-white py-2 text-[11px] font-bold no-rounded';
+}
+
+async function retakeSelfie() {
+  selfieBlob = null;
+  if (selfieAutoTimer) { clearTimeout(selfieAutoTimer); selfieAutoTimer = null; }
+  selfieAutoCaptured = false;
+  const capPrev = document.getElementById('selfie-captured-preview');
+  capPrev.classList.add('hidden');
+  capPrev.src = '';
+  document.getElementById('selfie-video').classList.remove('hidden');
+  document.getElementById('selfie-overlay').classList.remove('hidden');
+  document.getElementById('selfie-guide').style.display = 'flex';
+  document.getElementById('liveness-indicator').style.display = 'flex';
+  const capBtn = document.getElementById('selfie-capture-btn');
+  capBtn.classList.remove('hidden');
+  capBtn.disabled = true;
+  capBtn.className = 'flex-1 bg-gray-400 text-white py-2 text-[11px] font-bold no-rounded';
+  document.getElementById('selfie-retake-btn').classList.add('hidden');
+  document.getElementById('selfie-status-text').textContent = 'Menunggu wajah...';
+  document.getElementById('selfie-status-text').style.background = 'rgba(0, 0, 0, 0.8)';
+  document.getElementById('face-match-section').classList.add('hidden');
+}
+
+// ===== SELFIE VERIFICATION WITH LIVENESS =====
+let selfieStream = null;
+let selfieVideo = null;
+let selfieOverlay = null;
+let selfieAnimationFrame = null;
+let blinkCount = 0;
+let eyeWasOpen = false;
+let blinkLockedClosed = false;
+let poseCheckPassed = false;
+let livenessChecks = { blink: false, poseLeft: false, poseRight: false };
+let selfieDetectBusy = false;
+let selfieAutoCaptured = false;
+let selfieAutoTimer = null;
+
+async function initSelfieVerify() {
+  selfieVideo = document.getElementById('selfie-video');
+  selfieOverlay = document.getElementById('selfie-overlay');
+}
+
+async function startSelfieVerify() {
+  const errorEl = document.getElementById('camera-error');
+  errorEl.classList.add('hidden');
+
+  blinkCount = 0;
+  eyeWasOpen = false;
+  blinkLockedClosed = false;
+  poseCheckPassed = false;
+  livenessChecks = { blink: false, poseLeft: false, poseRight: false };
+  if (selfieAutoTimer) { clearTimeout(selfieAutoTimer); selfieAutoTimer = null; }
+  selfieAutoCaptured = false;
+
+  const blinkEl = document.getElementById('blink-status');
+  if (blinkEl) { blinkEl.textContent = '👁 Blink: -'; blinkEl.style.background = 'rgba(0, 0, 0, 0.7)'; }
+  const poseEl = document.getElementById('pose-status');
+  if (poseEl) { poseEl.textContent = '🔄 Pose: -'; poseEl.style.background = 'rgba(0, 0, 0, 0.7)'; }
+  
+  try {
+    let videoConstraint = { facingMode: { exact: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } };
+    try {
+      selfieStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    } catch (facingErr) {
+      videoConstraint = { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } };
+      selfieStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    }
+    
+    selfieVideo = document.getElementById('selfie-video');
+    selfieVideo.srcObject = selfieStream;
+    await selfieVideo.play();
+    
+    document.getElementById('selfie-guide').style.display = 'flex';
+    document.getElementById('selfie-status').style.display = 'flex';
+    document.getElementById('liveness-indicator').style.display = 'flex';
+    document.getElementById('selfie-start-btn').classList.add('hidden');
+    document.getElementById('selfie-capture-btn').classList.remove('hidden');
+    document.getElementById('selfie-retake-btn').classList.remove('hidden');
+    document.getElementById('selfie-status-text').textContent = 'Posisikan wajah di dalam frame';
+    
+    startSelfieFrameLoop();
+  } catch (err) {
+    console.error('Selfie camera error:', err);
+    const errorEl = document.getElementById('camera-error');
+    errorEl.textContent = 'Gagal mengakses kamera depan: ' + err.message;
+    errorEl.classList.remove('hidden');
+  }
+}
+
+function startSelfieFrameLoop() {
+  const drawLoop = () => {
+    if (selfieVideo.paused || selfieVideo.ended) return;
+
+    const cw = selfieVideo.clientWidth || selfieVideo.videoWidth;
+    const ch = selfieVideo.clientHeight || selfieVideo.videoHeight;
+    if (cw > 0 && ch > 0) {
+      selfieOverlay.width = cw;
+      selfieOverlay.height = ch;
+    }
+
+    const ctx2d = selfieOverlay.getContext('2d');
+    ctx2d.clearRect(0, 0, selfieOverlay.width, selfieOverlay.height);
+
+    const w = selfieOverlay.width;
+    const h = selfieOverlay.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const rx = w * 0.4;
+    const ry = rx * 1.25;
+
+    ctx2d.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx2d.fillRect(0, 0, w, h);
+    ctx2d.beginPath();
+    ctx2d.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+    ctx2d.clip();
+    ctx2d.clearRect(0, 0, w, h);
+
+    ctx2d.beginPath();
+    ctx2d.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+    ctx2d.strokeStyle = '#00FF00';
+    ctx2d.lineWidth = 4;
+    ctx2d.stroke();
+
+    const pct = livenessProgress();
+    if (pct > 0) {
+      ctx2d.beginPath();
+      ctx2d.ellipse(cx, cy, rx + 8, ry + 8, 0, -Math.PI / 2, -Math.PI / 2 + (pct / 100) * 2 * Math.PI);
+      ctx2d.strokeStyle = pct >= 100 ? '#00FF00' : '#DF414F';
+      ctx2d.lineWidth = 6;
+      ctx2d.lineCap = 'round';
+      ctx2d.stroke();
+      ctx2d.lineCap = 'butt';
+    }
+
+    const pctEl = document.getElementById('liveness-pct');
+    if (pctEl) {
+      pctEl.textContent = pct >= 100 ? '100% ✓' : pct + '%';
+      pctEl.style.background = pct >= 100 ? 'rgba(0, 200, 0, 0.8)' : 'rgba(0, 0, 0, 0.7)';
+    }
+
+    if (typeof faceapi !== 'undefined' && faceApiLoaded) {
+      checkLiveness();
+    }
+
+    selfieAnimationFrame = requestAnimationFrame(drawLoop);
+  };
+
+  drawLoop();
+}
+
+async function checkLiveness() {
+  if (!faceApiLoaded || selfieDetectBusy) return;
+  selfieDetectBusy = true;
+  try {
+    // Small input size = fast sampling so a quick blink is never missed
+    const detection = await faceapi.detectSingleFace(selfieVideo, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.3 })).withFaceLandmarks();
+    
+    if (detection) {
+      const landmarks = detection.landmarks;
+      
+      // Eye aspect ratio for blink detection
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      
+      const leftEAR = eyeAspectRatio(leftEye);
+      const rightEAR = eyeAspectRatio(rightEye);
+      const avgEAR = (leftEAR + rightEAR) / 2;
+      
+      // Blink detection - one blink is enough. Fire on the first closed frame
+      // once an open baseline has been seen; latch so one continuous blink
+      // only counts once.
+      const OPEN_THRESHOLD = 0.23;
+      const CLOSED_THRESHOLD = 0.22;
+      if (avgEAR >= OPEN_THRESHOLD) {
+        eyeWasOpen = true;
+        blinkLockedClosed = false;
+      } else if (avgEAR < CLOSED_THRESHOLD && eyeWasOpen && !blinkLockedClosed && !livenessChecks.blink) {
+        blinkCount++;
+        blinkLockedClosed = true;
+        livenessChecks.blink = true;
+        document.getElementById('blink-status').textContent = '👁 Blink: ✓';
+        document.getElementById('blink-status').style.background = 'rgba(0, 200, 0, 0.8)';
+      }
+      
+      // Head pose estimation (optional - does not block success)
+      const nose = landmarks.getNose();
+      const noseTip = nose[3]; // tip of nose
+      const noseBridge = landmarks.getNose()[0]; // bridge
+      
+      const poseX = (noseTip.x - noseBridge.x) / 50; // normalized
+      
+      if (poseX > 0.3 && !livenessChecks.poseRight) {
+        livenessChecks.poseRight = true;
+        document.getElementById('pose-status').textContent = '🔄 Kiri ✓';
+        document.getElementById('pose-status').style.background = 'rgba(0, 200, 0, 0.8)';
+      } else if (poseX < -0.3 && !livenessChecks.poseLeft) {
+        livenessChecks.poseLeft = true;
+        document.getElementById('pose-status').textContent = '🔄 Kanan ✓';
+        document.getElementById('pose-status').style.background = 'rgba(0, 200, 0, 0.8)';
+      }
+      
+      // Success: a single blink is enough, capture immediately
+      if (livenessChecks.blink && !selfieBlob) {
+        document.getElementById('selfie-status-text').textContent = 'Liveness OK! Mengambil selfie...';
+        document.getElementById('selfie-status-text').style.background = 'rgba(0, 200, 0, 0.8)';
+        const capBtn = document.getElementById('selfie-capture-btn');
+        capBtn.disabled = false;
+        capBtn.className = 'flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded';
+        if (!selfieAutoCaptured) {
+          selfieAutoCaptured = true;
+          document.getElementById('selfie-status-text').textContent = 'Wajah terdeteksi, mengambil selfie...';
+          selfieAutoTimer = setTimeout(() => {
+            selfieAutoTimer = null;
+            if (!selfieBlob && selfieVideo && !selfieVideo.paused && !selfieVideo.ended) {
+              captureSelfie();
+            }
+          }, 500);
+        }
+      }
+    }
+  } catch (e) {
+    // Face detection failed, continue
+  } finally {
+    selfieDetectBusy = false;
+  }
+}
+
+function livenessProgress() {
+  return livenessChecks.blink ? 100 : 0;
+}
+
+function eyeAspectRatio(eye) {
+  // eye is array of 6 points
+  const A = distance(eye[1], eye[5]);
+  const B = distance(eye[2], eye[4]);
+  const C = distance(eye[0], eye[3]);
+  return (A + B) / (2.0 * C);
+}
+
+function distance(p1, p2) {
+  return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+}
+
+async function captureSelfie() {
+  const video = document.getElementById('selfie-video');
+  const canvas = document.getElementById('selfie-capture-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  // Mirror the selfie to match the mirror preview shown to the user
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  
+  // Crop to face guide oval
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const rx = h * 0.4;
+  const ry = rx * 1.25;
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = Math.max(1, Math.round(rx * 2));
+  cropCanvas.height = Math.max(1, Math.round(ry * 2));
+  const cropCtx = cropCanvas.getContext('2d');
+  cropCtx.drawImage(canvas, cx - rx, cy - ry, rx * 2, ry * 2, 0, 0, cropCanvas.width, cropCanvas.height);
+
+  let blob = await canvasToBlob(cropCanvas);
+  if (!blob) {
+    blob = await (await fetch(cropCanvas.toDataURL('image/jpeg', 0.9))).blob();
+  }
+  selfieBlob = blob;
+  const url = URL.createObjectURL(blob);
+  const preview = document.getElementById('selfie-face-preview');
+  preview.src = url;
+  
+  // Show captured photo directly in the scanner UI
+  const capPrev = document.getElementById('selfie-captured-preview');
+  capPrev.src = url;
+  capPrev.classList.remove('hidden');
+  document.getElementById('selfie-video').classList.add('hidden');
+  document.getElementById('selfie-overlay').classList.add('hidden');
+  document.getElementById('selfie-guide').style.display = 'none';
+  document.getElementById('liveness-indicator').style.display = 'none';
+  
+  document.getElementById('selfie-capture-btn').classList.add('hidden');
+  document.getElementById('selfie-retake-btn').classList.remove('hidden');
+  document.getElementById('selfie-status-text').textContent = 'Selfie berhasil diambil!';
+  document.getElementById('selfie-status-text').style.background = 'rgba(0, 200, 0, 0.8)';
+  
+  // Run face match
+  runFaceMatch();
+}
+
+async function runFaceMatch() {
+  if (!faceApiLoaded) {
+    try { await loadFaceApiModels(); } catch (e) { /* continue regardless */ }
+  }
+
+  if (!ktpBlob || !selfieBlob) return;
+
+  document.getElementById('face-match-section').classList.remove('hidden');
+  // Always show the captured photos in the UI first
+  document.getElementById('ktp-face-preview').src = URL.createObjectURL(ktpBlob);
+  document.getElementById('selfie-face-preview').src = URL.createObjectURL(selfieBlob);
+
+  const badge = document.getElementById('match-badge');
+  const result = document.getElementById('match-result');
+  const verifyBtn = document.getElementById('verify-match-btn');
+
+  const finishWith = (badgeText, badgeClass, resultText, resultClass) => {
+    badge.textContent = badgeText;
+    badge.className = 'px-3 py-1 text-[10px] font-bold no-rounded ' + badgeClass;
+    result.textContent = resultText;
+    result.className = 'text-center text-[10px] font-bold p-2 no-rounded ' + resultClass;
+    verifyBtn.classList.remove('hidden');
+  };
+
+  badge.textContent = 'Memproses...';
+  badge.className = 'px-3 py-1 text-[10px] font-bold no-rounded bg-yellow-100 text-yellow-700';
+  result.textContent = 'Mengekstrak fitur wajah...';
+  result.className = 'text-center text-[10px] font-bold p-2 no-rounded bg-yellow-50 text-yellow-700';
+
+  let ktpImg = null;
+  let selfieImg = null;
+  let ktpDet = null;
+  let selfieDet = null;
+
+  try {
+    ktpImg = await loadImageFromBlob(ktpBlob);
+    selfieImg = await loadImageFromBlob(selfieBlob);
+
+    if (faceApiLoaded) {
+      try { ktpDet = await safeDetectFace(ktpImg); } catch (e) { ktpDet = null; }
+      try { selfieDet = await safeDetectFace(selfieImg); } catch (e) { selfieDet = null; }
+    }
+  } catch (e) {
+    console.error('Face match load error:', e);
+    ktpImg = null;
+    selfieImg = null;
+  }
+
+  if (ktpDet && selfieDet) {
+    ktpFaceDescriptor = ktpDet.descriptor;
+    selfieFaceDescriptor = selfieDet.descriptor;
+
+    const similarity = cosineSimilarity(ktpDet.descriptor, selfieDet.descriptor);
+    showFaceCrops(ktpImg, selfieImg, ktpDet.box, selfieDet.box);
+
+    if (!isNaN(similarity) && similarity >= 0.6) {
+      finishWith(`COCOK (${(similarity * 100).toFixed(1)}%)`, 'bg-green-100 text-green-700',
+        `Wajah cocok! Similarity: ${(similarity * 100).toFixed(1)}%`, 'bg-green-50 text-green-700');
+    } else {
+      const sText = isNaN(similarity) ? '' : ` (${(similarity * 100).toFixed(1)}%)`;
+      finishWith(`PERLU REVIEW${sText}`, 'bg-yellow-100 text-yellow-700',
+        'Wajah terdeteksi tapi kemiripan di bawah ambang. Lanjutkan, hasil akan direview admin.', 'bg-yellow-50 text-yellow-700');
+    }
+  } else {
+    // Detection unavailable - never block the flow, admin reviews later
+    finishWith('PERLU REVIEW', 'bg-yellow-100 text-yellow-700',
+      'Verifikasi otomatis tidak tersedia. Foto sudah tersimpan, lanjutkan — hasil akan direview admin.', 'bg-yellow-50 text-yellow-700');
+  }
+}
+
+async function safeDetectFace(img) {
+  // Returns { descriptor, box } or null. Never throws.
+  const tinyOptions = [
+    { inputSize: 512, scoreThreshold: 0.3 },
+    { inputSize: 608, scoreThreshold: 0.2 },
+    { inputSize: 640, scoreThreshold: 0.15 },
+  ];
+  for (const opts of tinyOptions) {
+    try {
+      const det = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions(opts)).withFaceLandmarks().withFaceDescriptor();
+      if (det) return { descriptor: det.descriptor, box: det.detection.box };
+    } catch (e) { /* try next */ }
+  }
+  try {
+    const det = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 })).withFaceLandmarks().withFaceDescriptor();
+    if (det) return { descriptor: det.descriptor, box: det.detection.box };
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function loadImageFromBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+function showFaceCrops(ktpImg, selfieImg, ktpBox, selfieBox) {
+  const cropToSquare = (img, box, id) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    try {
+      ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, 200, 200);
+    } catch (e) {
+      ctx.drawImage(img, 0, 0, 200, 200);
+    }
+    document.getElementById(id).src = canvas.toDataURL('image/jpeg', 0.9);
+  };
+  if (ktpImg && ktpBox) cropToSquare(ktpImg, ktpBox, 'ktp-face-preview');
+  if (selfieImg && selfieBox) cropToSquare(selfieImg, selfieBox, 'selfie-face-preview');
+}
+
+function cosineSimilarity(a, b) {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function appendHiddenInput(name, value) {
+  let input = document.querySelector(`input[name="${name}"]`);
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    document.getElementById('apply-form').appendChild(input);
+  }
+  input.value = value;
+}
+
+function verifyFaceMatch() {
+  // Face match verified, enable form submission
+  document.getElementById('apply-footer').classList.remove('hidden');
+  document.getElementById('face-match-section').classList.add('hidden');
+
+  // Store face match score in form (0 if unavailable)
+  let score = 0;
+  if (ktpFaceDescriptor && selfieFaceDescriptor) {
+    const s = cosineSimilarity(ktpFaceDescriptor, selfieFaceDescriptor);
+    if (!isNaN(s)) score = s;
+  }
+  appendHiddenInput('face_match_score', score.toFixed(4));
+  appendHiddenInput('liveness_passed', 'true');
+}
+
+function rematchFace() {
+  document.getElementById('face-match-section').classList.add('hidden');
+  retakeSelfie();
+}
+
+function showLoanDetail(loanId) {
+  const overlay = document.getElementById('loan-detail-overlay');
+  const title = document.getElementById('loan-detail-title');
+  const content = document.getElementById('loan-detail-content');
+  title.textContent = 'Detail Pinjaman';
+  content.innerHTML = '<div class="text-center py-4 text-gray-400 text-xs">Memuat...</div>';
+  overlay.classList.remove('hidden');
+
+  fetch(_d('9kzs9xzsxtkw9vykx}9') + loanId, { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { content.innerHTML = '<p class="text-red-500 text-xs text-center">Gagal memuat detail</p>'; return; }
+      const loan = data.loan;
+      const isPending = loan.status === 'pending';
+      const isRejected = loan.status === 'rejected';
+      content.innerHTML = `
+        <div class="text-center mb-4">
+          <div class="text-[10px] text-gray-400 mb-1">NO PINJAMAN</div>
+          <div class="font-bold text-[#DF414F]">${loan.loan_number}</div>
+          <div class="inline-block text-[10px] mt-1 bg-[#DF414F]/10 text-[#DF414F] px-2 py-0.5 no-rounded font-bold">${loan.status.toUpperCase()}</div>
+        </div>
+        ${isRejected ? `<div class="bg-[#DF414F]/10 n-border border-[#DF414F]/30 no-rounded p-3 text-[11px] text-[#DF414F] mb-3">Pinjaman ditolak. ${loan.reject_reason ? 'Alasan: ' + loan.reject_reason : ''}</div>` : ''}
+        ${isPending ? `<div class="bg-[#DF414F]/10 n-border border-[#DF414F]/30 no-rounded p-3 text-[11px] text-[#DF414F] mb-3">Pengajuan pinjaman sedang diverifikasi admin. Mohon tunggu maksimal 1x24 jam kerja.</div>` : ''}
+        <div class="grid grid-cols-2 gap-2 text-[11px] mb-3">
+          <div class="bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400">Pokok</div>
+            <div class="font-bold">Rp ${Math.round(loan.principal).toLocaleString('id-ID')}</div>
+          </div>
+          <div class="bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400">Tenor</div>
+            <div class="font-bold">${loan.tenor_months} minggu</div>
+          </div>
+          <div class="bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400">Cicilan/minggu</div>
+            <div class="font-bold">Rp ${Math.round(loan.monthly_installment).toLocaleString('id-ID')}</div>
+          </div>
+          <div class="bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400">Total Bayar</div>
+            <div class="font-bold">Rp ${Math.round(loan.total_payable).toLocaleString('id-ID')}</div>
+          </div>
+        </div>
+        ${(function () {
+          const principal = Number(loan.principal) || 0;
+          const totalPayable = Number(loan.total_payable) || 0;
+          const interestTotal = Math.max(totalPayable - principal, 0);
+          const pctPrincipal = totalPayable > 0 ? (principal / totalPayable * 100) : 0;
+          const pctInterest = totalPayable > 0 ? (interestTotal / totalPayable * 100) : 0;
+          return `
+          <div class="bg-white n-border no-rounded p-3 mb-3">
+            <div class="text-[11px] font-bold mb-2">Rincian Persentase</div>
+            <div class="flex justify-between text-[10px] mb-1">
+              <span class="text-gray-400">Pokok Pinjaman</span>
+              <span class="font-bold">${pctPrincipal.toFixed(1)}% <span class="text-gray-400">(Rp ${principal.toLocaleString('id-ID')})</span></span>
+            </div>
+            <div class="flex justify-between text-[10px] mb-2">
+              <span class="text-gray-400">Bunga (${loan.interest_rate_monthly || 0}% /minggu)</span>
+              <span class="font-bold text-[#DF414F]">${pctInterest.toFixed(1)}% <span class="text-gray-400">(Rp ${interestTotal.toLocaleString('id-ID')})</span></span>
+            </div>
+            <div class="flex h-2 no-rounded overflow-hidden bg-gray-100">
+              <div class="bg-[#DF414F]" style="width:${pctPrincipal}%"></div>
+              <div class="bg-[#DF414F]/30" style="width:${pctInterest}%"></div>
+            </div>
+          </div>
+          `;
+        })()}
+        <div class="bg-gray-50 n-border no-rounded p-2 text-[10px] mb-3">
+          <div class="flex justify-between mb-1"><span class="text-gray-400">Bank Tujuan</span><span class="font-bold">${loan.bank_name || '-'}</span></div>
+          <div class="flex justify-between mb-1"><span class="text-gray-400">No. Rekening</span><span class="font-bold">${loan.bank_account_number || '-'}</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">Nama Rekening</span><span class="font-bold">${loan.bank_account_name || '-'}</span></div>
+        </div>
+        ${isPending || isRejected ? `
+          <div class="text-[11px] mb-2 font-bold">Jadwal Cicilan</div>
+          <div class="text-[10px] text-gray-400 mb-3">Jadwal cicilan akan dibuat setelah pinjaman disetujui admin.</div>
+        ` : `
+        <div class="text-[11px] mb-2 font-bold">Jadwal Cicilan</div>
+        <div class="space-y-1 max-h-48 overflow-y-auto">
+          ${data.installments.map(ins => `
+            <div class="flex items-center justify-between n-border no-rounded p-2 text-[10px] ${ins.status === 'paid' ? 'bg-[#DF414F]/5 border-[#DF414F]/30' : ins.status === 'overdue' ? 'bg-[#DF414F]/10 border-[#DF414F]' : ''}">
+              <div>
+                <span class="font-bold">Ke-${ins.installment_no}</span>
+                <span class="text-gray-400 ml-1">${ins.due_date}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>Rp ${Math.round(ins.total_amount).toLocaleString('id-ID')}</span>
+                ${ins.status === 'paid' ? '<span class="text-[#DF414F] font-bold">LUNAS</span>' : ins.status === 'overdue' ? '<span class="text-[#DF414F] font-bold">TERLAMBAT</span>' : '<span class="text-gray-400">BELUM</span>'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="mt-3 flex gap-2">
+          <div class="flex-1 bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400 text-[10px]">Lunas</div>
+            <div class="font-bold text-green-600">${data.paidCount} / ${data.totalInstallments}</div>
+          </div>
+          <div class="flex-1 bg-gray-50 n-border no-rounded p-2 text-center">
+            <div class="text-gray-400 text-[10px]">Sisa</div>
+            <div class="font-bold text-[#DF414F]">Rp ${Math.round(data.remainingAmount).toLocaleString('id-ID')}</div>
+          </div>
+        </div>
+        `}
+      `;
+    })
+    .catch(() => { content.innerHTML = '<p class="text-red-500 text-xs text-center">Gagal memuat detail</p>'; });
+}
+
+function closeApplyModal() {
+  stopKTPCamera();
+  stopSelfieCamera();
+  document.getElementById('apply-overlay').classList.add('hidden');
+}
+
+function stopKTPCamera() {
+  if (ktpAnimationFrame) { cancelAnimationFrame(ktpAnimationFrame); ktpAnimationFrame = null; }
+  if (ktpStream) { ktpStream.getTracks().forEach(t => t.stop()); ktpStream = null; }
+  if (ktpVideo) ktpVideo.srcObject = null;
+}
+
+function stopSelfieCamera() {
+  if (selfieAnimationFrame) { cancelAnimationFrame(selfieAnimationFrame); selfieAnimationFrame = null; }
+  if (selfieAutoTimer) { clearTimeout(selfieAutoTimer); selfieAutoTimer = null; }
+  if (selfieStream) { selfieStream.getTracks().forEach(t => t.stop()); selfieStream = null; }
+  if (selfieVideo) selfieVideo.srcObject = null;
+}
+
+function openTerms() {
+  const content = document.getElementById('terms-content');
+  content.innerHTML = termsHTML;
+  document.getElementById('terms-overlay').classList.remove('hidden');
+}
+
+function closeTerms() {
+  document.getElementById('terms-overlay').classList.add('hidden');
+}
+
+const termsHTML = `
+  <h3 class="font-bold text-[#DF414F] text-[12px] mb-2 uppercase">1. Ketentuan Layanan</h3>
+  <ol class="space-y-2 mb-4">
+    <li><strong>1.1</strong> NPinjam adalah layanan pinjaman digital dari Northline yang diberikan kepada pengguna terdaftar dan telah memenuhi persyaratan verifikasi.</li>
+    <li><strong>1.2</strong> Pengajuan wajib melampirkan KTP asli dan selfie dengan verifikasi wajah (liveness). Foto yang diunggah wajib jelas, utuh, dan bukan hasil manipulasi.</li>
+    <li><strong>1.3</strong> Data yang diisi wajib benar dan sesuai dengan dokumen KTP. Pemalsuan atau manipulasi data mengakibatkan pengajuan ditolak dan akun dapat diblokir.</li>
+    <li><strong>1.4</strong> Setiap pengajuan diverifikasi oleh tim kami dengan estimasi selesai maksimal <strong>1x24 jam kerja</strong>.</li>
+    <li><strong>1.5</strong> Besaran limit, tenor, dan suku bunga ditentukan setelah verifikasi berdasarkan hasil penilaian kredit.</li>
+    <li><strong>1.6</strong> Nasabah wajib membayar cicilan tepat waktu. Keterlambatan dikenakan denda dan memengaruhi skor kredit.</li>
+    <li><strong>1.7</strong> NPinjam tidak mensyaratkan agunan fisik (pinjaman tanpa jaminan).</li>
+  </ol>
+
+  <h3 class="font-bold text-[#DF414F] text-[12px] mb-2 uppercase">2. Proses Verifikasi</h3>
+  <ul class="list-disc pl-4 space-y-1 mb-4">
+    <li>Verifikasi identitas melalui scan KTP menggunakan kamera perangkat Anda.</li>
+    <li>Verifikasi wajah (selfie) dengan deteksi hidup (blink &amp; pergerakan kepala) untuk memastikan pemohon adalah pemilik akun.</li>
+    <li>Pencocokan wajah antara foto KTP dan selfie sebagai langkah keamanan.</li>
+    <li>Hasil verifikasi ditinjau kembali oleh admin sebelum pengajuan disetujui.</li>
+  </ul>
+
+  <h3 class="font-bold text-[#DF414F] text-[12px] mb-2 uppercase">3. Kebijakan Privasi</h3>
+  <ol class="space-y-2 mb-4">
+    <li><strong>3.1</strong> Data pribadi Anda (identitas, kontak, dan data keuangan) hanya digunakan untuk keperluan verifikasi, penilaian kredit, dan pengelolaan layanan NPinjam.</li>
+    <li><strong>3.2</strong> Foto KTP dan selfie digunakan untuk verifikasi wajah dan keamanan akun, serta tidak digunakan untuk keperluan lain.</li>
+    <li><strong>3.3</strong> Data Anda tidak dijual atau dibagikan kepada pihak ketiga tanpa persetujuan, kecuali diwajibkan oleh hukum yang berlaku.</li>
+    <li><strong>3.4</strong> Data disimpan secara terenkripsi dan hanya diakses oleh pihak yang berwenang secara internal.</li>
+    <li><strong>3.5</strong> Anda dapat meminta akses, perbaikan, atau penghapusan data melalui layanan customer service.</li>
+  </ol>
+
+  <h3 class="font-bold text-[#DF414F] text-[12px] mb-2 uppercase">4. Risiko &amp; Konsekuensi</h3>
+  <ul class="list-disc pl-4 space-y-1 mb-4">
+    <li>Keterlambatan pembayaran menurunkan skor kredit dan membatasi layanan NPinjam.</li>
+    <li>Penunggakan berkepanjangan dapat menyebabkan pemblokiran layanan dan penagihan sesuai ketentuan yang berlaku.</li>
+    <li>Gunakan dana pinjaman secara bijak dan sesuai kebutuhan.</li>
+  </ul>
+
+  <h3 class="font-bold text-[#DF414F] text-[12px] mb-2 uppercase">5. Hubungi Kami</h3>
+  <p class="mb-2">Jika Anda memiliki pertanyaan terkait layanan atau kebijakan ini, silakan hubungi customer service Northline melalui menu Bantuan pada aplikasi.</p>
+`;
+
+function closeLoanDetail() {
+  document.getElementById('loan-detail-overlay').classList.add('hidden');
+}
+
+async function quickPay(installmentId) {
+  payBill(installmentId);
+}
+
+// Init
+loadStatus();
+
+function bindUppercase(el) {
+  if (!el) return;
+  el.addEventListener('input', function (e) {
+    const t = e.target;
+    if (!t || !t.value) return;
+    const tag = t.tagName;
+    const type = (t.type || '').toLowerCase();
+    const isTextInput = tag === 'INPUT' && (type === 'text' || type === 'tel' || type === 'search');
+    const isArea = tag === 'TEXTAREA';
+    if (!isTextInput && !isArea) return;
+    const start = typeof t.selectionStart === 'number' ? t.selectionStart : null;
+    t.value = t.value.toUpperCase();
+    if (start !== null && t.setSelectionRange) t.setSelectionRange(start, start);
+  });
+}
+
+bindUppercase(document.getElementById('apply-content'));
+bindUppercase(document.getElementById('loan-content'));
+
+// ===== LOAN APPLICATION FLOW =====
+function openApplyOrLoan() {
+  const p = npinjamState.profile;
+  if (p && p.is_active) {
+    const pendingLoan = npinjamState.loans.find(l => l.status === 'pending');
+    const activeLoan = npinjamState.loans.find(l => l.status === 'active');
+    if (pendingLoan) {
+      alert('Pengajuan pinjaman Anda sedang diverifikasi admin. Mohon tunggu maksimal 1x24 jam kerja.');
+      return;
+    }
+    if (activeLoan) {
+      alert('Anda masih memiliki pinjaman aktif yang belum lunas. Selesaikan pinjaman tersebut terlebih dahulu sebelum mengajukan pinjaman baru.');
+      return;
+    }
+    showLoanForm();
+  } else {
+    showApplySection();
+  }
+}
+
+const BANK_OPTIONS = ['BCA', 'BRI', 'BNI', 'MANDIRI', 'BSI', 'BTN', 'SEA BANK', 'DANA', 'GOPAY', 'BANK SAQU', 'SHOPEEPAY', 'Lainnya'];
+
+let loanVideo = null;
+let loanStream = null;
+let loanAnimationFrame = null;
+let loanDetectBusy = false;
+let loanEyeWasOpen = false;
+let loanBlinkLocked = false;
+let loanCaptured = false;
+let loanAutoTimer = null;
+let loanSelfieBlob = null;
+let loanMatchScore = null;
+
+function showLoanForm() {
+  const p = npinjamState.profile;
+  if (!p || !p.is_active) { showApplySection(); return; }
+
+  const available = parseFloat(p.available_limit || 0);
+  const preset = (f) => Math.floor((available * f) / 10000) * 10000;
+  const fullName = (npinjamState.application && npinjamState.application.full_name) || '';
+
+  document.getElementById('loan-title').textContent = 'Ajukan Pinjaman';
+  const content = document.getElementById('loan-content');
+  const footer = document.getElementById('loan-footer');
+  footer.classList.remove('hidden');
+
+  content.innerHTML = `
+    <form id="loan-form" onsubmit="return submitLoan(event)">
+      <div id="loan-error" class="hidden text-red-500 text-[10px] mb-2 p-2 bg-red-50 no-rounded"></div>
+      <div class="space-y-3">
+        <div class="bg-[#DF414F]/5 n-border no-rounded p-3">
+          <div class="flex justify-between text-[13px]">
+            <span class="text-gray-500">Limit Tersedia</span>
+            <span class="font-bold text-[#DF414F]">Rp ${available.toLocaleString('id-ID')}</span>
+          </div>
+          <div class="text-[10px] text-gray-400">Masukkan nominal sesuai kebutuhan, maksimal limit tersedia.</div>
+        </div>
+
+        <div>
+          <label class="n-label">Nominal Pinjaman *</label>
+          <div class="flex items-center border n-border no-rounded px-3 focus-within:border-[#DF414F]">
+            <span class="text-[14px] text-gray-500 mr-1">Rp</span>
+            <input type="text" id="loan_amount" inputmode="numeric" class="w-full py-2 text-[14px] focus:outline-none focus:ring-0 bg-transparent" placeholder="50.000" oninput="formatLoanAmount()">
+          </div>
+          <div class="text-[9px] text-gray-400 mt-1">Minimal Rp 50.000</div>
+          <div class="flex gap-2 mt-2">
+            <button type="button" onclick="setLoanPreset(0.25)" class="flex-1 text-[10px] font-bold py-1.5 bg-gray-100 text-gray-600 no-rounded">25%</button>
+            <button type="button" onclick="setLoanPreset(0.5)" class="flex-1 text-[10px] font-bold py-1.5 bg-gray-100 text-gray-600 no-rounded">50%</button>
+            <button type="button" onclick="setLoanPreset(0.75)" class="flex-1 text-[10px] font-bold py-1.5 bg-gray-100 text-gray-600 no-rounded">75%</button>
+            <button type="button" onclick="setLoanPreset(1)" class="flex-1 text-[10px] font-bold py-1.5 bg-gray-100 text-gray-600 no-rounded">Maks</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="n-label">Tenor (minggu) *</label>
+          <select id="loan_tenor" class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:border-[#DF414F]">
+            <option value="1">1 minggu</option>
+            <option value="2" selected>2 minggu</option>
+            <option value="3">3 minggu</option>
+            <option value="4">4 minggu (1 bulan)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="n-label">Tujuan Pinjaman</label>
+          <input type="text" id="loan_purpose" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:border-[#DF414F]" placeholder="Contoh: Modal usaha, kebutuhan mendesak...">
+        </div>
+
+        <div class="border n-border no-rounded p-3">
+          <label class="n-label mb-2">Data Penerima Dana (Bank) *</label>
+          <div class="space-y-2">
+            <select id="loan_bank_name" class="w-full border n-border no-rounded px-3 py-2 text-[12px] bg-white focus:outline-none focus:border-[#DF414F]">
+              <option value="">Pilih Bank...</option>
+              ${BANK_OPTIONS.map(b => `<option value="${b}">${b}</option>`).join('')}
+            </select>
+            <input type="text" id="loan_bank_account" inputmode="numeric" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:border-[#DF414F]" placeholder="Nomor rekening (6-20 digit)">
+            <input type="text" id="loan_bank_account_name" class="w-full border n-border no-rounded px-3 py-2 text-[12px] focus:outline-none focus:border-[#DF414F] n-input-upper" placeholder="Nama pemilik rekening" value="${fullName}">
+          </div>
+        </div>
+
+        <div class="border n-border no-rounded p-3">
+          <label class="n-label mb-1">Verifikasi Wajah (Keamanan) *</label>
+          <p class="text-[10px] text-gray-500 mb-3">Kedipkan mata sekali di depan kamera. Selfie otomatis diambil dan dicocokkan dengan KTP Anda agar pengajuan aman.</p>
+          <div class="relative bg-gray-900 no-rounded overflow-hidden" style="aspect-ratio: 1/1;">
+            <video id="loan-video" class="w-full h-full object-cover" style="transform: scaleX(-1);" playsinline muted></video>
+            <img id="loan-captured-preview" class="hidden absolute inset-0 w-full h-full object-cover" alt="hasil verifikasi">
+            <div id="loan-guide" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div class="relative w-[80%]" style="aspect-ratio: 4/5;">
+                <div class="absolute inset-0 border-4 border-white rounded-full"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="bg-black/50 text-white text-[10px] font-bold px-3 py-1 text-center">Posisikan wajah di dalam frame</div>
+                </div>
+              </div>
+            </div>
+            <div id="loan-liveness" class="absolute top-2 right-2 hidden gap-1">
+              <span id="loan-blink-status" class="bg-black/70 text-white text-[9px] px-2 py-0.5 no-rounded">👁 Blink: -</span>
+              <span id="loan-pct" class="bg-black/70 text-white text-[9px] font-bold px-2 py-0.5 no-rounded">0%</span>
+            </div>
+            <div id="loan-status" class="absolute bottom-4 left-4 right-4 hidden justify-center">
+              <span id="loan-status-text" class="bg-black/70 text-white text-[10px] font-bold px-3 py-1 no-rounded">Menunggu wajah...</span>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-2">
+            <button type="button" id="loan-start-btn" class="flex-1 bg-[#DF414F] text-white py-2 text-[11px] font-bold no-rounded" onclick="startLoanVerify()">Mulai Verifikasi</button>
+            <button type="button" id="loan-retake-btn" class="hidden flex-1 bg-gray-100 text-gray-600 py-2 text-[11px] font-bold no-rounded" onclick="retakeLoanVerify()">Ulangi</button>
+          </div>
+          <div id="loan-match-result" class="hidden text-center text-[10px] font-bold p-2 mt-2 no-rounded"></div>
+          <canvas id="loan-capture-canvas" class="hidden"></canvas>
+        </div>
+      </div>
+    </form>
+  `;
+
+  document.getElementById('loan-overlay').classList.remove('hidden');
+}
+
+function formatLoanAmount() {
+  const el = document.getElementById('loan_amount');
+  const raw = el.value.replace(/[^\d]/g, '');
+  el.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+}
+
+function setLoanPreset(f) {
+  const p = npinjamState.profile;
+  if (!p) return;
+  const val = Math.floor((parseFloat(p.available_limit || 0) * f) / 10000) * 10000;
+  document.getElementById('loan_amount').value = val ? val.toLocaleString('id-ID') : '';
+}
+
+async function startLoanVerify() {
+  const video = document.getElementById('loan-video');
+  loanSelfieBlob = null;
+  loanMatchScore = null;
+  loanCaptured = false;
+  loanEyeWasOpen = false;
+  loanBlinkLocked = false;
+  try {
+    loanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } }, audio: false });
+  } catch (e) {
+    loanStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+  loanVideo = video;
+  video.srcObject = loanStream;
+  await video.play();
+  document.getElementById('loan-guide').style.display = 'flex';
+  document.getElementById('loan-captured-preview').classList.add('hidden');
+  document.getElementById('loan-liveness').style.display = 'flex';
+  document.getElementById('loan-status').style.display = 'flex';
+  document.getElementById('loan-status-text').textContent = 'Kedipkan mata sekali...';
+  document.getElementById('loan-status-text').style.background = 'rgba(0,0,0,0.7)';
+  document.getElementById('loan-start-btn').classList.add('hidden');
+  document.getElementById('loan-retake-btn').classList.add('hidden');
+  document.getElementById('loan-blink-status').textContent = '👁 Blink: -';
+  document.getElementById('loan-blink-status').style.background = 'rgba(0,0,0,0.7)';
+  document.getElementById('loan-pct').textContent = '0%';
+  document.getElementById('loan-match-result').classList.add('hidden');
+  loanFrameLoop();
+}
+
+function loanFrameLoop() {
+  if (!loanVideo || loanVideo.paused || loanVideo.ended) { loanAnimationFrame = null; return; }
+  if (!loanDetectBusy && typeof faceapi !== 'undefined' && faceApiLoaded && !loanCaptured) {
+    loanDetectBusy = true;
+    (async () => {
+      try {
+        const det = await faceapi.detectSingleFace(loanVideo, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.3 })).withFaceLandmarks();
+        if (det) {
+          const le = det.landmarks.getLeftEye();
+          const re = det.landmarks.getRightEye();
+          const ear = (eyeAspectRatio(le) + eyeAspectRatio(re)) / 2;
+          if (ear >= 0.23) {
+            loanEyeWasOpen = true;
+            loanBlinkLocked = false;
+          } else if (ear < 0.22 && loanEyeWasOpen && !loanBlinkLocked) {
+            loanBlinkLocked = true;
+            loanCaptured = true;
+            document.getElementById('loan-blink-status').textContent = '👁 Blink: ✓';
+            document.getElementById('loan-blink-status').style.background = 'rgba(0, 200, 0, 0.8)';
+            document.getElementById('loan-pct').textContent = '100%';
+            document.getElementById('loan-status-text').textContent = 'Liveness OK, mengambil selfie...';
+            document.getElementById('loan-status-text').style.background = 'rgba(0, 200, 0, 0.8)';
+            loanAutoTimer = setTimeout(() => captureLoanSelfie(), 500);
+          }
+        }
+      } catch (e) { /* continue */ } finally {
+        loanDetectBusy = false;
+      }
+    })();
+  }
+  loanAnimationFrame = requestAnimationFrame(loanFrameLoop);
+}
+
+async function captureLoanSelfie() {
+  const video = document.getElementById('loan-video');
+  const canvas = document.getElementById('loan-capture-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
+  const rx = h * 0.4, ry = rx * 1.25;
+  const cc = document.createElement('canvas');
+  cc.width = Math.max(1, Math.round(rx * 2));
+  cc.height = Math.max(1, Math.round(ry * 2));
+  const cctx = cc.getContext('2d');
+  cctx.drawImage(canvas, cx - rx, cy - ry, rx * 2, ry * 2, 0, 0, cc.width, cc.height);
+
+  let blob = await canvasToBlob(cc);
+  if (!blob) blob = await (await fetch(cc.toDataURL('image/jpeg', 0.9))).blob();
+  loanSelfieBlob = blob;
+
+  const prev = document.getElementById('loan-captured-preview');
+  prev.src = URL.createObjectURL(blob);
+  prev.classList.remove('hidden');
+  document.getElementById('loan-video').classList.add('hidden');
+  document.getElementById('loan-guide').style.display = 'none';
+  document.getElementById('loan-liveness').style.display = 'none';
+  document.getElementById('loan-status-text').textContent = 'Selfie terverifikasi!';
+  document.getElementById('loan-status-text').style.background = 'rgba(0, 200, 0, 0.8)';
+  document.getElementById('loan-retake-btn').classList.remove('hidden');
+  runLoanFaceMatch();
+}
+
+async function runLoanFaceMatch() {
+  const resultEl = document.getElementById('loan-match-result');
+  resultEl.classList.remove('hidden');
+  const setResult = (text, cls) => {
+    resultEl.textContent = text;
+    resultEl.className = 'text-center text-[10px] font-bold p-2 mt-2 no-rounded ' + cls;
+  };
+  setResult('Membandingkan wajah dengan KTP...', 'bg-yellow-50 text-yellow-700');
+  try {
+    const app = npinjamState.application;
+    if (!app || !app.ktp_selfie_url || !loanSelfieBlob) {
+      loanMatchScore = null;
+      setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+      return;
+    }
+    if (!faceApiLoaded) { try { await loadFaceApiModels(); } catch (e) {} }
+    const ktpResp = await fetch('/uploads/npinjam/' + app.ktp_selfie_url);
+    const ktpBlob = await ktpResp.blob();
+    const ktpImg = await loadImageFromBlob(ktpBlob);
+    const selfieImg = await loadImageFromBlob(loanSelfieBlob);
+    let ktpDet = null, selfieDet = null;
+    if (faceApiLoaded) {
+      try { ktpDet = await safeDetectFace(ktpImg); } catch (e) {}
+      try { selfieDet = await safeDetectFace(selfieImg); } catch (e) {}
+    }
+    if (ktpDet && selfieDet) {
+      const s = cosineSimilarity(ktpDet.descriptor, selfieDet.descriptor);
+      loanMatchScore = isNaN(s) ? null : s;
+      if (!isNaN(s) && s >= 0.5) {
+        setResult('Verifikasi wajah berhasil (' + (s * 100).toFixed(1) + '%)', 'bg-green-50 text-green-700');
+      } else {
+        setResult('Kemiripan rendah (' + (isNaN(s) ? '-' : (s * 100).toFixed(1)) + '%). Akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+      }
+    } else {
+      loanMatchScore = null;
+      setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+    }
+  } catch (e) {
+    console.error('Loan face match error:', e);
+    loanMatchScore = null;
+    setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+  }
+}
+
+function retakeLoanVerify() {
+  if (loanAutoTimer) { clearTimeout(loanAutoTimer); loanAutoTimer = null; }
+  if (loanAnimationFrame) { cancelAnimationFrame(loanAnimationFrame); loanAnimationFrame = null; }
+  loanCaptured = false;
+  loanEyeWasOpen = false;
+  loanBlinkLocked = false;
+  loanSelfieBlob = null;
+  loanMatchScore = null;
+  const video = document.getElementById('loan-video');
+  video.classList.remove('hidden');
+  if (loanStream && video.srcObject !== loanStream) {
+    video.srcObject = loanStream;
+  }
+  document.getElementById('loan-captured-preview').classList.add('hidden');
+  document.getElementById('loan-guide').style.display = 'flex';
+  document.getElementById('loan-liveness').style.display = 'flex';
+  document.getElementById('loan-status').style.display = 'flex';
+  document.getElementById('loan-status-text').textContent = 'Kedipkan mata sekali...';
+  document.getElementById('loan-status-text').style.background = 'rgba(0,0,0,0.7)';
+  document.getElementById('loan-blink-status').textContent = '👁 Blink: -';
+  document.getElementById('loan-blink-status').style.background = 'rgba(0,0,0,0.7)';
+  document.getElementById('loan-pct').textContent = '0%';
+  document.getElementById('loan-match-result').classList.add('hidden');
+  video.play().catch(() => {});
+  loanFrameLoop();
+}
+
+async function submitLoan(e) {
+  if (e) e.preventDefault();
+  const errorEl = document.getElementById('loan-error');
+  errorEl.classList.add('hidden');
+
+  const amountRaw = document.getElementById('loan_amount').value.replace(/[^\d]/g, '');
+  const amount = parseInt(amountRaw || '0');
+  const tenor = document.getElementById('loan_tenor').value;
+  const purpose = document.getElementById('loan_purpose').value.trim();
+  const bankName = document.getElementById('loan_bank_name').value;
+  const bankAccount = document.getElementById('loan_bank_account').value.replace(/[^\d]/g, '');
+  const bankAccountName = document.getElementById('loan_bank_account_name').value.trim();
+
+  if (!amount || amount < 50000) { errorEl.textContent = 'Nominal pinjaman minimal Rp 50.000'; errorEl.classList.remove('hidden'); return false; }
+  if (amount > parseFloat(npinjamState.profile.available_limit)) { errorEl.textContent = 'Nominal melebihi limit tersedia'; errorEl.classList.remove('hidden'); return false; }
+  if (!bankName) { errorEl.textContent = 'Pilih bank tujuan'; errorEl.classList.remove('hidden'); return false; }
+  if (!/^\d{6,20}$/.test(bankAccount)) { errorEl.textContent = 'Nomor rekening tidak valid (6-20 digit)'; errorEl.classList.remove('hidden'); return false; }
+  if (!bankAccountName) { errorEl.textContent = 'Nama pemilik rekening wajib diisi'; errorEl.classList.remove('hidden'); return false; }
+  if (!loanSelfieBlob) { errorEl.textContent = 'Lakukan verifikasi wajah terlebih dahulu.'; errorEl.classList.remove('hidden'); return false; }
+
+  const btn = document.getElementById('loan-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Memproses...';
+  try {
+    const res = await fetch(_d('9kzs9xzsxtkw9vykx}'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        loan_amount: amount,
+        tenure_months: tenor,
+        purpose,
+        bank_name: bankName,
+        bank_account_number: bankAccount,
+        bank_account_name: bankAccountName,
+        face_verify_score: loanMatchScore == null ? null : loanMatchScore
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('Pengajuan pinjaman berhasil dikirim! Mohon tunggu verifikasi admin (maksimal 1x24 jam kerja).');
+      closeLoanModal();
+      loadStatus();
+    } else {
+      errorEl.textContent = data.message || 'Gagal mengajukan pinjaman';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Ajukan Pinjaman';
+    }
+  } catch (err) {
+    errorEl.textContent = 'Terjadi kesalahan, coba lagi';
+    errorEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Ajukan Pinjaman';
+  }
+  return false;
+}
+
+function closeLoanModal() {
+  if (loanAnimationFrame) { cancelAnimationFrame(loanAnimationFrame); loanAnimationFrame = null; }
+  if (loanAutoTimer) { clearTimeout(loanAutoTimer); loanAutoTimer = null; }
+  if (loanStream) { loanStream.getTracks().forEach(t => t.stop()); loanStream = null; }
+  if (loanVideo) loanVideo.srcObject = null;
+  document.getElementById('loan-overlay').classList.add('hidden');
+}
+</script>
+
+</body>
+</html>
