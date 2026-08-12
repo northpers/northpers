@@ -143,8 +143,8 @@
                             <span id="detail-old-price"
                                 class="text-xs md:text-[15px] line-through text-gray-400">
                             </span>
-                            <span class="bg-[#fff1ee] text-[#DF414F] px-1 text-[10px] md:text-xs">
-                                -5%
+                            <span id="detail-discount-badge"
+                                class="hidden bg-[#fff1ee] text-[#DF414F] px-1 text-[10px] md:text-xs">
                             </span>
                         </div>
                         <div class="bg-red-600 text-white md:w-[180px] w-[150px] text-[10px] md:text-[12px] mt-1 px-2 gap-1 py-[1px] justify-center flex rounded">
@@ -209,7 +209,7 @@
 
                 <details class="group w-full border-t border-gray-100 pt-2 mt-1">
                     <summary class="flex items-center justify-between text-[11px] md:text-sm font-bold text-gray-800 uppercase tracking-widest select-none list-none [&::-webkit-details-marker]:hidden cursor-pointer py-1">
-                        <span>Deskripsi</span>
+                        <span class="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Deskripsi</span>
                         <svg class="w-4 h-4 text-gray-500 transition-transform duration-300 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>

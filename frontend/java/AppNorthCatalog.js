@@ -617,6 +617,19 @@ function updateProductPrice() {
   if (oldPriceEl && product.oldPrice) {
     oldPriceEl.innerText = `IDR ${product.oldPrice.toLocaleString("id-ID")}`;
   }
+  const discountBadge = document.getElementById("detail-discount-badge");
+  if (discountBadge) {
+    const pct =
+      product.oldPrice && product.oldPrice > currentPrice
+        ? Math.round((1 - currentPrice / product.oldPrice) * 100)
+        : 0;
+    if (pct > 0) {
+      discountBadge.innerText = `-${pct}%`;
+      discountBadge.classList.remove("hidden");
+    } else {
+      discountBadge.classList.add("hidden");
+    }
+  }
   if (checkoutPrice) {
     checkoutPrice.innerText = `IDR ${displayPrice.toLocaleString("id-ID")}`;
   }
