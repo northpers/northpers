@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require("../config/db");
 const { cachedQuery, invalidateByPrefix } = require("../config/redis");
 
-const SIZE_EXTRA = { "S": 0, "M": 1000, "L": 2000, "XL": 3000 };
+const SIZE_EXTRA = { S: 0, M: 1000, L: 2000, XL: 3000 };
 
 const NORTHLINE_CATALOG = [
   {
@@ -13,8 +13,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.4,
+    totalReviews: 7102,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtWhiteLong919.jpeg",
       "https://nl.hostinesia.my.id/public/image/nrtWhiteShort919.jpeg",
@@ -22,6 +22,9 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 120,
+    deskripsi:
+      "Kaos boxy Longsleeve & Shortsleeve 919 NRT dengan bahan 24s Cotton Combed yang nyaman dan adem. Potongan boxy, cocok untuk daily wear. Tersedia model panjang dan pendek.",
   },
   {
     id: 2,
@@ -30,8 +33,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.8,
+    totalReviews: 9201,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtwhiteLongNorth.jpeg",
       "https://nl.hostinesia.my.id/public/image/nrtWhiteShortNorth.jpeg",
@@ -41,6 +44,9 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Kaos boxy Longsleeve & Shortsleeve dengan bahan 24s Cotton Combed premium. Nyaman dipakai sehari-hari dengan potongan boxy oversize. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
   {
     id: 3,
@@ -49,8 +55,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.2,
+    totalReviews: 6201,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtWhiteLong.jpeg",
       "https://nl.hostinesia.my.id/public/image/nrtWhiteShort.jpeg",
@@ -60,6 +66,9 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Kaos boxy Longsleeve & Shortsleeve dengan bahan 24s Cotton Combed premium. Nyaman dipakai sehari-hari dengan potongan boxy oversize. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
   {
     id: 4,
@@ -68,8 +77,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.6,
+    totalReviews: 8101,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtWhiteLongArabic.jpeg",
       "https://nl.hostinesia.my.id/public/image/nrtWhiteShortArabic.jpeg",
@@ -79,20 +88,26 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH", "HITAM"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Kaos boxy Longsleeve & Shortsleeve Arabic dengan bahan 24s Cotton Combed premium. Desain tulisan arab, potongan boxy. Tersedia warna putih dan hitam, model panjang dan pendek.",
   },
   {
     id: 5,
     name: "Northline Workshirt Zipper Black Boxy -  Workshirt Zipper Boxy",
     price: 188000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 5,
+    totalReviews: 10801,
     images: [
       "https://nl.hostinesia.my.id/public/image/NorthWorkshirtZipper.jpeg",
       "https://nl.hostinesia.my.id/public/image/NorthlineWorkshirtZipper.jpeg",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 80,
+    deskripsi:
+      "Workshirt Zipper boxy hitam dengan bahan premium. Desain work shirt modern dengan resleting, cocok untuk gaya kasual hingga semi formal. Tersedia ukuran M, L, XL.",
   },
   {
     id: 6,
@@ -101,8 +116,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.4,
+    totalReviews: 7101,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtwhite111Long.jpeg",
       "https://nl.hostinesia.my.id/public/image/nrtwhite111Short.jpeg",
@@ -110,6 +125,9 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 120,
+    deskripsi:
+      "Longsleeve 111 putih boxy dengan bahan 24s Cotton Combed. Adem dan nyaman untuk aktivitas harian. Tersedia model panjang dan pendek.",
   },
   {
     id: 7,
@@ -118,8 +136,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 158000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.8,
+    totalReviews: 9200,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtNORTNLWhiteShort.webp",
       "https://nl.hostinesia.my.id/public/image/nrtNORTNLWhiteLong.webp",
@@ -127,6 +145,9 @@ const NORTHLINE_CATALOG = [
     colors: ["PUTIH"],
     models: ["PANJANG", "PENDEK"],
     sizes: ["M", "L", "XL"],
+    stock: 120,
+    deskripsi:
+      "Shortsleeve NORTNL putih boxy dengan bahan 24s Cotton Combed. Desain simple dan bersih, nyaman dipakai sehari-hari. Tersedia model panjang dan pendek.",
   },
   {
     id: 8,
@@ -134,13 +155,16 @@ const NORTHLINE_CATALOG = [
     priceLong: 240000,
     price: 240000,
     oldPrice: 280000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.1,
+    totalReviews: 5800,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtNORTNLKemejaZipper.webp",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 60,
+    deskripsi:
+      "Afterall Boxy Work Shirt Zipper dengan bahan premium. Kemeja kerja boxy dengan resleting, tampilan modern dan rapi. Tersedia ukuran M, L, XL.",
   },
   {
     id: 9,
@@ -148,13 +172,16 @@ const NORTHLINE_CATALOG = [
     priceLong: 310000,
     price: 310000,
     oldPrice: 320000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.6,
+    totalReviews: 8100,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtNORTNLHoodieBoxyZipper.webp",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 75,
+    deskripsi:
+      "Hoodie NORTNL boxy double zipper Vintage Club. Desain hoodie kekinian dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
   {
     id: 10,
@@ -162,13 +189,14 @@ const NORTHLINE_CATALOG = [
     priceLong: 310000,
     price: 310000,
     oldPrice: 320000,
-    avgRating: 4,
-    totalReviews: 0,
-    images: [
-      "https://nl.hostinesia.my.id/public/image/nrtHoodieNRTStyle.webp",
-    ],
+    avgRating: 5,
+    totalReviews: 10800,
+    images: ["https://nl.hostinesia.my.id/public/image/nrtHoodieNRTStyle.webp"],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 75,
+    deskripsi:
+      "Hoodie NRT boxy double zipper Vintage Club. Desain hoodie kekinian dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
   {
     id: 11,
@@ -176,13 +204,16 @@ const NORTHLINE_CATALOG = [
     priceLong: 310000,
     price: 310000,
     oldPrice: 320000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.3,
+    totalReviews: 6600,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtAmricStyleHoodie.webp",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 75,
+    deskripsi:
+      "Hoodie North American boxy double zipper Vintage Club. Desain hoodie bergaya North American dengan double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
   {
     id: 12,
@@ -190,13 +221,16 @@ const NORTHLINE_CATALOG = [
     priceShort: 138000,
     price: 138000,
     oldPrice: 240000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.7,
+    totalReviews: 8700,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtAmricStyleTsirth.webp",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Shortsleeve North American hitam dengan bahan 24s Cotton Combed. Desain bergaya North American, potongan boxy. Tersedia ukuran M, L, XL.",
   },
   {
     id: 13,
@@ -204,8 +238,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 310000,
     price: 310000,
     oldPrice: 320000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.1,
+    totalReviews: 5800,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtPinkStyle1.webp",
       "https://nl.hostinesia.my.id/public/image/nrtPinkStyle2.webp",
@@ -214,6 +248,9 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PINK"],
     sizes: ["M", "L", "XL"],
+    stock: 60,
+    deskripsi:
+      "Hoodie Pink Style boxy double zipper Vintage Club. Desain hoodie dengan nuansa pink, double zipper, bahan tebal dan hangat. Tersedia ukuran M, L, XL.",
   },
   {
     id: 14,
@@ -221,8 +258,8 @@ const NORTHLINE_CATALOG = [
     priceLong: 310000,
     price: 310000,
     oldPrice: 320000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.5,
+    totalReviews: 7500,
     images: [
       "https://nl.hostinesia.my.id/public/image/20260806_194750.jpg",
       "https://nl.hostinesia.my.id/public/image/20260806_194945.jpg",
@@ -231,6 +268,9 @@ const NORTHLINE_CATALOG = [
     ],
     colors: ["PINK", "ABU-ABU", "BIRU", "MERAH"],
     sizes: ["M", "L", "XL"],
+    stock: 90,
+    deskripsi:
+      "Hoodie NRL Style boxy double zipper Vintage Club. Desain hoodie eksklusif dengan double zipper. Tersedia warna pink, abu-abu, biru, dan merah. Ukuran M, L, XL.",
   },
   {
     id: 15,
@@ -238,14 +278,17 @@ const NORTHLINE_CATALOG = [
     priceShort: 138000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.9,
+    totalReviews: 9800,
     images: [
       "https://nl.hostinesia.my.id/public/image/20260807_023344.jpg",
       "https://nl.hostinesia.my.id/public/image/20260807_023450.webp",
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Shortsleeve NRL putih boxy dengan bahan 24s Cotton Combed. Desain bersih dan simple, nyaman dipakai sehari-hari. Tersedia ukuran M, L, XL.",
   },
   {
     id: 16,
@@ -253,14 +296,17 @@ const NORTHLINE_CATALOG = [
     priceShort: 138000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.3,
+    totalReviews: 6600,
     images: [
       "https://nl.hostinesia.my.id/public/image/20260807_023614.webp",
       "https://nl.hostinesia.my.id/public/image/20260807_023639.jpg",
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
+    stock: 100,
+    deskripsi:
+      "Shortsleeve NL putih boxy dengan bahan 24s Cotton Combed. Desain simple, nyaman dipakai sehari-hari. Tersedia ukuran M, L, XL.",
   },
   {
     id: 17,
@@ -268,13 +314,16 @@ const NORTHLINE_CATALOG = [
     priceShort: 138000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.7,
+    totalReviews: 8700,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtNewArchiveWhite.webp",
     ],
     colors: ["PUTIH"],
     sizes: ["M", "L", "XL"],
+    stock: 80,
+    deskripsi:
+      "Shortsleeve New Article 2026 putih boxy dengan bahan 24s Cotton Combed. Artikel terbaru dengan desain fresh. Tersedia ukuran M, L, XL.",
   },
   {
     id: 18,
@@ -283,13 +332,16 @@ const NORTHLINE_CATALOG = [
     price: 138000,
     oldPrice: 250000,
     avgRating: 4,
-    totalReviews: 0,
+    totalReviews: 5400,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline1.webp?=v2",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    sizesChildren: [ "S", "M", "L", "XL", "XXL"],
+    sizesChildren: ["S", "M", "L", "XL", "XXL"],
+    stock: 110,
+    deskripsi:
+      "Shortsleeve NORTHLINE hitam boxy dengan bahan 24s Cotton Combed. Desain statement dengan tulisan NORTHLINE. Tersedia ukuran dewasa dan anak.",
     childrenPrice: 88000,
   },
   {
@@ -298,25 +350,54 @@ const NORTHLINE_CATALOG = [
     priceShort: 138000,
     price: 138000,
     oldPrice: 250000,
-    avgRating: 4,
-    totalReviews: 0,
+    avgRating: 4.5,
+    totalReviews: 7500,
     images: [
       "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline2.webp?=v2",
     ],
     colors: ["HITAM"],
     sizes: ["M", "L", "XL"],
-    sizesChildren: [ "S", "M", "L", "XL", "XXL"],
+    sizesChildren: ["S", "M", "L", "XL", "XXL"],
+    stock: 110,
+    deskripsi:
+      "Shortsleeve NORTHLINE INDONESIA hitam boxy dengan bahan 24s Cotton Combed. Desain statement dengan tulisan NORTHLINE INDONESIA. Tersedia ukuran dewasa dan anak.",
     childrenPrice: 88000,
+  },
+  {
+    id: 20,
+    name: "Northline Shortsleeve Kids Boxy Tshirt NORTHLINE INDONESIA -  24s Cotton Combed Shortsleeve Black Statement",
+    priceShort: 88000,
+    price: 88000,
+    oldPrice: 110000,
+    avgRating: 4.9,
+    totalReviews: 9800,
+    images: [
+      "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline2.webp?=v2",
+      "https://nl.hostinesia.my.id/public/image/nrtShortsleeveNorthline1.webp?=v2",
+    ],
+    colors: ["HITAM"],
+    modelStyle: ["NORTHLINE INDONESIA", "NORTHLINE"],
+    sizes: ["S", "M", "L", "XL", "XXL"],
+    stock: 150,
+    deskripsi:
+      "Shortsleeve Kids Boxy Tshirt NORTHLINE INDONESIA dengan bahan 24s Cotton Combed. Desain statement black untuk anak-anak. Ukuran anak S hingga XXL dengan harga khusus anak.",
   },
 ];
 
 const crypto = require("crypto");
 
 function getProductCode(id) {
-  return "nrt-" + crypto.createHash("sha256").update("northline-" + id).digest("hex").slice(0, 12);
+  return (
+    "nrt-" +
+    crypto
+      .createHash("sha256")
+      .update("northline-" + id)
+      .digest("hex")
+      .slice(0, 12)
+  );
 }
 
-const FEATURED_IDS = [19, 18, 17, 16, 15, 14, 13, 12, 11];
+const FEATURED_IDS = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11];
 
 function getCategories(product) {
   const n = String(product.name || "").toLowerCase();
@@ -344,10 +425,12 @@ function findCatalogProduct(ref) {
 function dummyReviewMeta(productId) {
   const n = Math.abs(Number(productId) * 9301 + 49297) % 1000;
   const ratings = [4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0];
-  const counts = [5400, 5800, 6200, 6600, 7100, 7500, 8100, 8700, 9200, 9800, 10800];
+  const counts = [
+    5400, 5800, 6200, 6600, 7100, 7500, 8100, 8700, 9200, 9800, 10800,
+  ];
   return {
     avgRating: ratings[n % ratings.length],
-    totalReviews: counts[n % counts.length]
+    totalReviews: counts[n % counts.length],
   };
 }
 
@@ -358,34 +441,62 @@ function mergeRealReviews(productId, realCount, realAvg) {
   const totalReviews = dummy.totalReviews + realCountNum;
   let avgRating = dummy.avgRating;
   if (realCountNum > 0 && realAvgNum > 0) {
-    avgRating = Math.round(((dummy.avgRating * dummy.totalReviews) + (realAvgNum * realCountNum)) / totalReviews * 10) / 10;
+    avgRating =
+      Math.round(
+        ((dummy.avgRating * dummy.totalReviews + realAvgNum * realCountNum) /
+          totalReviews) *
+          10,
+      ) / 10;
   }
   return { avgRating, totalReviews };
 }
 
 function thumbUrl(imageUrl) {
-  const s = String(imageUrl || '').split('?')[0];
+  const s = String(imageUrl || "").split("?")[0];
   const m = s.match(/\/public\/image\/(.+)\.[^.]+$/);
   if (!m) return imageUrl;
-  return s.replace('/public/image/', '/public/image/opt/').replace(/\.[^.]+$/, '') + '.webp';
+  return (
+    s.replace("/public/image/", "/public/image/opt/").replace(/\.[^.]+$/, "") +
+    ".webp"
+  );
 }
 
 function withCode(product) {
-  const merged = mergeRealReviews(product.id, product.totalReviews || 0, product.avgRating || 0);
+  const merged = mergeRealReviews(
+    product.id,
+    product.totalReviews || 0,
+    product.avgRating || 0,
+  );
   const thumbs = (product.images || []).map(thumbUrl);
-  return { ...product, avgRating: merged.avgRating, totalReviews: merged.totalReviews, thumbs, code: getProductCode(product.id), featured: FEATURED_IDS.includes(product.id), sortOrder: product.id, categories: getCategories(product) };
+  return {
+    ...product,
+    avgRating: merged.avgRating,
+    totalReviews: merged.totalReviews,
+    code: getProductCode(product.id),
+    thumbs,
+    categories: getCategories(product),
+  };
 }
 
 function computeUnitPrice(catalogProduct, model, size, sizeGroup) {
-  if (String(sizeGroup || "").toUpperCase() === "CHILDREN" && catalogProduct.childrenPrice) {
+  if (
+    String(sizeGroup || "").toUpperCase() === "CHILDREN" &&
+    catalogProduct.childrenPrice
+  ) {
     return catalogProduct.childrenPrice;
   }
-  if (String(size || "").toUpperCase() === "CHILDREN" && catalogProduct.childrenPrice) {
+  if (
+    String(size || "").toUpperCase() === "CHILDREN" &&
+    catalogProduct.childrenPrice
+  ) {
     return catalogProduct.childrenPrice;
   }
   let base = 0;
   if (catalogProduct.priceLong && catalogProduct.priceShort) {
-    base = String(model).toUpperCase() === "PANJANG" ? catalogProduct.priceLong : catalogProduct.priceShort;
+    base =
+      String(model).toUpperCase() === "PANJANG"
+        ? catalogProduct.priceLong
+        : catalogProduct.priceShort;
   } else if (catalogProduct.priceShort) {
     base = catalogProduct.priceShort;
   } else {
@@ -405,11 +516,16 @@ router.get("/products", async (req, res) => {
   let list = NORTHLINE_CATALOG.map(withCode);
   try {
     const [rows] = await db.execute(
-      "SELECT product_id, COUNT(*) c, AVG(rating) a FROM product_reviews GROUP BY product_id"
+      "SELECT product_id, COUNT(*) c, AVG(rating) a FROM product_reviews GROUP BY product_id",
     );
     const real = {};
-    rows.forEach(r => { real[Number(r.product_id)] = { c: parseInt(r.c) || 0, a: r.a ? Math.round(Number(r.a) * 10) / 10 : 0 }; });
-    list = list.map(p => {
+    rows.forEach((r) => {
+      real[Number(r.product_id)] = {
+        c: parseInt(r.c) || 0,
+        a: r.a ? Math.round(Number(r.a) * 10) / 10 : 0,
+      };
+    });
+    list = list.map((p) => {
       const r = real[Number(p.id)];
       if (r && r.c > 0) {
         const merged = mergeRealReviews(p.id, r.c, r.a);
@@ -429,13 +545,19 @@ router.get("/products", async (req, res) => {
 router.get("/reviews", async (req, res) => {
   try {
     const { productId, rating } = req.query;
-    const cacheKey = `catalog:reviews:${productId || 'all'}:${rating || 'all'}`;
+    const cacheKey = `catalog:reviews:${productId || "all"}:${rating || "all"}`;
 
     const data = await cachedQuery(cacheKey, 300, async () => {
       let where = "WHERE 1=1";
       const params = [];
-      if (productId) { where += " AND c.product_id=?"; params.push(parseInt(productId)); }
-      if (rating) { where += " AND c.rating=?"; params.push(parseInt(rating)); }
+      if (productId) {
+        where += " AND c.product_id=?";
+        params.push(parseInt(productId));
+      }
+      if (rating) {
+        where += " AND c.rating=?";
+        params.push(parseInt(rating));
+      }
 
       const [rows] = await db.execute(
         `SELECT c.id, c.product_id, c.user_id, c.username, c.user_avatar, c.rating, c.rating_bahan, c.rating_ukuran, c.rating_warna,
@@ -443,28 +565,35 @@ router.get("/reviews", async (req, res) => {
                 c.reply_text, c.reply_at, c.reply_by, c.created_at
          FROM product_reviews c
          ${where}
-         ORDER BY c.created_at DESC, c.id DESC`
-        , params);
+         ORDER BY c.created_at DESC, c.id DESC`,
+        params,
+      );
 
       const [aggRows] = await db.execute(
         `SELECT product_id, COUNT(*) as total, AVG(rating) as avg_rating
          FROM product_reviews
          WHERE product_id IN (SELECT DISTINCT product_id FROM product_reviews)
-         GROUP BY product_id`
+         GROUP BY product_id`,
       );
 
       const prodMeta = {};
-      aggRows.forEach(r => { prodMeta[r.product_id] = { totalReviews: r.total, avgRating: r.avg_rating ? Math.round(Number(r.avg_rating) * 10) / 10 : 0 }; });
+      aggRows.forEach((r) => {
+        prodMeta[r.product_id] = {
+          totalReviews: r.total,
+          avgRating: r.avg_rating
+            ? Math.round(Number(r.avg_rating) * 10) / 10
+            : 0,
+        };
+      });
 
       const reviewMap = new Map();
-      NORTHLINE_CATALOG.forEach(p => {
+      NORTHLINE_CATALOG.forEach((p) => {
         const m = prodMeta[p.id] || { totalReviews: 0, avgRating: 0 };
         reviewMap.set(p.id, {
           id: p.id,
           name: p.name,
-          image: (p.images && p.images[0]) || '/public/icons/default.png',
-          code: getProductCode(p.id),
-          totalReviews: m.totalReviews,
+          image: (p.images && p.images[0]) || "/public/icons/default.png",
+                totalReviews: m.totalReviews,
           avgRating: m.avgRating,
         });
       });
@@ -472,32 +601,41 @@ router.get("/reviews", async (req, res) => {
       const allCounts = {};
       for (let i = 1; i <= 5; i++) allCounts[i] = 0;
       const byProduct = {};
-      rows.forEach(r => {
-        if (!byProduct[r.product_id]) byProduct[r.product_id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        byProduct[r.product_id][r.rating] = (byProduct[r.product_id][r.rating] || 0) + 1;
+      rows.forEach((r) => {
+        if (!byProduct[r.product_id])
+          byProduct[r.product_id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        byProduct[r.product_id][r.rating] =
+          (byProduct[r.product_id][r.rating] || 0) + 1;
         allCounts[r.rating] = (allCounts[r.rating] || 0) + 1;
       });
-      Object.keys(reviewMap).forEach(id => {
+      Object.keys(reviewMap).forEach((id) => {
         if (!byProduct[id]) byProduct[id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         reviewMap.get(id).ratingCounts = byProduct[id];
       });
 
       const totalReviews = rows.length;
-      const avg = totalReviews > 0
-        ? Math.round(rows.reduce((s, r) => s + (r.rating || 0), 0) / totalReviews * 10) / 10
-        : 0;
+      const avg =
+        totalReviews > 0
+          ? Math.round(
+              (rows.reduce((s, r) => s + (r.rating || 0), 0) / totalReviews) *
+                10,
+            ) / 10
+          : 0;
 
       return {
         success: true,
         totalReviews,
         avgRating: avg,
         ratingCounts: allCounts,
-        products: Array.from(reviewMap.values()).filter(p => p.totalReviews > 0),
-        reviews: rows.map(r => ({
+        products: Array.from(reviewMap.values()).filter(
+          (p) => p.totalReviews > 0,
+        ),
+        reviews: rows.map((r) => ({
           id: r.id,
           productId: r.product_id,
           productName: (reviewMap.get(Number(r.product_id)) || {}).name || null,
-          productImage: (reviewMap.get(Number(r.product_id)) || {}).image || null,
+          productImage:
+            (reviewMap.get(Number(r.product_id)) || {}).image || null,
           userName: r.username,
           userAvatar: r.user_avatar,
           rating: r.rating,
