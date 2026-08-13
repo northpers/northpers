@@ -134,9 +134,9 @@ function autoOpenNavGroup(page) {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const me = await api('/api/auth/me');
-    if (!me.success || !me.user) { window.location.href = '/AppNorthAuth'; return; }
+    if (!me.success || !me.user) { renderLoginAuth(document.getElementById('page-content')); return; }
     const roleCheck = await api('/api/admin/dashboard');
-    if (!roleCheck.success) { window.location.href = '/AppNorthAuth'; return; }
+    if (!roleCheck.success) { renderLoginAuth(document.getElementById('page-content')); return; }
     adminUser = me.user;
     document.getElementById('admin-name').textContent = me.user.name || me.user.username;
     var initials = (me.user.name || me.user.username || 'AD').trim().split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
@@ -185,7 +185,7 @@ function navTo(page) {
     case 'reports': renderReports(content); break;
     case 'seller-earnings': renderSellerEarnings(content); break;
     case 'settings': renderSettings(content); break;
-    case "login-auth": alert("Halaman Login Admin - Gunakan username: admin, password: admin123"); navTo(dashboard); break;
+    case "login-auth": renderLoginAuth(content); break;
     case 'ai-models': renderAiModels(content); break;
   }
   if (page === 'chat') {
@@ -1452,6 +1452,51 @@ async function rejectNPinjamLoan(id) {
 async function logout() {
   await api('/api/auth/logout', { method: 'POST' });
   window.location.href = '/AppNorthAuth';
+}
+
+function renderLoginAuth(el) {
+  el.innerHTML = '<div class="login-card">' +
+    '<h2>Login Admin</h2>' +
+    '<form id="login-form">' +
+    '<div class="form-group">' +
+    '<label>Username</label>' +
+    '<input type="text" id="username" required>' +
+    '</div>' +
+    '<div class="form-group">' +
+    '<label>Password</label>' +
+    '<input type="password" id="password" required>' +
+    '</div>' +
+    '<button type="submit" class="btn-primary">Masuk</button>' +
+    '</form>' +
+    '<div id="login-error" style="color:red;margin-top:10px;display:none;"></div>' +
+    '</div>';
+  var errorDiv = document.getElementById('login-error');
+  document.getElementById('login-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var username = document.getElementById('username').value;
+    var password = document.getElementById('password').value;
+    errorDiv.textContent = 'Sedang login...';
+    errorDiv.style.display = 'block';
+    try {
+      var res = await api('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: username, password: password })
+      });
+      if (res.success) {
+        adminUser = res.user;
+        document.getElementById('admin-name').textContent = res.user.name || res.user.username;
+        var initials = (res.user.name || res.user.username || 'AD').trim().split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+        document.getElementById('admin-avatar').textContent = initials || 'AD';
+        var logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.addEventListener('click', function (ev) { ev.preventDefault(); logout(); });
+        navTo('dashboard');
+      } else {
+        errorDiv.textContent = res.message || 'Login gagal';
+      }
+    } catch (err) {
+      errorDiv.textContent = 'Error koneksi: ' + err.message;
+    }
+  });
 }
 
 let affiliateFilterStatus = '', affiliateSearch = '';

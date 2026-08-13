@@ -8,9 +8,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const adminAuth = async (req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
-  if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
-    return res.status(403).json({ success: false, message: 'Forbidden: localhost only' });
-  }
   let token = null;
   const bearer = req.headers['authorization'];
   if (bearer) {
@@ -20,7 +17,10 @@ const adminAuth = async (req, res, next) => {
     if (match) token = decodeURIComponent(match[1]);
   }
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
+    // Jika bukan localhost, tetolak langsung; jika localhost, lanjutkan ke cek user
+    if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
+      return res.status(403).json({ success: false, message: 'Forbidden: admin authentication required' });
+    }
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -34,6 +34,34 @@ const adminAuth = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Invalid token' });
   }
 };
+
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username dan password wajib diisi' });
+    }
+    const [users] = await db.execute('SELECT id, username, role, password FROM user_northline WHERE username=?', [username]);
+    if (users.length === 0) {
+      return res.json({ success: false, message: 'Username tidak ditemukan' });
+    }
+    const user = users[0];
+    const bcrypt = require('bcrypt');
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.json({ success: false, message: 'Password salah' });
+    }
+    if (user.role !== 'admin') {
+      return res.json({ success: false, message: 'Hanya admin yang boleh login' });
+    }
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+    res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+    res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 router.use(adminAuth);
 
