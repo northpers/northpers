@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
+    <title>Northline - Autentikasi</title>
+    <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        *{ font-family: 'DM Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .loader-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .loader-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background: #DF414F;
+            animation: loaderBounce 1s infinite ease-in-out;
+        }
+        .loader-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+        .loader-dots span:nth-child(3) {
+            animation-delay: .3s;
+        }
+        @keyframes loaderBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: .5;
+            }
+            40% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="md:min-h-screen bg-gray-100 font-sans overflow-y-auto overflow-x-hidden">
+    <div class="flex flex-col md:flex-row min-h-screen w-full items-center justify-center">
+
+        <div id="carousel-container" class="hidden md:flex w-full md:w-3/5 items-center justify-center md:h-screen relative overflow-hidden transition-colors duration-500 bg-stone-50">
+            <div class="w-full h-full relative flex items-center justify-center">
+                <img id="carousel-img" 
+                    src="" 
+                    alt="Northline E-commerce Visual" 
+                    class="w-full h-full object-cover opacity-70 transition-all duration-500 ease-in-out">
+                <div class="absolute inset-0 bg-black/5 pointer-events-none"></div>
+                
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 z-10">
+                    <div class="w-full max-w-[340px]">
+                        <div class="mb-[10px] mt-[-20px] items-center justify-center hidden md:flex">
+                            <a href="/" class="inline-block hover:opacity-70 transition-opacity active:scale-95 transform duration-200">
+                                <img src="/public/icons/nrtFaviconWhite.png" alt="Northline Logo" style="height: 120px; object-fit: contain;">
+                            </a>
+                        </div>
+                    </div>
+                    <p class="text-[10px] sm:text-xs tracking-widest font-semibold text-zinc-700 uppercase mb-2 px-2.5 py-0.5 rounded-full bg-gray-50">Northline Exclusive</p>
+                    <h2 id="carousel-desc" class="text-3xl lg:text-4xl font-extrabold text-black leading-tight tracking-tighter mb-4 max-w-lg drop-shadow-sm"></h2>
+                    
+                    <a href="/" class="group inline-flex items-center gap-2 text-black text-xs font-bold border-b-2 border-black pb-1 hover:text-zinc-600 hover:border-zinc-600 transition duration-300">
+                        Explore Now
+                        <svg class="w-3.5 h-3.5 transform transition-transform duration-300 ease-out group-hover:translate-x-1" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            stroke-width="2.5" 
+                            viewBox="0 0 24 24" 
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            <div id="carousel-dots" class="absolute bottom-6 flex gap-2 z-20"></div>
+        </div>
+
+        <div class="w-full md:w-2/5 bg-gray-100 flex items-center justify-center p-2 md:p-10 py-12 md:h-screen order-2 overflow-y-auto">
+            
+
+        <div id="panel-login-classic" class="bg-white p-5 md:w-[400px] shadow-md">
+            <div class="flex items-start justify-between mb-8">
+                <div>
+                    <h1 class="text-[20px] font-medium text-black leading-none">
+                        Log In
+                    </h1>
+                </div>
+                <div
+                    onclick="openQrLoginModal()"
+                    class="flex items-center gap-3 cursor-pointer group">
+                    <div class="relative bg-[#fff7e6] border border-[#f5c26b] px-4 py-2 rounded-sm">
+                        <p class="text-[13px] leading-4 font-medium text-[#d99b00]">
+                            Log in dengan <br> QR
+                        </p>
+                        <div class="absolute top-1/2 -right-[7px] -translate-y-1/2
+                            w-3 h-3 bg-[#fff7e6]
+                            border-r border-t border-[#f5c26b]
+                            rotate-45">
+                        </div>
+                    </div>
+                    <div class="relative w-10 h-10">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=zXSWCwWtxBKr&format=png&color=DF414F"
+                            class="w-10 h-10 object-contain"
+                            style="clip-path: polygon(0 0,100% 0,100% 100%,0 50%);">
+                    </div>
+                </div>
+            </div>
+            <div id="qr-login-modal"
+                class="hidden fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 md:p-5">
+                <div class="relative bg-white w-full max-w-[900px]
+                    h-[90vh] md:h-auto
+                    flex flex-col md:flex-row
+                    overflow-y-auto md:overflow-hidden
+                    rounded-sm shadow-2xl">
+                    <button
+                        onclick="closeQrLoginModal()"
+                        class="absolute top-3 right-3 md:top-4 md:right-4
+                        w-9 h-9 flex items-center justify-center
+                        rounded-full hover:bg-gray-100 transition z-10">
+                        <img
+                            src="https://img.icons8.com/?size=100&id=46&format=png&color=DF414F"
+                            class="w-4 h-4 md:w-5 md:h-5">
+                    </button>
+                    <div class="w-full md:w-[45%]
+                        bg-[#fafafa]
+
+        <form id="form-login-admin" class="mt-8 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-2">Username</label>
+                <input type="text" id="username" required class="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-2">Password</label>
+                <input type="password" id="password" required class="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">
+            </div>
+            <button type="submit" class="w-full py-2 px-4 bg-zinc-900 text-white font-medium rounded-md hover:bg-zinc-800 transition focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">Masuk</button>
+            <div id="login-error-admin" style="color:#DC2626;margin-top:10px;font-size:12px;"></div>
+        </form>
+
+        <script>
+        document.getElementById('form-login-admin').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            var errorDiv = document.getElementById('login-error-admin');
+            errorDiv.textContent = 'Sedang login...';
+            errorDiv.style.display = 'block';
+            try {
+                var res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+                var data = await res.json();
+                errorDiv.style.display = 'none';
+                if (data.success) {
+                    window.location.href = '/AppNorthAdmin';
+                } else {
+                    errorDiv.textContent = data.message || 'Login gagal';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Error koneksi: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+        </script>

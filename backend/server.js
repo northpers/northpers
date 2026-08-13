@@ -335,6 +335,7 @@ const LEGACY_PAGE_MAP = {
   "/account": "/AppNorthAccount",
   "/affiliate": "/AppNorthAffiliate",
   "/auth": "/AppNorthAuth",
+  "/AppNorthAuthAdmin": "/AppNorthAuthAdmin",
   "/blog": "/AppNorthBlog",
   "/contact": "/AppNorthContact",
   "/dikelola-northline": "/AppNorthManaged",
