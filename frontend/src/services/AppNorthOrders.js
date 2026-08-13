@@ -1,5 +1,18 @@
 function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.charCodeAt(i)-32-10+95)%95)+32);}return r;}
 
+function orderEscapeHtml(str) {
+  if (typeof str !== 'string') return str || '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function orderGetStatus(o) {
+  if (o.payment_status === 'cancelled') return { label: 'Dibatalkan', color: 'border-gray-200 text-gray-600' };
+  if (o.payment_status === 'pending') return { label: 'Belum Dibayar', color: 'border-gray-200 text-gray-600' };
+  if (o.delivery_status && o.delivery_status.toLowerCase().includes('selesai')) return { label: 'Selesai', color: 'border-gray-200 text-gray-600' };
+  if (o.delivery_status && o.delivery_status.toLowerCase().includes('dikirim')) return { label: 'Dikirim', color: 'border-gray-200 text-gray-600' };
+  return { label: 'Diproses', color: 'border-yellow-500 text-yellow-600' };
+}
+
 window.OrderManager = {
 
     updateOrderBadge: function(count) {
@@ -140,73 +153,106 @@ window.OrderManager = {
         if (!userId) return;
 
         try {
-            const response = await fetch(`/api/user-orders/${userId}`);
+            container.innerHTML = '<div class="text-center text-gray-400 text-xs py-12">Loading...</div>';
+            const response = await fetch(`/api/user-orders/${userId}`, { credentials: 'include' });
             const data = await response.json();
-            
+
             if (data.success) {
-                container.innerHTML = data.orders.length === 0 ? 
-                    `<p class="text-center py-10 text-xs text-neutral-400">There are no orders today.</p>` : '';
-
-                data.orders.forEach(order => {
-                    const orderDataString = encodeURIComponent(JSON.stringify(order));
-                    const status = (order.payment_status || 'unknown').toLowerCase().trim();
-                    
-                    const badges = {
-                        'settlement': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">BERHASIL</span>',
-                        'capture': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">BERHASIL</span>',
-                        'success': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">BERHASIL</span>',
-                        'pending': '<span class="bbg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">MENUNGGU</span>',
-                        'expire': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">KADALUARSA</span>',
-                        'cancel': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">KADALUARSA</span>',
-                        'deny': '<span class="bg-gray-50 text-gray-600 px-2 py-0.5 text-[9px] font-bold border border-gray-200">GAGAL</span>'
-                    };
-                    
-                    const payBadge = badges[status] || '<span class="bg-red-600 text-white px-2 py-0.5 text-[9px]">UNKNOWN</span>';
-                    const price = "IDR " + parseInt(order.total_price || order.price || 133000).toLocaleString('id-ID');
-                    const imgUrl = order.product_image || "/public/icons/default.png";
-                    const discountBadge = order.is_discounted ? '<span class="text-[8px] bg-[#fff1ee] text-[#DF414F] px-1.5 py-0.5">-5% OFF</span>' : '';
-
-                    container.insertAdjacentHTML('beforeend', `
-                        <div onclick="window.OrderManager.openDetail('${orderDataString}')" class="bg-white border border-neutral-200 p-4 mb-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                            <div class="flex justify-between items-center border-b border-neutral-100 pb-2.5 mb-3">
-                                <div class="flex items-center gap-1.5"><span class="bg-red-600 text-white text-[8px] px-1.5 py-0.5 uppercase font-semibold">Northline</span>${discountBadge}</div>
-                                <div>${payBadge}</div>
-                            </div>
-                            <div class="flex items-start gap-3.5">
-                                <div class="w-16 h-16 bg-neutral-50 border border-neutral-200/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                    <img  id="order-product-img-${order.order_id}" src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://img.icons8.com/?size=100&id=84024&format=png&color=737373'">
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[9px] uppercase tracking-wider text-neutral-400 mb-0.5">${order.order_id}</p>
-                                    <h4 class="text-[14px] border-b mb-1 pb-1 border-neutral-100 text-black">${order.product_name}</h4>
-                                    <div class="flex flex-wrap gap-1 mt-2 mb-2">
-                                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
-                                            ${order.chosen_size || '-'}
-                                        </span>
-                                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
-                                            ${order.chosen_color || '-'}
-                                        </span>
-                                        <span class="border border-neutral-300 px-2 py-0.5 text-[9px] text-neutral-700">
-                                            ${order.chosen_model || '-'}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-black tracking-tight">
-                                        ${price}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="flex justify-end items-center text-[10px] text-gray-400 font-medium">
-                                <span class="uppercase">Open Detail</span>
-                                <img
-                                    src="https://img.icons8.com/?size=100&id=39786&format=png&color=737373"
-                                    class="w-3 h-3 ml-1"
-                                    alt="arrow">
-                            </div>
-                        </div>
-                    `);
-                });
+                const orders = data.orders || [];
+                if (orders.length === 0) {
+                    container.innerHTML = '<div class="bg-white border border-gray-200 rounded-sm p-6 text-center"><div class="text-gray-400 text-xs">Belum ada pesanan</div></div>';
+                    return;
+                }
+                container.innerHTML = orders.map(o => this.renderOrderCard(o)).join('');
             }
         } catch (err) { console.error("Error rendering orders:", err); }
+    },
+
+    renderOrderCard: function(o) {
+        const dateStr = new Date(o.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        const st = orderGetStatus(o);
+
+        const steps = [
+            { label: 'Dibuat', done: true },
+            { label: 'Diproses', done: o.delivery_status && o.delivery_status.toLowerCase().includes('proses') },
+            { label: 'Dikirim', done: o.delivery_status && o.delivery_status.toLowerCase().includes('dikirim') },
+            { label: 'Selesai', done: o.delivery_status && o.delivery_status.toLowerCase().includes('selesai') },
+        ];
+
+        const hasTrackingMap = typeof window.openTrackingMap === 'function';
+        const hasReview = typeof window.openReviewSpa === 'function';
+        const hasReceipt = typeof window.confirmOrderReceipt === 'function';
+        const userAddr = (o.shipping_address || '').split(' @Coordinates:')[0].trim();
+
+        return '<div class="bg-white border border-gray-200 rounded-sm">' +
+
+          '<div class="flex items-center justify-between px-3 py-2 border-b border-gray-100">' +
+            '<div class="flex items-center gap-1.5">' +
+              '<img src="https://img.icons8.com/?size=100&id=59878&format=png&color=DF414F" class="w-3.5 h-3.5">' +
+              '<span class="text-[11px] font-semibold text-gray-800">Northline</span>' +
+            '</div>' +
+            '<span class="text-[10px] font-semibold border px-2 py-0.5 ' + st.color + '">' + st.label + '</span>' +
+          '</div>' +
+
+          (o.payment_status !== 'pending' && o.payment_status !== 'cancelled' ? '<div class="px-3 py-3 border-b border-gray-100 bg-gray-50/30">' +
+            '<div class="flex items-center gap-2 mb-2' + (hasTrackingMap ? ' cursor-pointer select-none' : '') + '"' + (hasTrackingMap ? ' onclick="openTrackingMap(\'' + orderEscapeHtml(o.order_id) + '\')"' : '') + '>' +
+              '<img src="https://img.icons8.com/?size=100&id=7880&format=png&color=DF414F" class="w-3.5 h-3.5">' +
+              '<span class="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">Tracking Pengiriman</span>' +
+              (hasTrackingMap ? '<span class="text-[#DF414F] text-[10px] font-semibold ml-auto">Lacak di Peta ›</span>' : '') +
+            '</div>' +
+            '<div class="text-[10px] text-gray-500 leading-relaxed">' +
+              (userAddr ? orderEscapeHtml(userAddr) + '<br>' : '') +
+              (o.estimated_arrival ? '<span class="text-gray-400">Estimasi tiba: ' + orderEscapeHtml(o.estimated_arrival) + '</span>' : '') +
+            '</div>' +
+            (o.tracking_number ? '<div class="mt-2 text-[10px] bg-white border border-gray-100 p-2 rounded-sm">' +
+              '<div class="flex items-center justify-between">' +
+                '<span class="text-gray-500">Kurir: <b class="text-gray-800">' + orderEscapeHtml(o.tracking_courier || '-') + '</b></span>' +
+                '<button onclick="navigator.clipboard.writeText(\'' + orderEscapeHtml(o.tracking_number) + '\').then(function(){alert(\'Nomor resi disalin\')})" class="text-[#DF414F] font-semibold">Salin</button>' +
+              '</div>' +
+              '<div class="mt-1">No. Resi: <b class="text-[#DF414F] tracking-wider">' + orderEscapeHtml(o.tracking_number) + '</b></div>' +
+            '</div>' : '') +
+            '<div class="flex items-center gap-2 mt-2 text-[10px]">' +
+              '<span class="text-gray-400">Status:</span>' +
+              steps.map(function(s) {
+                return '<span class="' + (s.done ? 'text-[#DF414F] font-semibold' : 'text-gray-300') + '">' + s.label + '</span>' +
+                  (s.label !== 'Selesai' ? '<span class="text-gray-300"> → </span>' : '');
+              }).join('') +
+            '</div>' +
+          '</div>' : '') +
+
+          '<div class="flex gap-3 px-3 py-3">' +
+            '<div class="w-16 h-16 bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden">' +
+              '<img src="' + (o.product_image || '/public/icons/default.png') + '" class="w-full h-full object-cover" onerror="this.src=\'/public/icons/default.png\'">' +
+            '</div>' +
+            '<div class="flex-1 min-w-0 gap-2">' +
+              '<p class="text-[12px] font-medium text-gray-800 leading-4 line-clamp-2">' + orderEscapeHtml(o.product_name || '') + '</p>' +
+              '<div class="flex flex-wrap gap-3 mt-1 text-[10px] text-gray-400">' +
+                (o.chosen_color ? '<span>' + orderEscapeHtml(o.chosen_color) + '</span>' : '') +
+                (o.chosen_size ? '<span>Size ' + orderEscapeHtml(o.chosen_size) + '</span>' : '') +
+                '<span>Qty: ' + (o.quantity || 1) + '</span>' +
+                '<span class="ml-auto">' + dateStr + '</span>' +
+              '</div>' +
+              '<p class="text-[11px] font-semibold text-gray-800 mt-2">Rp ' + parseInt(o.total_price).toLocaleString('id-ID') + '</p>' +
+            '</div>' +
+          '</div>' +
+
+          (o.payment_status === 'pending' ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
+            '<button class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Bayar Sekarang</button>' +
+          '</div>' : '') +
+          (o.payment_status === 'cancelled' ? '<div class="px-3 py-2 border-t border-gray-100 text-center text-[10px] text-red-400">Pesanan dibatalkan</div>' : '') +
+          (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('dikirim') && hasReceipt ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
+            '<button onclick="confirmOrderReceipt(\'' + orderEscapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Pesanan Selesai</button>' +
+          '</div>' : '') +
+          (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('selesai') ? '<div class="px-3 py-2.5 border-t border-gray-100 flex items-center justify-between gap-3">' +
+                  '<span class="text-[11px] leading-4 text-gray-500 max-w-[65%] line-clamp-2">' + (o.reviewed ? 'Terima kasih! Ulasanmu sudah terkirim.' : 'Bagikan pengalamanmu dengan produk ini dan bantu pembeli lainnya:') + '</span>' +
+                  (o.reviewed
+                    ? '<span class="shrink-0 text-[11px] font-semibold bg-gray-100 text-gray-400 px-4 py-1.5 cursor-not-allowed">Selesai</span>'
+                    : (hasReview
+                      ? '<button onclick="openReviewSpa(\'' + orderEscapeHtml(o.order_id) + '\')" class="shrink-0 text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Beri Ulasan</button>'
+                      : '<span class="shrink-0 text-[11px] font-semibold bg-gray-100 text-gray-400 px-4 py-1.5">Selesai</span>')) +
+                '</div>' : '') +
+
+        '</div>';
     },
 
     closeSpaOrders: function() {
