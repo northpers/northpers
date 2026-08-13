@@ -375,10 +375,12 @@ router.get('/search-recommend', async (req, res) => {
         }
 
         let matched = [];
+        let active = { provider: 'opencode', modelID: 'deepseek-v4-flash-free' };
         try {
+            active = await getActiveChatModel();
             const sessionId = await getOrCreateSession();
             const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionId}/message`, {
-                model: { providerID: 'opencode', modelID: 'deepseek-v4-flash-free' },
+                model: { providerID: active.provider, modelID: active.modelID },
                 parts: [{ type: 'text', text: `Rekomendasikan produk untuk kata kunci: ${keyword}` }],
                 system: buildRecommendPrompt(keyword)
             }, { timeout: 30000 });
@@ -394,6 +396,7 @@ router.get('/search-recommend', async (req, res) => {
                 matched = products.filter(p => matchIds.has(p.id));
             }
         } catch (e) {
+            await markModelError(active?.provider || 'opencode', active?.modelID || 'deepseek-v4-flash-free', e.response?.data?.error?.message || e.message);
             console.error('search-recommend AI error:', e.message);
         }
 
@@ -422,6 +425,68 @@ router.get('/search-recommend', async (req, res) => {
     }
 });
 
+let aiModelsCache = null;
+let aiModelsCacheAt = 0;
+const AI_MODELS_TTL = 30000;
+
+async function getAiModels() {
+    if (aiModelsCache && Date.now() - aiModelsCacheAt < AI_MODELS_TTL) return aiModelsCache;
+    try {
+        const [rows] = await db.execute('SELECT provider, model_id, is_active, enabled FROM ai_models ORDER BY id ASC');
+        aiModelsCache = rows;
+        aiModelsCacheAt = Date.now();
+        return rows;
+    } catch (e) {
+        return [];
+    }
+}
+
+async function getActiveChatModel() {
+    const models = await getAiModels();
+    const active = models.find(m => m.is_active === 1 && m.enabled === 1) || models.find(m => m.enabled === 1);
+    if (active) return { provider: active.provider, modelID: active.model_id };
+    return { provider: 'opencode', modelID: 'deepseek-v4-flash-free' };
+}
+
+async function markModelError(provider, modelID, msg) {
+    try {
+        await db.execute('UPDATE ai_models SET last_error=?, last_checked_at=NOW() WHERE provider=? AND model_id=?', [String(msg).substring(0, 290), provider, modelID]);
+        aiModelsCache = null;
+    } catch (e) {}
+}
+
+async function getChatModelFallbackOrder() {
+    const models = await getAiModels();
+    return models.filter(m => m.enabled === 1).map(m => ({ provider: m.provider, modelID: m.model_id }));
+}
+
+async function sendChatWithFallback(sessionId, messageParts, systemPrompt) {
+    const active = await getActiveChatModel();
+    const fallbacks = (await getChatModelFallbackOrder()).filter(m => !(m.provider === active.provider && m.modelID === active.modelID));
+    const queue = [active, ...fallbacks.slice(0, 8)];
+
+    let lastError = null;
+    for (const m of queue) {
+        try {
+            const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionId}/message`, {
+                model: { providerID: m.provider, modelID: m.modelID },
+                parts: messageParts,
+                system: systemPrompt
+            }, { timeout: 120000 });
+            const reply = data.parts?.find(p => p.type === 'text')?.text;
+            if (reply) {
+                return { reply, usedModel: `${m.provider}/${m.modelID}` };
+            }
+            lastError = new Error('Kosong');
+        } catch (e) {
+            lastError = e;
+            await markModelError(m.provider, m.modelID, e.response?.data?.error?.message || e.message);
+            console.warn(`chat model ${m.provider}/${m.modelID} gagal:`, e.message);
+        }
+    }
+    throw lastError || new Error('Semua model AI gagal');
+}
+
 router.post('/chat', async (req, res) => {
     try {
         const { message, history, mode } = req.body;
@@ -435,13 +500,7 @@ router.post('/chat', async (req, res) => {
             ? buildStoreSystemPrompt(products, history || [])
             : buildSystemPrompt(products, history || []);
 
-        const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionId}/message`, {
-            model: { providerID: 'opencode', modelID: 'deepseek-v4-flash-free' },
-            parts: [{ type: 'text', text: message }],
-            system: systemPrompt
-        }, { timeout: 120000 });
-
-        let reply = data.parts?.find(p => p.type === 'text')?.text || 'Maaf, saya tidak dapat menjawab saat ini.';
+        const { reply, usedModel } = await sendChatWithFallback(sessionId, [{ type: 'text', text: message }], systemPrompt);
 
         let matchedProducts = [];
 

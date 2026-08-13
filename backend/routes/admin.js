@@ -760,6 +760,58 @@ router.get('/settings', async (req, res) => {
   }
 });
 
+// ---------- AI Models (chat) ----------
+router.get('/ai-models', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT id, provider, model_id, display_name, is_active, enabled, last_error, last_checked_at FROM ai_models ORDER BY is_active DESC, id ASC');
+    const [activeRows] = await db.execute("SELECT provider, model_id FROM ai_models WHERE is_active=1 AND enabled=1 LIMIT 1");
+    res.json({
+      success: true,
+      models: rows,
+      active: activeRows[0] || null,
+      activeName: activeRows[0] ? `${activeRows[0].provider}/${activeRows[0].model_id}` : null
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/ai-models/select', async (req, res) => {
+  try {
+    const { provider, model_id } = req.body;
+    if (!provider || !model_id) return res.status(400).json({ success: false, message: 'provider dan model_id wajib diisi' });
+    const [rows] = await db.execute('SELECT id FROM ai_models WHERE provider=? AND model_id=?', [provider, model_id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Model tidak ditemukan' });
+    await db.execute('UPDATE ai_models SET is_active=0 WHERE is_active=1');
+    await db.execute('UPDATE ai_models SET is_active=1, enabled=1 WHERE provider=? AND model_id=?', [provider, model_id]);
+    res.json({ success: true, message: `Model AI diganti ke ${provider}/${model_id}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/ai-models/check', async (req, res) => {
+  try {
+    const { provider, model_id } = req.body;
+    if (!provider || !model_id) return res.status(400).json({ success: false, message: 'provider dan model_id wajib diisi' });
+    const axios = require('axios');
+    const OPENCODE_SERVER = 'http://127.0.0.1:11436';
+    const { data: sessionData } = await axios.post(`${OPENCODE_SERVER}/session`, {}, { timeout: 5000 });
+    const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionData.id}/message`, {
+      model: { providerID: provider, modelID: model_id },
+      parts: [{ type: 'text', text: 'Balas dengan satu kata: OK' }],
+      system: 'Kamu adalah bot uji. Balas HANYA dengan satu kata: OK'
+    }, { timeout: 30000 });
+    const reply = data.parts?.find(p => p.type === 'text')?.text || '';
+    await db.execute('UPDATE ai_models SET last_error=NULL, last_checked_at=NOW() WHERE provider=? AND model_id=?', [provider, model_id]);
+    res.json({ success: true, reply, message: `Model ${provider}/${model_id} aktif & merespons` });
+  } catch (err) {
+    const msg = (err.response?.data?.error?.message) || err.message || 'Model tidak merespons (mungkin kena limit)';
+    await db.execute('UPDATE ai_models SET last_error=?, last_checked_at=NOW() WHERE provider=? AND model_id=?', [String(msg).substring(0, 290), req.body.provider, req.body.model_id]);
+    res.json({ success: false, message: `Model ${req.body.provider}/${req.body.model_id} gagal: ${msg}`, error: String(msg) });
+  }
+});
+
 router.get('/affiliates', async (req, res) => {
   try {
     const { status = '', search = '' } = req.query;

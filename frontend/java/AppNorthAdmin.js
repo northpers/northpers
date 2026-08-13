@@ -185,6 +185,7 @@ function navTo(page) {
     case 'reports': renderReports(content); break;
     case 'seller-earnings': renderSellerEarnings(content); break;
     case 'settings': renderSettings(content); break;
+    case 'ai-models': renderAiModels(content); break;
   }
   if (page === 'chat') {
     if (!chatPollInterval) chatPollInterval = setInterval(function () { if (currentPage === 'chat') { loadChatUsers(); loadActiveChatMessages(); } }, 10000);
@@ -323,7 +324,7 @@ async function showOrderDetail(orderId) {
           '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#111">' + escapeHtml(e.status) + '</div>' +
           (e.description ? '<div style="font-size:11px;color:#6b7280">' + escapeHtml(e.description) + '</div>' : '') +
           (e.location ? '<div style="font-size:11px;color:#9ca3af">' + escapeHtml(e.location) + '</div>' : '') +
-          (e.lat != null && e.lng != null ? '<div style="font-size:10px;color:#9ca3af">📍 ' + Number(e.lat).toFixed(6) + ', ' + Number(e.lng).toFixed(6) + '</div>' : '') +
+          (e.lat != null && e.lng != null ? '<div class="flex flex-row gap-1 items-center" style="font-size:10px;color:#9ca3af;margin-top:1px"><img src="https://img.icons8.com/?size=100&id=13800&format=png&color=9CA3AF" class="w-3 h-3"">' + Number(e.lat).toFixed(6) + ', ' + Number(e.lng).toFixed(6) + '</div>' : '') +
           '<div style="font-size:10px;color:#9ca3af">' + (e.created_at ? new Date(e.created_at).toLocaleString('id-ID') : '') + '</div></div></div>';
       }).join('')
     : '<p style="text-align:center;padding:16px;color:#9ca3af">Belum ada event tracking</p>';

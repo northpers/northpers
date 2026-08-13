@@ -26,7 +26,7 @@ const northlineCatalogPromise = window.northlineCatalog
 function renderSearchItem(product, ai) {
   const name = product.name || product.product_name || "";
   const badge = ai
-    ? '<span class="shrink-0 text-[8px] font-extrabold text-white rounded-full px-1.5 py-0.5 bg-gradient-to-r from-[#DF414F] to-[#ff7a5c]">AI</span>'
+    ? '<span class="shrink-0"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=000000" class="w-4 h-4"/></span>'
     : "";
   return `
     <div class="search-result-item px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 ${ai ? "flex items-center gap-1.5" : "truncate"}"
@@ -88,7 +88,7 @@ function scheduleAiRecommend(keyword) {
 function renderAiSection(container, keyword, aiProducts) {
   if (!aiProducts || aiProducts.length === 0) return;
   if (container.dataset.searchKw !== keyword) return;
-  const section = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100">✨ AI Recomended</div>';
+  const section = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3"> AI Recomended</div>';
   const html = section + aiProducts.map(p => renderSearchItem(p, true)).join("");
   container.insertAdjacentHTML("afterbegin", html);
 }
