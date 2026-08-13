@@ -5,15 +5,18 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
 
-        <nav class="absolute md:hidden w-auto top-4 z-[110] text-gray-500 cursor-pointer">
-            <div class="flex items-center ml-4 gap-3 w-full">
-    
+        <nav class="absolute md:hidden left-0 right-0 top-4 z-[110] text-gray-500 cursor-pointer">
+            <div class="flex items-center w-full px-4 gap-3">
+
+                <!-- CLOSE KIRI -->
                 <button onclick="closeModal()" class="shrink-0">
                     <img
                         src="https://img.icons8.com/?size=100&id=20i9yZTsnnmg&format=png&color=DF414F"
-                        class="h-[20px]">
+                        class="h-[20px] w-[20px]">
                 </button>
-                <div class="flex-1">
+
+                <!-- SEARCH TENGAH -->
+                <div class="flex-1 min-w-0">
                     <div class="h-8 bg-gray-100 rounded-sm flex items-center px-3 w-full">
                         <img
                             src="https://img.icons8.com/ios-glyphs/30/999999/search--v1.png"
@@ -23,54 +26,58 @@
                             id="modal-product-search"
                             type="text"
                             placeholder=""
-                            class="w-[180px] flex-1 bg-transparent outline-none px-2 text-[13px] text-gray-700 placeholder:text-gray-400">
+                            class="w-full flex-1 bg-transparent outline-none px-2 text-[13px] text-gray-700">
                     </div>
+
                     <div
                         id="modal-search-result"
-                        class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-[99999] max-h-64 overflow-y-auto">
+                        class="hidden absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-[99999] max-h-64 overflow-y-auto">
                     </div>
                 </div>
+
+                <!-- SHARE KANAN -->
                 <button onclick="shareProduct()" class="shrink-0">
                     <img
                         src="https://img.icons8.com/material-outlined/24/DF414F/share.png"
-                        class="h-[20px]">
+                        class="h-[20px] w-[20px]">
                 </button>
-                <div class="relative group shrink-0" id="product-menu-wrapper">
-                    <button onclick="toggleProductMenu()" class="cursor-pointer">
+
+                <!-- MENU KANAN -->
+                <div class="relative shrink-0" id="product-menu-wrapper">
+                    <button onclick="toggleProductMenu()" class="cursor-pointer flex items-center">
                         <img
                             src="https://img.icons8.com/ios-glyphs/30/DF414F/menu-2.png"
-                            class="h-[20px] mt-2">
+                            class="h-[20px] w-[20px]">
                     </button>
 
-                    <div id="product-menu" class="absolute top-full right-0 mt-1 w-[180px] bg-white border border-gray-200 shadow-xl p-2
-                                invisible opacity-0 translate-y-2
-                                transition-all duration-200 z-[9999]">
+                    <div id="product-menu"
+                        class="absolute top-full right-0 mt-1 w-[180px] bg-white border border-gray-200 shadow-xl p-2 invisible opacity-0 translate-y-2 transition-all duration-200 z-[9999]">
 
                         <div class="absolute -top-1.5 right-2 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
 
-                        <button onclick="window.location.href='/AppNorthStore'" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
-                            <img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=000000"
-                                class="w-5 h-5 opacity-50">
-                            <span class="text-xs text-gray-700">
-                                Lihat Toko
-                            </span>
-                        </button>
+                            <button onclick="window.location.href='/AppNorthStore'" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                                <img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=000000"
+                                    class="w-5 h-5 opacity-50">
+                                <span class="text-xs text-gray-700">
+                                    Lihat Toko
+                                </span>
+                            </button>
 
-                        <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
-                            <img src="https://img.icons8.com/?size=100&id=5342&format=png&color=000000"
-                                class="w-5 h-5 opacity-50">
-                            <span class="text-xs text-gray-700">
-                                Laporkan Produk
-                            </span>
-                        </button>
+                            <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                                <img src="https://img.icons8.com/?size=100&id=5342&format=png&color=000000"
+                                    class="w-5 h-5 opacity-50">
+                                <span class="text-xs text-gray-700">
+                                    Laporkan Produk
+                                </span>
+                            </button>
 
-                        <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
-                            <img src="https://img.icons8.com/?size=100&id=14093&format=png&color=000000"
-                                class="w-5 h-5 opacity-50">
-                            <span class="text-xs text-gray-700">
-                                Informasi Produk
-                            </span>
-                        </button>
+                            <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                                <img src="https://img.icons8.com/?size=100&id=14093&format=png&color=000000"
+                                    class="w-5 h-5 opacity-50">
+                                <span class="text-xs text-gray-700">
+                                    Informasi Produk
+                                </span>
+                            </button>
 
                     </div>
                 </div>
@@ -250,7 +257,7 @@
                         </div>
                         <div id="size-options" class="flex flex-wrap gap-1.5"></div>
                         
-                        <details class="group w-full block md:hidden mt-1.5">
+                        <details class="group w-full block hidden mt-1.5">
                             <summary class="flex items-center justify-between text-[9px] font-bold uppercase border px-2 py-1 select-none list-none [&::-webkit-details-marker]:hidden cursor-pointer">
                                 <span class="text-gray-500">View Size Chart</span>
                                 <img src="https://img.icons8.com/?size=100&id=9149&format=png&color=" 

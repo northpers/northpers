@@ -181,7 +181,7 @@ function renderSliderProductCard(product) {
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
   const soldOut = !product.stock || product.stock <= 0;
   const aiPickBadge = product.aiPick
-    ? '<span class="absolute top-1 left-1 z-10 flex items-center gap-0.5 bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm">✨ AI Pick</span>'
+    ? '<span class="absolute top-1 left-1 flex items-center gap-0.5 bg-white border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3">AI Recomended</span>'
     : '';
   return '<div class="group bg-white min-w-[170px] max-w-[170px] flex-shrink-0 shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
@@ -499,7 +499,7 @@ function renderProductCard(product) {
     ? Math.round((product.oldPrice - product.price) / product.oldPrice * 100) : 0;
   const soldOut = !product.stock || product.stock <= 0;
   const aiPickBadge = product.aiPick
-    ? '<span class="absolute top-1 left-1 z-10 flex items-center gap-0.5 bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm">✨ AI Pick</span>'
+    ? '<span class="absolute top-1 left-1 flex items-center gap-0.5 bg-white border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3">AI Recomended</span>'
     : '';
   return '<div class="hover-bottom group bg-white w-full md:w-[200px] shadow-sm border ' + (soldOut ? 'opacity-50 pointer-events-none select-none' : 'border-gray-200 hover:border-[#DF414F] cursor-pointer') + '"' + (soldOut ? '' : ' onclick="openProductDetail(\'' + ref + '\')"') + '>'
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
@@ -590,9 +590,12 @@ function getCurrentPrice(product) {
         basePrice = product.price || 0;
     }
     const sizeExtra = {
-        "M": 0,
+        "S": 0,
+        "M": 500,
         "L": 1000,
-        "XL": 2000
+        "XL": 1500,
+        "XXL": 2000,
+        
     };
     return basePrice + (sizeExtra[selectedSize] || 0);
 }
@@ -754,7 +757,7 @@ async function openProductDetail(productId) {
       const colorName = getColorName(color);
       return `
             <button onclick="selectColor('${color}', this)" 
-                    class="color-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none ${
+                    class="color-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none ${
                       index === 0
                         ? "border-[#DF414F] bg-[#fff1ee] text-[#DF414F] font-black shadow-sm"
                         : "border-gray-200 bg-white text-gray-800 hover:border-[#DF414F] font-bold"
@@ -772,7 +775,7 @@ async function openProductDetail(productId) {
         (model, index) => `
           <button
               onclick="selectModel('${model}', this)"
-              class="model-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none ${
+              class="model-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none ${
                 index === 0
                   ? "border-[#DF414F] bg-[#fff1ee] text-[#DF414F] font-black shadow-sm"
                   : "border-gray-200 bg-white text-gray-800 hover:border-[#DF414F] font-bold"
@@ -798,7 +801,7 @@ async function openProductDetail(productId) {
         .map(
           (s, i) => `
             <button onclick="selectModelStyle('${String(s).replace(/'/g, "\\'")}', this)"
-                    class="model-style-btn px-2 py-1 md:px-3 md:py-1.5 border text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none ${
+                    class="model-style-btn px-2 py-1 md:px-3 md:py-1.5 border text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none ${
                       i === 0
                         ? "border-[#DF414F] bg-[#fff1ee] text-[#DF414F] font-black shadow-sm"
                         : "border-gray-200 bg-white text-gray-800 hover:border-[#DF414F] font-bold"
@@ -888,11 +891,11 @@ function selectColor(color, element) {
 
   document.querySelectorAll(".color-option-btn").forEach((btn) => {
     btn.className =
-      "color-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[11px] md:text-xs font-bold transition-all uppercase cursor-pointer select-none";
+      "color-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[10px] md:text-[11px] font-bold transition-all uppercase cursor-pointer select-none";
   });
 
   element.className =
-    "color-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
+    "color-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none shadow-sm";
 }
 
 function selectModelStyle(style, element) {
@@ -901,11 +904,11 @@ function selectModelStyle(style, element) {
 
   document.querySelectorAll(".model-style-btn").forEach((btn) => {
     btn.className =
-      "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[11px] md:text-xs font-bold transition-all uppercase cursor-pointer select-none";
+      "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[10px] md:text-[11px] font-bold transition-all uppercase cursor-pointer select-none";
   });
 
   element.className =
-    "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
+    "model-style-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none shadow-sm";
 }
 
 function selectSize(size, element) {
@@ -915,11 +918,11 @@ function selectSize(size, element) {
 
   document.querySelectorAll(".size-option-btn").forEach((btn) => {
     btn.className =
-      "size-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[11px] md:text-xs font-bold transition-all uppercase cursor-pointer select-none";
+      "size-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[10px] md:text-[11px] font-bold transition-all uppercase cursor-pointer select-none";
   });
 
   element.className =
-    "size-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
+    "size-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none shadow-sm";
 }
 
 function getActiveSizeList(product) {
@@ -951,7 +954,7 @@ function renderSizeOptions(product) {
     .map(
       (size, index) => `
         <button onclick="selectSize('${size}', this)" 
-                class="size-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none ${
+                class="size-option-btn px-2 py-1 md:px-3 md:py-1.5 border text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none ${
                   index === 0
                     ? "border-[#DF414F] bg-[#fff1ee] text-[#DF414F] font-black shadow-sm"
                     : "border-gray-200 bg-white text-gray-800 hover:border-[#DF414F] font-bold"
@@ -983,10 +986,10 @@ function selectModel(model, element) {
 
   document.querySelectorAll(".model-option-btn").forEach((btn) => {
     btn.className =
-      "model-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[11px] md:text-xs font-bold transition-all uppercase cursor-pointer select-none";
+      "model-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-gray-200 bg-white text-gray-800 hover:border-gray-400 text-[10px] md:text-[11px] font-bold transition-all uppercase cursor-pointer select-none";
   });
   element.className =
-    "model-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[11px] md:text-xs transition-all uppercase cursor-pointer select-none shadow-sm";
+    "model-option-btn px-2 py-1 md:px-3 md:py-1.5 border border-[#DF414F] bg-[#FFF1EE] text-[#DF414F] font-black text-[10px] md:text-[11px] transition-all uppercase cursor-pointer select-none shadow-sm";
 }
 
 function alterQty(amount) {
