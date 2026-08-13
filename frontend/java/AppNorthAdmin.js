@@ -217,6 +217,8 @@ async function renderDashboard(el) {
       '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=60179&format=png&color=6B7280"></div><div class="info"><h3>' + (d.totalReviews || 0) + '</h3><p>Reviews</p></div></div>' +
       '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=33479&format=png&color=6B7280"></div><div class="info"><h3>' + (d.pendingNpinjam || 0) + '</h3><p>NPinjam Pending</p></div></div>' +
       '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=5334&format=png&color=6B7280"></div><div class="info"><h3>' + (d.pendingLoans || 0) + '</h3><p>Pinjaman Pending</p></div></div>' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F"></div><div class="info"><h3>' + (d.aiUsage.totalMessages || 0) + '</h3><p>AI Messages</p></div></div>' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F"></div><div class="info"><p>Token: ' + (d.aiUsage.totalBytes ? formatRp(d.aiUsage.totalBytes) : '0') + ' / ' + formatRp(d.aiUsage.limitBytes) + '</p><p>Batas: ' + d.aiUsage.limitMessages + ' pesan / ' + formatRp(d.aiUsage.limitBytes / 1000) + ' KB</p></div></div>' +
       '</div>' +
       (d.pendingOverdue > 0 ? '<div class="card" style="margin-bottom:16px;background:#fef2f2;border-color:#fca5a5;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:#991b1b">⚠️ ' + d.pendingOverdue + ' order pending lebih dari 5 menit. <a href="#" onclick="navTo(\'orders\'); return false;" style="color:#DF414F;font-weight:600">Lihat</a></span></div>' : '') +
       '<div class="two-col"><div class="card"><div class="section-title">Penjualan 7 Hari</div><canvas id="salesChart" height="200"></canvas></div><div class="card"><div class="section-title">Produk Terlaris</div><canvas id="topProductsChart" height="200"></canvas></div></div>' +
@@ -1140,6 +1142,58 @@ async function saveSettings() {
     await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ key: key, value: vals[key] }) });
   }
   alert('Pengaturan disimpan!');
+}
+
+async function renderAiModels(el) {
+  try {
+    var d = await api('/api/admin/ai-models');
+    var html = '<div class="card"><div class="section-title">Model AI Chat</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span class="badge' + (d.active ? ' badge-success' : '') + '">'+ (d.active ? d.activeName : 'Tidak Aktif') +'</span>' +
+      '<button class="btn btn-outline btn-sm" onclick="selectAiModel(\'' + (d.active ? d.active.provider + '/' + d.active.model_id : '') + '\')">Gunakan</button></div>' +
+      '<table class="w-full" style="font-size:12px;"><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
+    (d.models || []).forEach(function (m) {
+      var status = (m.is_active && m.enabled) ? 'Aktif' : (m.enabled ? 'Tersedia' : 'Nonaktif');
+      var statusClass = (m.is_active && m.enabled) ? 'badge-success' : (m.enabled ? 'badge-pending' : 'badge-gray');
+      var enableBtn = m.enabled ? '<button class="btn btn-sm btn-outline" onclick="enableAiModel(' + m.id + ')">Aktifkan</button>' : '<button class="btn btn-sm btn-outline disabled" disabled>Nonaktif</button>';
+      html += '<tr><td>' + escapeHtml(m.provider) + '</td><td>' + escapeHtml(m.model_id) + '</td><td><span class="badge ' + statusClass + '">' + status + '</span></td><td>' + enableBtn + '</td></tr>';
+    });
+    html += '</tbody></table>' +
+      '<div style="margin-top:24px"><button class="btn btn-primary" onclick="refreshAiModels()">Refresh</button> <button class="btn btn-secondary" onclick="testAiModel()">Test Model</button></div>';
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Error: ' + escapeHtml(e.message) + '</div>'; }
+}
+
+function selectAiModel(modelId) {
+  if (!modelId) return alert('Model tidak ditemukan');
+  api('/api/admin/ai-models/select', { method: 'POST', body: JSON.stringify({ provider: modelId.split('/')[0], model_id: modelId.split('/')[1] }) }).then(function (d) {
+    if (d.success) {
+      alert('Model AI diganti ke ' + modelId);
+      location.reload();
+    } else {
+      alert('Gagal: ' + (d.message || 'unknown'));
+    }
+  });
+}
+
+function enableAiModel(id) {
+  api('/api/admin/ai-models/select', { method: 'POST', body: JSON.stringify({ provider: null, model_id: null }) }).then(function () {
+    // refresh logic - simple reload
+    location.reload();
+  });
+}
+
+function refreshAiModels() {
+  location.reload();
+}
+
+function testAiModel() {
+  api('/api/admin/ai-models/check', { method: 'POST', body: JSON.stringify({ provider: 'opencode', model_id: 'deepseek-v4-flash-free' }) }).then(function (d) {
+    if (d.success) {
+      alert('Model ' + (d.reply || '').replace(/OK/, '') + ' merespons!');
+    } else {
+      alert('Model gagal: ' + (d.error || d.message || 'unknown'));
+    }
+  });
 }
 
 async function renderNorthpaySettings() {

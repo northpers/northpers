@@ -84,6 +84,14 @@ router.get('/dashboard', async (req, res) => {
 
     const [[pendingLoans]] = await db.execute("SELECT COUNT(*) as total FROM npinjam_loans WHERE status='pending'");
 
+    // AI Usage Stats
+    const [[aiUsage]] = await db.execute(`
+      SELECT 
+        COUNT(*) as total_messages,
+        COALESCE(SUM(CHAR_LENGTH(text) + IFNULL(JSON_LENGTH(products),0)),0) as total_bytes
+      FROM ai_chat_history
+    `);
+
     res.json({
       success: true,
       totalUsers: totalUsers.total,
@@ -97,7 +105,13 @@ router.get('/dashboard', async (req, res) => {
       pendingLoans: pendingLoans.total,
       salesChart,
       topProducts,
-      recentOrders
+      recentOrders,
+      aiUsage: {
+        totalMessages: aiUsage.total_messages,
+        totalBytes: aiUsage.total_bytes,
+        limitMessages: CHAT_AI_QUOTA_MESSAGES,
+        limitBytes: CHAT_AI_QUOTA_BYTES
+      }
     });
   } catch (err) {
     console.error('Admin dashboard error:', err);
