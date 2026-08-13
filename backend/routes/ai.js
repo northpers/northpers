@@ -324,6 +324,104 @@ async function getOrCreateSession() {
     return opencodeSessionId;
 }
 
+const recommendCache = new Map();
+const RECOMMEND_TTL = 10 * 60 * 1000;
+const RECOMMEND_LIMIT = 4;
+
+function buildRecommendPrompt(keyword) {
+    const productLines = products.slice(0, 25).map((p, i) => {
+        const parts = [
+            `${i + 1}. ID: ${p.id} - ${p.name}`,
+            `- Harga: Rp${p.price.toLocaleString('id-ID')}`,
+            `- Warna: ${p.colors.join(', ')}`,
+            `- Ukuran: ${p.sizes.join(', ')}`,
+        ];
+        if (p.oldPrice) parts.push(`- Harga Sebelumnya: Rp${p.oldPrice.toLocaleString('id-ID')}`);
+        return parts.join('\n');
+    }).join('\n\n');
+
+    return `Kamu adalah mesin rekomendasi produk fashion Northline.
+Customer mencari dengan kata kunci: "${keyword}"
+
+Pilih maksimal ${RECOMMEND_LIMIT} produk dari daftar yang PALING COCOK dengan kata kunci tersebut.
+Balas HANYA dengan tag [product:ID] yang dipisah spasi, urut dari yang paling relevan. Contoh: [product:3] [product:8]
+JANGAN menulis teks lain, kalimat, atau penjelasan apapun selain tag.
+
+Data Produk:
+${productLines}
+
+Aturan:
+1. Cocokkan kata kunci dengan nama produk, warna, model, dan jenis (tshirt, longsleeve, hoodie, sweatpants, boxy, polos, dll).
+2. Pilih produk yang paling masuk akal untuk kata kunci tersebut.
+3. Jika tidak ada produk yang cocok, balas dengan HANYA kata "tidak" tanpa tag apapun.
+4. Jangan mengarang produk baru.`;
+}
+
+function recommendFallback(keyword) {
+    return findMentionedProducts(keyword, products).slice(0, RECOMMEND_LIMIT);
+}
+
+router.get('/search-recommend', async (req, res) => {
+    try {
+        const keyword = (req.query.q || '').trim();
+        if (!keyword || keyword.length < 2) {
+            return res.json({ success: true, products: [] });
+        }
+
+        const cacheKey = keyword.toLowerCase();
+        const cached = recommendCache.get(cacheKey);
+        if (cached) {
+            return res.json({ success: true, products: cached });
+        }
+
+        let matched = [];
+        try {
+            const sessionId = await getOrCreateSession();
+            const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionId}/message`, {
+                model: { providerID: 'opencode', modelID: 'deepseek-v4-flash-free' },
+                parts: [{ type: 'text', text: `Rekomendasikan produk untuk kata kunci: ${keyword}` }],
+                system: buildRecommendPrompt(keyword)
+            }, { timeout: 30000 });
+
+            let reply = data.parts?.find(p => p.type === 'text')?.text || '';
+            const productTagRegex = /\[product:(\d+)\]/gi;
+            let match;
+            const matchIds = new Set();
+            while ((match = productTagRegex.exec(reply)) !== null) {
+                matchIds.add(parseInt(match[1]));
+            }
+            if (matchIds.size > 0) {
+                matched = products.filter(p => matchIds.has(p.id));
+            }
+        } catch (e) {
+            console.error('search-recommend AI error:', e.message);
+        }
+
+        if (matched.length === 0) {
+            matched = recommendFallback(keyword);
+        }
+
+        const result = matched.slice(0, RECOMMEND_LIMIT).map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            oldPrice: p.oldPrice || null,
+            image: p.images?.[0] || null,
+            code: catalogRoutes.getProductCode(p.id),
+            colors: p.colors,
+            sizes: p.sizes,
+        }));
+
+        recommendCache.set(cacheKey, result);
+        setTimeout(() => recommendCache.delete(cacheKey), RECOMMEND_TTL);
+
+        res.json({ success: true, products: result });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, products: [] });
+    }
+});
+
 router.post('/chat', async (req, res) => {
     try {
         const { message, history, mode } = req.body;

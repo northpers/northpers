@@ -23,14 +23,18 @@ const northlineCatalogPromise = window.northlineCatalog
       }
     })();
 
-function renderSearchItem(product) {
+function renderSearchItem(product, ai) {
   const name = product.name || product.product_name || "";
+  const badge = ai
+    ? '<span class="shrink-0 text-[8px] font-extrabold text-white rounded-full px-1.5 py-0.5 bg-gradient-to-r from-[#DF414F] to-[#ff7a5c]">AI</span>'
+    : "";
   return `
-    <div class="search-result-item px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 truncate"
+    <div class="search-result-item px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 ${ai ? "flex items-center gap-1.5" : "truncate"}"
       data-id="${product.id}"
       data-code="${product.code || ''}"
       data-source="${product.source || 'local'}">
-      ${name} ...
+      ${badge}
+      <span class="${ai ? "truncate" : ""}">${name} ...</span>
     </div>
   `;
 }
@@ -43,6 +47,50 @@ function renderStoreItem(store) {
       <span class="text-sm">${store.name}</span>
     </a>
   `;
+}
+
+let aiRecommendTimer = null;
+let aiRecommendResolver = null;
+
+async function fetchAiProducts(keyword) {
+  try {
+    const res = await fetch(`${_d('9kzs9}ok|mr7|omywwoxn')}?q=${encodeURIComponent(keyword)}`);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.products)) {
+      return data.products.map(p => ({
+        id: p.id,
+        name: p.name || p.product_name,
+        code: p.code || "",
+        source: "catalog",
+        ai: true,
+      }));
+    }
+  } catch (e) {}
+  return [];
+}
+
+function scheduleAiRecommend(keyword) {
+  clearTimeout(aiRecommendTimer);
+  if (aiRecommendResolver) {
+    aiRecommendResolver([]);
+    aiRecommendResolver = null;
+  }
+  return new Promise(resolve => {
+    aiRecommendResolver = resolve;
+    aiRecommendTimer = setTimeout(async () => {
+      aiRecommendResolver = null;
+      const items = await fetchAiProducts(keyword);
+      resolve(items);
+    }, 600);
+  });
+}
+
+function renderAiSection(container, keyword, aiProducts) {
+  if (!aiProducts || aiProducts.length === 0) return;
+  if (container.dataset.searchKw !== keyword) return;
+  const section = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100">✨ AI Recomended</div>';
+  const html = section + aiProducts.map(p => renderSearchItem(p, true)).join("");
+  container.insertAdjacentHTML("afterbegin", html);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -102,8 +150,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return matches;
   }
 
-  function renderResults(container, products, stores) {
+  function renderResults(container, keyword, products, stores) {
     container.innerHTML = "";
+    container.dataset.searchKw = keyword;
     let hasAny = false;
 
     stores.forEach(s => {
@@ -177,12 +226,18 @@ document.addEventListener("DOMContentLoaded", () => {
         searchTimeout = setTimeout(async () => {
           dropdownEl.classList.remove("hidden");
           const { products, stores } = await doSearch(keyword);
-          renderResults(resultsContainer, products, stores);
+          renderResults(resultsContainer, keyword, products, stores);
         }, 300);
       } else {
         dropdownEl.classList.remove("hidden");
         const { products, stores } = await doSearch(keyword);
-        renderResults(resultsContainer, products, stores);
+        renderResults(resultsContainer, keyword, products, stores);
+      }
+
+      if (keyword.length >= 2) {
+        scheduleAiRecommend(keyword).then(aiProducts => {
+          renderAiSection(resultsContainer, keyword, aiProducts);
+        });
       }
     };
   }
