@@ -739,16 +739,17 @@ async function openProductDetail(productId) {
 
   const thumbContainer = document.getElementById("thumb-container");
   thumbContainer.innerHTML = product.images
-    .map(
-      (img, index) => `
+    .map((img, index) => {
+      const safeImg = String(img).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      return `
         <div
-            onclick="changePreview('${img}', this, ${index + 1}, ${product.images.length})"
-            onmouseenter="changePreview('${img}', this, ${index + 1}, ${product.images.length})"
+            onclick="changePreview('${safeImg}', this, ${index + 1}, ${product.images.length})"
+            onmouseenter="changePreview('${safeImg}', this, ${index + 1}, ${product.images.length})"
             class="thumb-item w-10 h-10 md:w-20 md:h-20 bg-gray-50 border cursor-pointer overflow-hidden transition-all ${index === 0 ? "border-[#DF414F] ring-1 ring-[#DF414F]" : "border-gray-200"}">
             <img src="${(product.thumbs && product.thumbs[index]) || img}" class="w-full h-full object-contain pointer-events-none">
         </div>
-    `,
-    )
+    `;
+    })
     .join("");
 
   const colorContainer = document.getElementById("color-options");
