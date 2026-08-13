@@ -549,7 +549,7 @@
     <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
     <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
     <script src="/java/AppNorthPayment.js?v=0000v14pay"></script>
-    <script src="/java/AppNorthCatalog.js?v=0000v38cat"></script>
+    <script src="/java/AppNorthCatalog.js?v=0000v39cat"></script>
     <script src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
     <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
     <script src="/src/services/AppNorthSearch.js?v=0000v14cat"></script>
@@ -752,8 +752,8 @@ function fallbackCopy(text, label) {
   document.body.removeChild(ta);
 }
 
-function productLink(id) {
-  return affState.linkBase + id + '&aff=' + affState.data.code;
+function productLink(code) {
+  return affState.linkBase + code + '&aff=' + affState.data.code;
 }
 
 function renderHero() {
@@ -836,9 +836,13 @@ function affCard(p) {
     return '<span class="inline-block bg-gray-100 text-gray-600 text-[9px] px-1.5 py-0.5">' + esc(String(m).charAt(0) + String(m).slice(1).toLowerCase()) + '</span>';
   }).join('');
   var commission = p.commissionRate != null ? p.commissionRate : 0;
+  var aiPickBadge = p.aiPick
+    ? '<span class="absolute top-1 left-1 flex items-center gap-0.5 bg-white border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3">AI Recomended</span>'
+    : '';
   return '<div class="hover-bottom group bg-white w-full shadow-sm border border-gray-200 hover:border-[#DF414F]">' +
-    '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto" onclick="window.open(\'/?product=' + p.id + '\')">' +
+    '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto" onclick="window.open(affState.linkBase + \'' + (p.code || p.id) + '\')">' +
     '<img src="' + esc(img) + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy" onerror="this.src=\'/public/icons/default.png\'">' +
+    aiPickBadge +
     '</div>' +
     '<div class="px-2 pt-1">' +
     '<h3 class="text-xs md:text-sm text-gray-800 tracking-tighter break-words" style="-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden;line-height:1.3">' + esc(p.name) + '</h3>' +
@@ -856,7 +860,7 @@ function affCard(p) {
     '<span class="mx-1 h-2.5 border-l border-gray-100"></span>' +
     '<span class="text-[9px] md:text-[10px] tracking-tight">5-7 Hari</span>' +
     '</div>' +
-    '<button class="w-full h-8 mt-2 mb-2 bg-[#DF414F] text-white text-[11px] md:text-[12px] font-semibold flex items-center justify-center gap-1 cursor-pointer hover:brightness-95 border-none" onclick="copyText(productLink(' + p.id + '), \'Link produk disalin!\')">' +
+    '<button class="w-full h-8 mt-2 mb-2 bg-[#DF414F] text-white text-[11px] md:text-[12px] font-semibold flex items-center justify-center gap-1 cursor-pointer hover:brightness-95 border-none" onclick="copyText(productLink(\'' + (p.code || p.id) + '\'), \'Link produk disalin!\')">' +
     '<img src="https://img.icons8.com/?size=100&id=86236&format=png&color=ffffff" class="w-3 h-3 md:w-4 md:h-4" loading="lazy"> SALIN LINK' +
     '</button>' +
     '</div></div>';

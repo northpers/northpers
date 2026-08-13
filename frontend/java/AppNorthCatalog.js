@@ -1713,7 +1713,7 @@ window.shareProduct = async function () {
   if (!product) return;
 
   const code = product.code || currentProductCode || currentProductId;
-  const url = `${location.origin}/product/${code}`;
+  const url = `${location.origin}/?product=${encodeURIComponent(code)}`;
 
   const title = product.name;
   const text = buildProductShareText(product);

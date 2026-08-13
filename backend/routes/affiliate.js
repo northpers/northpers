@@ -261,6 +261,7 @@ router.get('/products', async (req, res) => {
         const price = p.price || p.priceShort || 0;
         return {
           id: p.id,
+          code: catalogRoutes.getProductCode(p.id),
           name: p.name,
           price,
           image: (p.images && p.images[0]) || '/public/icons/default.png',
@@ -268,6 +269,7 @@ router.get('/products', async (req, res) => {
           categories: catalogRoutes.getCategories(p),
           models: p.models || null,
           colors: p.colors || [],
+          aiPick: catalogRoutes.aiPickIds().has(p.id),
           commissionRate: getCommissionRate(price),
           commissionLabel: 'Komisi ' + getCommissionRate(price) + '%',
         };
