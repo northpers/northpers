@@ -279,7 +279,7 @@ if (typeof window.openTrackingMap !== 'function') {
 
     let spaLeafletLoading = false;
     const spaLeafletWaiters = [];
-    function spaEnsureLeaflet(cb) {
+    window.spaEnsureLeaflet = function (cb) {
         if (window.L && typeof window.L.map === 'function') { cb(); return; }
         if (spaLeafletLoading) { spaLeafletWaiters.push(cb); return; }
         spaLeafletLoading = true;
@@ -292,9 +292,9 @@ if (typeof window.openTrackingMap !== 'function') {
         script.onload = function () { spaLeafletLoading = false; spaLeafletWaiters.forEach(function (f) { f(); }); spaLeafletWaiters.length = 0; };
         script.onerror = function () { spaLeafletLoading = false; spaLeafletWaiters.forEach(function (f) { f(); }); spaLeafletWaiters.length = 0; };
         document.head.appendChild(script);
-    }
+    };
 
-    function parseCoordinatesFromAddress(addr) {
+    window.parseCoordinatesFromAddress = function (addr) {
         try {
             const part = String(addr || '').split(' @Coordinates:')[1];
             if (!part) return null;
@@ -304,11 +304,11 @@ if (typeof window.openTrackingMap !== 'function') {
             if (isNaN(la) || isNaN(ln)) return null;
             return { lat: la, lng: ln };
         } catch (e) { return null; }
-    }
+    };
 
     let trackingMapInstance = null;
 
-    function closeTrackingMap() {
+    window.closeTrackingMap = function () {
         const root = document.getElementById('tracking-map-root');
         if (root) root.remove();
         if (trackingMapInstance) {
@@ -316,9 +316,9 @@ if (typeof window.openTrackingMap !== 'function') {
             trackingMapInstance = null;
         }
         try { document.body.style.overflow = ''; } catch (e) {}
-    }
+    };
 
-    function trackingTimelineHtml(events, createdAt, order) {
+    window.trackingTimelineHtml = function (events, createdAt, order) {
         const items = [];
         items.push({ status: 'Pesanan Dibuat', description: 'Pesanan berhasil dibuat', location: null, time: createdAt || null, first: true });
         (events || []).forEach(function (e) {
@@ -340,9 +340,9 @@ if (typeof window.openTrackingMap !== 'function') {
                     (it.time ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">' + new Date(it.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>' : '') +
                 '</div></div>';
         }).join('');
-    }
+    };
 
-    function trackingMapHtml(order) {
+    window.trackingMapHtml = function (order) {
         return '<div id="tracking-map-root" class="fixed inset-0 z-[99999] bg-black/60 flex items-end md:items-center justify-center" onclick="if(event.target===this)closeTrackingMap()">' +
             '<div style="width:100%;max-width:520px;background:#fff;border-radius:16px 16px 0 0;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">' +
                 '<div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">' +
@@ -369,11 +369,11 @@ if (typeof window.openTrackingMap !== 'function') {
                     '</div>' +
                 '</div>' +
             '</div></div>';
-    }
+    };
 
-    function drawTrackingMap(order, events, origin) {
+    window.drawTrackingMap = function (order, events, origin) {
         const container = document.getElementById('tracking-map-container');
-        const dest = parseCoordinatesFromAddress(order.shipping_address);
+        const dest = window.parseCoordinatesFromAddress(order.shipping_address);
         const points = [];
         if (origin) points.push({ lat: origin.lat, lng: origin.lng, kind: 'origin', label: 'Toko Northline' });
         (events || []).forEach(function (e, i) {
@@ -412,9 +412,9 @@ if (typeof window.openTrackingMap !== 'function') {
         }
 
         map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
-    }
+    };
 
-    async function openTrackingMap(orderId) {
+    window.openTrackingMap = async function (orderId) {
         try {
             const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), { credentials: 'include' });
             const data = await res.json();
@@ -429,15 +429,15 @@ if (typeof window.openTrackingMap !== 'function') {
             const root = document.createElement('div');
             root.id = 'tracking-map-root-holder';
             document.body.appendChild(root);
-            root.innerHTML = trackingMapHtml(order);
+            root.innerHTML = window.trackingMapHtml(order);
             document.body.style.overflow = 'hidden';
-            document.getElementById('tracking-timeline').innerHTML = trackingTimelineHtml(events, order.created_at, order);
-            spaEnsureLeaflet(function () {
-                drawTrackingMap(order, events, origin);
+            document.getElementById('tracking-timeline').innerHTML = window.trackingTimelineHtml(events, order.created_at, order);
+            window.spaEnsureLeaflet(function () {
+                window.drawTrackingMap(order, events, origin);
             });
         } catch (e) {
             console.log(e);
             spaToast('Gagal memuat tracking');
         }
-    }
+    };
 }
