@@ -77,7 +77,7 @@ const upload = multer({
     }
     cb(null, true);
   },
-  limits: { fileSize: 5 * 1024 * 1024, files: 3 }
+  limits: { fileSize: 1 * 1024 * 1024, files: 3 }
 });
 
 const uploadTemp = multer({
@@ -89,7 +89,7 @@ const uploadTemp = multer({
     }
     cb(null, true);
   },
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+  limits: { fileSize: 1 * 1024 * 1024, files: 1 }
 });
 
 function deleteFile(filePath) {
@@ -101,7 +101,7 @@ function deleteFile(filePath) {
 router.post('/upload-temp', verifyToken, (req, res) => {
   uploadTemp.single('photos')(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'Foto maksimal 5MB' : err.message });
+      return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'Foto maksimal 1MB' : err.message });
     }
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'File foto tidak valid' });
@@ -166,7 +166,7 @@ router.get('/orders/:orderId/reviewable', verifyToken, async (req, res) => {  tr
 router.post('/submit', verifyToken, csrfProtection, (req, res) => {
   upload.array('photos', 3)(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'Foto maksimal 5MB per file' : (err.code === 'LIMIT_UNEXPECTED_FILE' ? 'Maksimal 3 foto' : err.message) });
+      return res.status(400).json({ success: false, message: err.code === 'LIMIT_FILE_SIZE' ? 'Foto maksimal 1MB per file' : (err.code === 'LIMIT_UNEXPECTED_FILE' ? 'Maksimal 3 foto' : err.message) });
     }
     let savedFiles = req.files || [];
     try {

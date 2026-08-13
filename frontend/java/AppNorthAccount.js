@@ -1117,7 +1117,7 @@ function renderReviewSpa() {
         (st.currentIndex === 0 ?
         '<div class="pt-1">' +
           '<div class="text-[10px] font-bold text-gray-500 uppercase mb-2">Rating Pengiriman <span class="text-gray-300">(kurir & packing)</span></div>' +
-          '<div class="flex gap-1 mb-2">' + starButtonsHtml('spa-delivery-rating', st.deliveryRating) + '</div>' +
+          '<div class="flex gap-1 mb-2" id="spa-delivery-rating">' + starButtonsHtml('spa-delivery-rating', st.deliveryRating) + '</div>' +
           (item.trackingCourier || item.trackingNumber || item.shippedAt || item.estimatedArrival ? 
             '<div class="mt-2 space-y-1.5 text-[10px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">' +
               (item.trackingCourier ? '<div class="flex items-center gap-1"><span class="font-medium text-gray-600 w-20">Kurir:</span><span>' + escapeHtml(item.trackingCourier) + '</span></div>' : '') +
@@ -1174,8 +1174,8 @@ function setSpaStar(btn, star) {
 function uploadReviewPhoto(e, productId) {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    showIosModal("Foto maksimal 5MB");
+  if (file.size > 1 * 1024 * 1024) {
+    showIosModal("Foto maksimal 1MB");
     return;
   }
   const fd = new FormData();
