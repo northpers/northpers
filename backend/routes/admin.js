@@ -37,6 +37,20 @@ const adminAuth = async (req, res, next) => {
 
 router.use(adminAuth);
 
+async function getStoreOrigin() {
+  try {
+    const [rows] = await db.execute(
+      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('store_origin_lat','store_origin_lng')"
+    );
+    const s = {};
+    rows.forEach((r) => { s[r.setting_key] = parseFloat(r.setting_value); });
+    if (!isNaN(s.store_origin_lat) && !isNaN(s.store_origin_lng)) {
+      return { lat: s.store_origin_lat, lng: s.store_origin_lng };
+    }
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
 router.get('/dashboard', async (req, res) => {
   try {
     const [[totalUsers]] = await db.execute('SELECT COUNT(*) as total FROM user_northline');
@@ -148,10 +162,11 @@ router.post('/orders/delivery', async (req, res) => {
       await db.execute("UPDATE transactions SET delivery_status=?, tracking_number=?, tracking_courier=?, shipped_at=? WHERE order_id=?", [deliveryStatus, trackingNumber || null, courier || null, deliveryStatus === 'Pesanan Dikirim' && trackingNumber ? new Date() : null, orderId]);
     }
     if (trackingNumber && courier) {
+      const origin = await getStoreOrigin();
       await db.execute(
-        `INSERT INTO tracking_events (order_id, status, description, location)
-         VALUES (?, 'Pesanan Dikirim', ?, '')`,
-        [orderId, `Pesanan dikirim dengan ${courier}. No. Resi: ${trackingNumber}`],
+        `INSERT INTO tracking_events (order_id, status, description, location, lat, lng)
+         VALUES (?, 'Pesanan Dikirim', ?, '', ?, ?)`,
+        [orderId, `Pesanan dikirim dengan ${courier}. No. Resi: ${trackingNumber}`, origin ? origin.lat : null, origin ? origin.lng : null],
       );
     }
     res.json({ success: true });
@@ -170,7 +185,7 @@ router.get('/orders/:orderId', async (req, res) => {
     `, [orderId]);
     if (orders.length === 0) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
     const [events] = await db.execute(
-      'SELECT id, order_id, status, description, location, created_at FROM tracking_events WHERE order_id=? ORDER BY id ASC',
+      'SELECT id, order_id, status, description, location, lat, lng, created_at FROM tracking_events WHERE order_id=? ORDER BY id ASC',
       [orderId],
     );
     const [sellerRow] = await db.execute(
@@ -190,11 +205,25 @@ router.get('/orders/:orderId', async (req, res) => {
 router.post('/orders/:orderId/tracking', async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, description, location } = req.body;
+    const { status, description, location, lat, lng } = req.body;
     if (!status) return res.status(400).json({ success: false, message: 'Status wajib diisi' });
+    let latVal = null;
+    let lngVal = null;
+    if (lat !== undefined && lat !== null && lat !== '') {
+      latVal = parseFloat(lat);
+      if (isNaN(latVal) || latVal < -90 || latVal > 90) {
+        return res.status(400).json({ success: false, message: 'Latitude tidak valid' });
+      }
+    }
+    if (lng !== undefined && lng !== null && lng !== '') {
+      lngVal = parseFloat(lng);
+      if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
+        return res.status(400).json({ success: false, message: 'Longitude tidak valid' });
+      }
+    }
     await db.execute(
-      'INSERT INTO tracking_events (order_id, status, description, location) VALUES (?, ?, ?, ?)',
-      [orderId, status, description || null, location || null],
+      'INSERT INTO tracking_events (order_id, status, description, location, lat, lng) VALUES (?, ?, ?, ?, ?, ?)',
+      [orderId, status, description || null, location || null, latVal, lngVal],
     );
     res.json({ success: true });
   } catch (err) {

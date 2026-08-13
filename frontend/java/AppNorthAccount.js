@@ -901,9 +901,10 @@ function renderOrders() {
       '</div>' +
 
       (o.payment_status !== 'pending' && o.payment_status !== 'cancelled' ? '<div class="px-3 py-3 border-b border-gray-100 bg-gray-50/30">' +
-        '<div class="flex items-center gap-2 mb-2">' +
+        '<div class="flex items-center gap-2 mb-2 cursor-pointer select-none" onclick="openTrackingMap(\'' + escapeHtml(o.order_id) + '\')">' +
           '<img src="https://img.icons8.com/?size=100&id=7880&format=png&color=DF414F" class="w-3.5 h-3.5">' +
           '<span class="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">Tracking Pengiriman</span>' +
+          '<span class="text-[#DF414F] text-[10px] font-semibold ml-auto">Lacak di Peta ›</span>' +
         '</div>' +
         '<div class="text-[10px] text-gray-500 leading-relaxed">' +
           (userName ? '<span class="font-medium text-gray-800">' + escapeHtml(userName) + '</span>' + (userPhone ? ' (' + escapeHtml(userPhone) + ')' : '') + '<br>' : '') +
@@ -970,6 +971,151 @@ async function confirmOrderReceipt(orderId) {
     if (data.success) loadOrders();
   } catch (e) {
     showIosModal("Gagal konfirmasi pesanan");
+  }
+}
+
+function parseCoordinatesFromAddress(addr) {
+  try {
+    const part = String(addr || '').split(' @Coordinates:')[1];
+    if (!part) return null;
+    const [lat, lng] = part.split(',');
+    const la = parseFloat(lat);
+    const ln = parseFloat(lng);
+    if (isNaN(la) || isNaN(ln)) return null;
+    return { lat: la, lng: ln };
+  } catch (e) { return null; }
+}
+
+let trackingMapInstance = null;
+
+function closeTrackingMap() {
+  const root = document.getElementById('tracking-map-root');
+  if (root) root.remove();
+  if (trackingMapInstance) {
+    try { trackingMapInstance.remove(); } catch (e) {}
+    trackingMapInstance = null;
+  }
+  try { document.body.style.overflow = ''; } catch (e) {}
+}
+
+function trackingTimelineHtml(events, createdAt, order) {
+  const items = [];
+  items.push({ status: 'Pesanan Dibuat', description: 'Pesanan berhasil dibuat', location: null, time: createdAt || null, first: true });
+  (events || []).forEach(e => {
+    items.push({ status: e.status, description: e.description, location: e.location, time: e.created_at, first: false });
+  });
+  const ds = String(order.delivery_status || '').toLowerCase();
+  if (ds.includes('selesai')) {
+    items.push({ status: 'Pesanan Selesai', description: 'Pesanan telah diterima', location: null, time: null, first: false });
+  }
+  return items.map((it, i) => {
+    const isLast = i === items.length - 1;
+    return '<div class="flex gap-3" style="position:relative;padding-bottom:16px">' +
+      (isLast ? '' : '<div style="position:absolute;left:5px;top:14px;bottom:-2px;width:2px;background:#f3e0e2"></div>') +
+      '<div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px;' + (isLast ? 'background:#DF414F;box-shadow:0 0 0 4px rgba(223,65,79,.18)' : 'background:#fff;border:2px solid #DF414F') + '"></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;font-weight:700;color:' + (isLast ? '#DF414F' : '#111827') + '">' + escapeHtml(it.status) + '</div>' +
+        (it.description ? '<div style="font-size:11px;color:#6b7280;margin-top:1px">' + escapeHtml(it.description) + '</div>' : '') +
+        (it.location ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">📍 ' + escapeHtml(it.location) + '</div>' : '') +
+        (it.time ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">' + new Date(it.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>' : '') +
+      '</div></div>';
+  }).join('');
+}
+
+function trackingMapHtml(order) {
+  return '<div id="tracking-map-root" class="fixed inset-0 z-[99999] bg-black/60 flex items-end md:items-center justify-center" onclick="if(event.target===this)closeTrackingMap()">' +
+    '<div style="width:100%;max-width:520px;background:#fff;border-radius:16px 16px 0 0;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">' +
+      '<div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">' +
+        '<div class="min-w-0">' +
+          '<h3 class="text-sm font-bold text-gray-900">Lacak Pengiriman</h3>' +
+          '<p class="text-[10px] text-gray-400 truncate">' + escapeHtml(order.order_id || '') + '</p>' +
+        '</div>' +
+        '<button onclick="closeTrackingMap()" class="w-8 h-8 flex items-center justify-center text-gray-500 active:bg-gray-100 rounded-full"><img src="https://img.icons8.com/?size=100&id=7811&format=png&color=df414f" class="w-5 h-5" /></button>' +
+      '</div>' +
+      '<div class="flex items-center gap-3 px-4 py-2 bg-gray-50/60 text-[10px] text-gray-600">' +
+        '<span>Kurir: <b class="text-gray-800">' + escapeHtml(order.tracking_courier || '-') + '</b></span>' +
+        '<span class="text-gray-300">|</span>' +
+        (order.tracking_number
+          ? '<span class="flex items-center gap-1">Resi: <b class="text-[#DF414F] tracking-wider">' + escapeHtml(order.tracking_number) + '</b>' +
+            '<button onclick="navigator.clipboard.writeText(\'' + escapeHtml(order.tracking_number) + '\').then(function(){closeTrackingMap();showIosModal(\'Nomor resi disalin\')})" class="text-[#DF414F] font-semibold">Salin</button></span>'
+          : '<span>Belum ada resi</span>') +
+        (order.estimated_arrival ? '<span class="text-gray-300">|</span><span>Est. ' + escapeHtml(order.estimated_arrival) + '</span>' : '') +
+      '</div>' +
+      '<div class="flex-1 overflow-y-auto">' +
+        '<div id="tracking-map-container" style="height:300px"></div>' +
+        '<div class="px-4 py-4 border-t border-gray-100">' +
+          '<div class="text-[10px] font-bold text-gray-500 uppercase mb-3">Riwayat Perjalanan</div>' +
+          '<div id="tracking-timeline"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+}
+
+function drawTrackingMap(order, events, origin) {
+  const container = document.getElementById('tracking-map-container');
+  const dest = parseCoordinatesFromAddress(order.shipping_address);
+  const points = [];
+  if (origin) points.push({ lat: origin.lat, lng: origin.lng, kind: 'origin', label: 'Toko Northline' });
+  (events || []).forEach((e, i) => {
+    if (e.lat != null && e.lng != null) points.push({ lat: Number(e.lat), lng: Number(e.lng), kind: 'event', index: i + 1, label: e.status });
+  });
+  if (dest) points.push({ lat: dest.lat, lng: dest.lng, kind: 'dest', label: 'Alamat Penerima' });
+
+  if (points.length === 0) {
+    container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#f9fafb;color:#9ca3af;font-size:12px;padding:0 24px;text-align:center">Belum ada titik lokasi. Admin akan menandai titik pengiriman di sini.</div>';
+    return;
+  }
+
+  const map = L.map(container, { zoomControl: false });
+  L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '&copy; Google Maps' }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  trackingMapInstance = map;
+
+  const coordPoints = points.map(p => [p.lat, p.lng]);
+
+  points.forEach(p => {
+    let iconHtml = null;
+    if (p.kind === 'origin') {
+      iconHtml = '<div style="background:#16a34a;border:2px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>';
+    } else if (p.kind === 'dest') {
+      iconHtml = '<div style="background:#2563eb;border:2px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>';
+    } else {
+      iconHtml = '<div style="background:#DF414F;border:2px solid #fff;border-radius:50%;width:18px;height:18px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)">' + p.index + '</div>';
+    }
+    const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
+    L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup('<b>' + escapeHtml(p.label) + '</b>');
+  });
+
+  if (coordPoints.length >= 2) {
+    L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.85, dashArray: '1,8' }).addTo(map);
+    L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.9 }).addTo(map);
+  }
+
+  map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
+}
+
+async function openTrackingMap(orderId) {
+  try {
+    const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) {
+      showIosModal(data.message || 'Gagal memuat tracking');
+      return;
+    }
+    const order = data.order || {};
+    const events = data.events || [];
+    const origin = data.origin || null;
+
+    const root = document.createElement('div');
+    root.id = 'tracking-map-root-holder';
+    document.body.appendChild(root);
+    root.innerHTML = trackingMapHtml(order);
+    document.body.style.overflow = 'hidden';
+    document.getElementById('tracking-timeline').innerHTML = trackingTimelineHtml(events, order.created_at, order);
+    setTimeout(() => drawTrackingMap(order, events, origin), 50);
+  } catch (e) {
+    console.log(e);
+    showIosModal('Gagal memuat tracking');
   }
 }
 

@@ -43,12 +43,46 @@ async function api(path, opts) {
 }
 
 function closeModal() {
+  destroyAdminMaps();
   document.getElementById('modal').classList.remove('show');
 }
 
 function showModal(html) {
+  destroyAdminMaps();
   document.getElementById('modal-body').innerHTML = html;
   document.getElementById('modal').classList.add('show');
+}
+
+let adminMaps = {};
+
+function destroyAdminMaps() {
+  Object.keys(adminMaps).forEach((k) => {
+    try { adminMaps[k].remove(); } catch (e) {}
+    delete adminMaps[k];
+  });
+}
+
+function initAdminMapPicker(mapId, latId, lngId, initLat, initLng) {
+  destroyAdminMaps();
+  const mapEl = document.getElementById(mapId);
+  if (!mapEl) return null;
+  let lat = parseFloat(initLat);
+  let lng = parseFloat(initLng);
+  if (isNaN(lat) || isNaN(lng)) { lat = -6.4194; lng = 107.4589; }
+  const map = L.map(mapId, { zoomControl: false }).setView([lat, lng], 12);
+  L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '&copy; Google Maps' }).addTo(map);
+  const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+  const latInput = document.getElementById(latId);
+  const lngInput = document.getElementById(lngId);
+  const sync = function (ll) {
+    if (latInput) latInput.value = ll.lat.toFixed(6);
+    if (lngInput) lngInput.value = ll.lng.toFixed(6);
+  };
+  sync(marker.getLatLng());
+  marker.on('dragend', function (e) { sync(e.target.getLatLng()); });
+  map.on('click', function (e) { marker.setLatLng(e.latlng); sync(e.latlng); });
+  adminMaps[mapId] = map;
+  return map;
 }
 
 const PAGE_GROUPS = {
@@ -289,6 +323,7 @@ async function showOrderDetail(orderId) {
           '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#111">' + escapeHtml(e.status) + '</div>' +
           (e.description ? '<div style="font-size:11px;color:#6b7280">' + escapeHtml(e.description) + '</div>' : '') +
           (e.location ? '<div style="font-size:11px;color:#9ca3af">' + escapeHtml(e.location) + '</div>' : '') +
+          (e.lat != null && e.lng != null ? '<div style="font-size:10px;color:#9ca3af">📍 ' + Number(e.lat).toFixed(6) + ', ' + Number(e.lng).toFixed(6) + '</div>' : '') +
           '<div style="font-size:10px;color:#9ca3af">' + (e.created_at ? new Date(e.created_at).toLocaleString('id-ID') : '') + '</div></div></div>';
       }).join('')
     : '<p style="text-align:center;padding:16px;color:#9ca3af">Belum ada event tracking</p>';
@@ -325,15 +360,22 @@ async function showOrderDetail(orderId) {
       '<input id="admin-tl-status" type="text" placeholder="Status (mis. Paket dalam perjalanan)" style="width:100%;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px;margin-bottom:8px">' +
       '<div style="display:flex;gap:8px"><input id="admin-tl-location" type="text" placeholder="Lokasi" style="flex:1;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px">' +
       '<button class="btn btn-primary btn-sm" onclick="addAdminTrackingEvent(\'' + escapeHtml(o.order_id) + '\')">Tambah</button></div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px"><input id="admin-tl-lat" type="text" placeholder="Latitude" style="flex:1;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px">' +
+      '<input id="admin-tl-lng" type="text" placeholder="Longitude" style="flex:1;height:34px;border:1px solid #d1d5db;padding:0 10px;font-size:12px"></div>' +
+      '<div id="admin-tl-map" style="height:180px;border:1px solid #d1d5db;border-radius:4px;margin-top:8px"></div>' +
+      '<div style="font-size:10px;color:#9ca3af;margin-top:4px">Klik pada peta untuk menandai titik lokasi event ini (opsional, dipakai untuk garis pengiriman).</div>' +
     '</div>' +
     '<div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Tutup</button></div>');
+  initAdminMapPicker('admin-tl-map', 'admin-tl-lat', 'admin-tl-lng');
 }
 
 async function addAdminTrackingEvent(orderId) {
   var status = document.getElementById('admin-tl-status').value.trim();
   var location = document.getElementById('admin-tl-location').value.trim();
+  var lat = document.getElementById('admin-tl-lat').value.trim();
+  var lng = document.getElementById('admin-tl-lng').value.trim();
   if (!status) { alert('Isi status terlebih dahulu'); return; }
-  var d = await api('/api/admin/orders/' + encodeURIComponent(orderId) + '/tracking', { method: 'POST', body: JSON.stringify({ status: status, location: location }) });
+  var d = await api('/api/admin/orders/' + encodeURIComponent(orderId) + '/tracking', { method: 'POST', body: JSON.stringify({ status: status, location: location, lat: lat, lng: lng }) });
   if (d.success) showOrderDetail(orderId); else alert(d.message || 'Gagal menambah update');
 }
 
@@ -1074,7 +1116,12 @@ async function renderSettings(el) {
       '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Nama Toko</label><input type="text" id="set-site-name" value="' + escapeHtml(s.site_name || '') + '" style="width:100%;height:38px;border:1px solid #d1d5db;padding:0 12px"></div>' +
       '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Kontak</label><input type="text" id="set-site-contact" value="' + escapeHtml(s.site_contact || '') + '" style="width:100%;height:38px;border:1px solid #d1d5db;padding:0 12px"></div>' +
       '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Alamat</label><textarea id="set-site-address" style="width:100%;height:60px;border:1px solid #d1d5db;padding:8px 12px;resize:none">' + escapeHtml(s.site_address || '') + '</textarea></div>' +
+      '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Koordinat Toko (Latitude)</label><input type="text" id="set-store-lat" value="' + (s.store_origin_lat || '') + '" style="width:100%;height:38px;border:1px solid #d1d5db;padding:0 12px"></div>' +
+      '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Koordinat Toko (Longitude)</label><input type="text" id="set-store-lng" value="' + (s.store_origin_lng || '') + '" style="width:100%;height:38px;border:1px solid #d1d5db;padding:0 12px"></div>' +
+      '<div><label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Titik Asal Pengiriman</label><div id="set-store-map" style="height:220px;border:1px solid #d1d5db;border-radius:4px"></div>' +
+      '<div style="font-size:11px;color:#9ca3af;margin-top:-8px">Klik atau geser pin pada peta untuk memilih lokasi toko (titik awal garis pengiriman).</div>' +
       '<button class="btn btn-primary" onclick="saveSettings()" style="width:fit-content">Simpan</button></div></div>';
+    initAdminMapPicker('set-store-map', 'set-store-lat', 'set-store-lng', s.store_origin_lat, s.store_origin_lng);
   } catch (e) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Error</div>'; }
 }
 
@@ -1084,7 +1131,9 @@ async function saveSettings() {
     wa_reminder_time: (document.getElementById('set-wa-time') || {}).value,
     site_name: (document.getElementById('set-site-name') || {}).value,
     site_contact: (document.getElementById('set-site-contact') || {}).value,
-    site_address: (document.getElementById('set-site-address') || {}).value
+    site_address: (document.getElementById('set-site-address') || {}).value,
+    store_origin_lat: (document.getElementById('set-store-lat') || {}).value,
+    store_origin_lng: (document.getElementById('set-store-lng') || {}).value
   };
   for (var key in vals) {
     await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ key: key, value: vals[key] }) });

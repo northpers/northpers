@@ -2005,10 +2005,21 @@ router.get('/tracking/:orderId', async (req, res) => {
             return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
         }
         const [events] = await db.query(
-            "SELECT id, order_id, status, description, location, created_at FROM tracking_events WHERE order_id = ? ORDER BY id ASC",
+            "SELECT id, order_id, status, description, location, lat, lng, created_at FROM tracking_events WHERE order_id = ? ORDER BY id ASC",
             [orderId],
         );
-        res.json({ success: true, order: orders[0], events });
+        let origin = null;
+        try {
+            const [settingsRows] = await db.query(
+                "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('store_origin_lat','store_origin_lng')"
+            );
+            const s = {};
+            settingsRows.forEach((r) => { s[r.setting_key] = parseFloat(r.setting_value); });
+            if (!isNaN(s.store_origin_lat) && !isNaN(s.store_origin_lng)) {
+                origin = { lat: s.store_origin_lat, lng: s.store_origin_lng };
+            }
+        } catch (e) { /* ignore */ }
+        res.json({ success: true, order: orders[0], events, origin });
     } catch (error) {
         console.error("Error Get Tracking:", error);
         res.status(500).json({ success: false, message: error.message });
