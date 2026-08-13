@@ -904,7 +904,7 @@ function renderOrders() {
         '<div class="flex items-center gap-2 mb-2 cursor-pointer select-none" onclick="openTrackingMap(\'' + escapeHtml(o.order_id) + '\')">' +
           '<img src="https://img.icons8.com/?size=100&id=7880&format=png&color=DF414F" class="w-3.5 h-3.5">' +
           '<span class="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">Tracking Pengiriman</span>' +
-          '<span class="text-[#DF414F] text-[10px] font-semibold ml-auto">Lacak di Peta ›</span>' +
+          '<span class="text-[#DF414F] text-[10px] ml-auto">Lacak di Peta</span>' +
         '</div>' +
         '<div class="text-[10px] text-gray-500 leading-relaxed">' +
           (userName ? '<span class="font-medium text-gray-800">' + escapeHtml(userName) + '</span>' + (userPhone ? ' (' + escapeHtml(userPhone) + ')' : '') + '<br>' : '') +
@@ -950,8 +950,10 @@ function renderOrders() {
         '<button onclick="confirmOrderReceipt(\'' + escapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Pesanan Selesai</button>' +
       '</div>' : '') +
       (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('selesai') ? '<div class="px-3 py-2.5 border-t border-gray-100 flex items-center justify-between gap-3">' +
-              '<span class="text-[11px] leading-4 text-gray-500 max-w-[65%] line-clamp-2">Bagikan pengalamanmu dengan produk ini dan bantu pembeli lainnya:</span>' +
-              '<button onclick="openReviewSpa(\'' + escapeHtml(o.order_id) + '\')" class="shrink-0 text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Beri Ulasan</button>' +
+              '<span class="text-[11px] leading-4 text-gray-500 max-w-[65%] line-clamp-2">' + (o.reviewed ? 'Terima kasih! Ulasanmu sudah terkirim.' : 'Bagikan pengalamanmu dengan produk ini dan bantu pembeli lainnya:') + '</span>' +
+              (o.reviewed
+                ? '<span class="shrink-0 text-[11px] font-semibold bg-gray-100 text-gray-400 px-4 py-1.5 cursor-not-allowed">Selesai</span>'
+                : '<button onclick="openReviewSpa(\'' + escapeHtml(o.order_id) + '\')" class="shrink-0 text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Beri Ulasan</button>') +
             '</div>' : '') +
 
     '</div>';
@@ -1016,7 +1018,7 @@ function trackingTimelineHtml(events, createdAt, order) {
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:12px;font-weight:700;color:' + (isLast ? '#DF414F' : '#111827') + '">' + escapeHtml(it.status) + '</div>' +
         (it.description ? '<div style="font-size:11px;color:#6b7280;margin-top:1px">' + escapeHtml(it.description) + '</div>' : '') +
-        (it.location ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">📍 ' + escapeHtml(it.location) + '</div>' : '') +
+        (it.location ? '<div class="flex flex-row gap-1 items-center" style="font-size:10px;color:#9ca3af;margin-top:1px"><img src="https://img.icons8.com/?size=100&id=13800&format=png&color=9CA3AF" class="w-3 h-3"">' + escapeHtml(it.location) + '</div>' : '') +
         (it.time ? '<div style="font-size:10px;color:#9ca3af;margin-top:1px">' + new Date(it.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>' : '') +
       '</div></div>';
   }).join('');
@@ -1030,7 +1032,7 @@ function trackingMapHtml(order) {
           '<h3 class="text-sm font-bold text-gray-900">Lacak Pengiriman</h3>' +
           '<p class="text-[10px] text-gray-400 truncate">' + escapeHtml(order.order_id || '') + '</p>' +
         '</div>' +
-        '<button onclick="closeTrackingMap()" class="w-8 h-8 flex items-center justify-center text-gray-500 active:bg-gray-100 rounded-full"><img src="https://img.icons8.com/?size=100&id=7811&format=png&color=df414f" class="w-5 h-5" /></button>' +
+        '<button onclick="closeTrackingMap()" class="w-8 h-8 flex items-center justify-center text-gray-500 active:bg-gray-100 rounded-full"><img src="https://img.icons8.com/?size=100&id=355&format=png&color=df414f" class="w-7 h-7" /></button>' +
       '</div>' +
       '<div class="flex items-center gap-3 px-4 py-2 bg-gray-50/60 text-[10px] text-gray-600">' +
         '<span>Kurir: <b class="text-gray-800">' + escapeHtml(order.tracking_courier || '-') + '</b></span>' +
