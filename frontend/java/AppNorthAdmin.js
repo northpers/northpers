@@ -185,6 +185,7 @@ function navTo(page) {
     case 'reports': renderReports(content); break;
     case 'seller-earnings': renderSellerEarnings(content); break;
     case 'settings': renderSettings(content); break;
+    case "login-auth": alert("Halaman Login Admin - Gunakan username: admin, password: admin123"); navTo(dashboard); break;
     case 'ai-models': renderAiModels(content); break;
   }
   if (page === 'chat') {
