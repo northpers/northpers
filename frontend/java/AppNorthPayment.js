@@ -2,8 +2,6 @@ function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.c
 
 async function getPaymentCsrfToken() {
   try {
-    const saved = localStorage.getItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN);
-    if (saved) return saved;
     const res = await fetch(_d('9kzs9m}|p7~yuox'), { credentials: 'include' });
     const data = await res.json();
     if (data.success && data.csrfToken) {
@@ -11,7 +9,31 @@ async function getPaymentCsrfToken() {
       return data.csrfToken;
     }
   } catch (e) { console.error('CSRF fetch error:', e); }
-  return null;
+  const saved = localStorage.getItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN);
+  return saved || null;
+}
+
+async function postOrderJson(url, body) {
+  let token = await getPaymentCsrfToken();
+  let res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token || '' },
+    credentials: 'include',
+    body: JSON.stringify(body)
+  });
+  if (res.status === 403) {
+    try {
+      localStorage.removeItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN);
+      token = await getPaymentCsrfToken();
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token || '' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      });
+    } catch (e) { console.error('CSRF retry error:', e); }
+  }
+  return res;
 }
 
 
@@ -1014,18 +1036,12 @@ function showPaymentMethodScreen(data, overlay, modal) {
         }
 
         if (data.items && data.items.length > 0) {
-          const csrfToken = await getPaymentCsrfToken();
-          const res = await fetch(_d('9kzs9}k!o7y|no|9l vu'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' },
-            credentials: 'include',
-            body: JSON.stringify({
+          const res = await postOrderJson(_d('9kzs9}k!o7y|no|9l vu'), {
               items: data.items,
               totalPrice: data.totalPrice,
               voucherId: data.voucherId || '',
               status: 'success',
               paymentMethod: 'northpay'
-            })
           });
           const result = await res.json();
           if (result.success) {
@@ -1038,13 +1054,7 @@ function showPaymentMethodScreen(data, overlay, modal) {
           return;
         }
 
-        const csrfToken = await getPaymentCsrfToken();
-        const res = await fetch(_d('9kzs9}k!o7y|no|'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' },
-          credentials: 'include',
-          body: JSON.stringify({ ...orderData, status: 'success', paymentMethod: 'northpay' })
-        });
+        const res = await postOrderJson(_d('9kzs9}k!o7y|no|'), { ...orderData, status: 'success', paymentMethod: 'northpay' });
         const result = await res.json();
         if (result.success) {
           tampilkanInvoiceSuccess({ ...orderData, orderId: result.orderId, totalPrice: orderData.totalPrice, color: orderData.chosenColor, size: orderData.chosenSize, model: orderData.chosenModel }, overlay, modal);
@@ -1062,18 +1072,12 @@ function showPaymentMethodScreen(data, overlay, modal) {
     } else {
       try {
         if (data.items && data.items.length > 0) {
-          const csrfToken = await getPaymentCsrfToken();
-          const res = await fetch(_d('9kzs9}k!o7y|no|9l vu'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' },
-            credentials: 'include',
-            body: JSON.stringify({
+          const res = await postOrderJson(_d('9kzs9}k!o7y|no|9l vu'), {
               items: data.items,
               totalPrice: data.totalPrice,
               voucherId: data.voucherId || '',
               status: 'pending',
               paymentMethod: 'qris'
-            })
           });
           const result = await res.json();
           if (result.success) {
@@ -1085,13 +1089,7 @@ function showPaymentMethodScreen(data, overlay, modal) {
           }
           return;
         }
-        const csrfToken = await getPaymentCsrfToken();
-        const res = await fetch(_d('9kzs9}k!o7y|no|'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' },
-          credentials: 'include',
-          body: JSON.stringify({ ...data, status: 'pending', paymentMethod: 'qris' })
-        });
+        const res = await postOrderJson(_d('9kzs9}k!o7y|no|'), { ...data, status: 'pending', paymentMethod: 'qris' });
         const result = await res.json();
         if (result.success) {
           tampilkanQRIS({ ...data, orderId: result.orderId }, overlay, modal);

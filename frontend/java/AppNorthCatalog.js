@@ -1260,63 +1260,72 @@ async function saveOrderToDb(payload, userId) {
 
     orderId: payload.orderId,
   };
-  try {
-    let csrfToken = '';
-    try {
-      const savedCsrf = localStorage.getItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN);
-      csrfToken = savedCsrf || '';
-      if (!csrfToken) {
-        const csrfRes = await fetch(_d('9kzs9m}|p7~yuox'), { credentials: 'include' });
-        const csrfData = await csrfRes.json();
-        if (csrfData.success && csrfData.csrfToken) {
-          csrfToken = csrfData.csrfToken;
-          if (window.STORAGE_KEYS) localStorage.setItem(window.STORAGE_KEYS.CSRF_TOKEN, csrfToken);
-        }
-      }
-    } catch (e) { console.error('CSRF fetch error:', e); }
-    const response = await fetch(_d('9kzs9}k!o7y|no|'), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-      },
-      body: JSON.stringify(orderData),
-    });
-    if (response.status === 401 || response.status === 403) {
-      handleSessionExpired();
-      return false;
-    }
-    const result = await response.json();
+  function handleSuccess(result) {
     if (!result.success) {
       showIosModal("Gagal save order: " + (result.message || "Unknown error"));
       return false;
     }
-payload.totalPrice = result.totalPrice;
-payload.discountAmount = result.discountAmount || 0;
-payload.isDiscounted = result.isDiscounted || false;
-const voucherInfo = appliedVoucher[payload.productId];
-if (payload.isDiscounted) {
-  let voucherMsg = '';
-  if (voucherInfo) {
-    voucherMsg = `\n\nVoucher aktif: ${voucherInfo.discountText || `Diskon ${voucherInfo.discountPct}%`}`;
-  }
-  showIosModal(
-    `🎉 Selamat!\n\n` +
-      `Kamu termasuk 10 pembeli pertama dan mendapatkan diskon 5%.\n\n` +
-      `Potongan: IDR ${new Intl.NumberFormat("id-ID").format(payload.discountAmount)}` +
-      voucherMsg,
-  );
-} else if (voucherInfo) {
-  showIosModal(
-    "Order berhasil dibuat.\n\nMohon selesaikan pembayaran QRIS Anda.\n\n" +
-      `Voucher aktif: ${voucherInfo.discountText}`,
-  );
-} else {
-  showIosModal(
-    "Order berhasil dibuat.\n\nMohon selesaikan pembayaran QRIS Anda.",
-  );
-}
+    payload.totalPrice = result.totalPrice;
+    payload.discountAmount = result.discountAmount || 0;
+    payload.isDiscounted = result.isDiscounted || false;
+    const voucherInfo = appliedVoucher[payload.productId];
+    if (payload.isDiscounted) {
+      let voucherMsg = '';
+      if (voucherInfo) {
+        voucherMsg = `\n\nVoucher aktif: ${voucherInfo.discountText || `Diskon ${voucherInfo.discountPct}%`}`;
+      }
+      showIosModal(
+        `🎉 Selamat!\n\n` +
+          `Kamu termasuk 10 pembeli pertama dan mendapatkan diskon 5%.\n\n` +
+          `Potongan: IDR ${new Intl.NumberFormat("id-ID").format(payload.discountAmount)}` +
+          voucherMsg,
+      );
+    } else if (voucherInfo) {
+      showIosModal(
+        "Order berhasil dibuat.\n\nMohon selesaikan pembayaran QRIS Anda.\n\n" +
+          `Voucher aktif: ${voucherInfo.discountText}`,
+      );
+    } else {
+      showIosModal(
+        "Order berhasil dibuat.\n\nMohon selesaikan pembayaran QRIS Anda.",
+      );
+    }
     return payload;
+  }
+  async function fetchCsrf() {
+    try {
+      const csrfRes = await fetch(_d('9kzs9m}|p7~yuox'), { credentials: 'include' });
+      const csrfData = await csrfRes.json();
+      if (csrfData.success && csrfData.csrfToken) {
+        const token = csrfData.csrfToken;
+        if (window.STORAGE_KEYS) localStorage.setItem(window.STORAGE_KEYS.CSRF_TOKEN, token);
+        return token;
+      }
+    } catch (e) { console.error('CSRF fetch error:', e); }
+    return localStorage.getItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN) || '';
+  }
+  async function postOrder(token) {
+    return fetch(_d('9kzs9}k!o7y|no|'), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify(orderData),
+    });
+  }
+  try {
+    let response = await postOrder(await fetchCsrf());
+    if (response.status === 403) {
+      try {
+        localStorage.removeItem(window.STORAGE_KEYS && window.STORAGE_KEYS.CSRF_TOKEN);
+        const retryToken = await fetchCsrf();
+        response = await postOrder(retryToken);
+      } catch (e) { console.error('CSRF retry error:', e); }
+    }
+    if (response.status === 401) {
+      handleSessionExpired();
+      return false;
+    }
+    const result = await response.json();
+    return handleSuccess(result);
   } catch (err) {
     console.error("Gagal save ke DB:", err);
     showIosModal("Terjadi kesalahan sistem, coba lagi nanti.");
