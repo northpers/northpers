@@ -11,25 +11,25 @@ const SIZE_EXTRA = { S: 0, M: 500, L: 1000, XL: 1500, XXL: 2000 };
 const NORTHLINE_CATALOG = [
   {
     id: 1,
-    name: "Northline - LongSleeve Boxy Style North Default  - 24s Cotton Combed Black Statemant",
+    name: "Northline - ShortSleeve Boxy Style North Default  - 24s Cotton Combed Black Statemant",
     priceLong: 127000,
     price: 127000,
     oldPrice: 250000,
     avgRating: 4.4,
     totalReviews: 7102,
     images: [
-      "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineLongSleeveBoxyStyle_NorthDefault_BlackStatement.webp",
+      "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineShortSleeveBoxyStyle_NorthDefault_BlackStatement.webp",
       "https://nl.hostinesia.my.id/public/image/SizeChart/SizeChartNorthlineLongsleeve.webp",
     ],
     colors: ["Black"],
     sizes: ["M", "L", "XL"],
     stock: 20,
     deskripsi:
-      "Northline - LongSleeve Boxy Style North Default  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: LongSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Panjang\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
+      "Northline - ShortSleeve Boxy Style North Default  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
     id: 2,
-    name: "Northline - Hoodie Boxy Zipper Style North Default  - 24s Cotton Combed Black Statemant",
+    name: "Northline - Hoodie Boxy Zipper Style North Default  - 24s Cotton Combed Gray Statemant",
     price: 217000,
     oldPrice: 250000,
     avgRating: 4.8,
@@ -38,11 +38,11 @@ const NORTHLINE_CATALOG = [
       "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineHoodieBoxyStyle_nrt_BlackDefaultStatement.webp",
       "https://nl.hostinesia.my.id/public/image/SizeChart/SizeChartNorthlineHoodieBoxy.webp",
     ],
-    colors: ["Black"],
+    colors: ["Gray"],
     sizes: ["M", "L", "XL", "XXL"],
     stock: 20,
     deskripsi:
-      "Northline - Hoodie Boxy Zipper Style North Default  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Hoodie Boxy Zipper\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Panjang\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
+      "Northline - Hoodie Boxy Zipper Style North Default  - 24s Cotton Combed Gray Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Hoodie Boxy Zipper\n        Article: Archive Article\n        Warna: Gray\n        Fit: Boxy / Relaxed Fit\n        Lengan: Panjang\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
     id: 3,
@@ -102,7 +102,7 @@ const NORTHLINE_CATALOG = [
       "Northline - Sweatpants Loose Baggy Highwaist Man  - Falcee Gray Statemant.\n\n        Archive Article dari Northline dengan desain Gray Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Sweatpants\n        Article: Archive Article\n        Warna: Gray\n        Tipe: High waist\n        Panjang Celana: Panjang\n        Material: Falcee\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 15,
+    id: 6,
     name: "Northline - Sweatpants Loose Baggy Highwaist Womans  - Falcee Gray Statemant",
     price: 119000,
     oldPrice: 250000,
@@ -119,7 +119,7 @@ const NORTHLINE_CATALOG = [
       "Northline - Sweatpants Loose Baggy Highwaist Womans  - Falcee Gray Statemant.\n\n        Archive Article dari Northline dengan desain Gray Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Sweatpants\n        Article: Archive Article\n        Warna: Gray\n        Tipe: High waist\n        Panjang Celana: Panjang\n        Material: Falcee\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 6,
+    id: 7,
     name: "Northline - Hoodie Zipper Crop North Default Womans  - Falcee Gray Statemant",
     price: 202000,
     oldPrice: 250000,
@@ -136,7 +136,7 @@ const NORTHLINE_CATALOG = [
       "Northline - Hoodie Zipper Crop North Default Womans  - Falcee Gray Statemant.\n\n        Archive Article dari Northline dengan desain Gray Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: Hoodie\n        Article: Archive Article\n        Warna: Gray\n        Tipe: Zipper Crop\n        Lengan: Panjang\n        Material: Falcee\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 7,
+    id: 8,
     name: "Northline - ShortSleeve Boxy Tshirt American Style  - 24s Cotton Combed Black Statemant",
     price: 113000,
     oldPrice: 250000,
@@ -153,7 +153,7 @@ const NORTHLINE_CATALOG = [
       "Northline - ShortSleeve Boxy Tshirt American Style  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 8,
+    id: 9,
     name: "Northline - ShortSleeve Boxy Tshirt Northline Indonesia & Northline  - 24s Cotton Combed Black Statemant",
     price: 113000,
     oldPrice: 250000,
@@ -172,9 +172,9 @@ const NORTHLINE_CATALOG = [
       "Northline - ShortSleeve Boxy Tshirt Northline Indonesia & Northline - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 9,
+    id: 10,
     name: "Northline - ShortSleeve Kids Boxy Tshirt Northline Indonesia & Northline  - 24s Cotton Combed Black Statemant",
-    price: 113000,
+    price: 102000,
     oldPrice: 250000,
     avgRating: 5,
     totalReviews: 10800,
@@ -191,7 +191,7 @@ const NORTHLINE_CATALOG = [
       "Northline - ShortSleeve Kids Boxy Tshirt Northline Indonesia & Northline - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Kids Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 10,
+    id: 11,
     name: "Northline - ShortSleeve Boxy Tshirt NL  - 24s Cotton Combed Black Statemant",
     price: 113000,
     oldPrice: 250000,
@@ -210,7 +210,7 @@ const NORTHLINE_CATALOG = [
       "Northline - ShortSleeve Boxy Tshirt NL  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: White\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 11,
+    id: 12,
     name: "Northline - ShortSleeve Boxy Tshirt NRL  - 24s Cotton Combed Black Statemant",
     price: 113000,
     oldPrice: 250000,
@@ -229,39 +229,38 @@ const NORTHLINE_CATALOG = [
       "Northline - ShortSleeve Boxy Tshirt NRL  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: White\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
   {
-    id: 12,
-    name: "Northline - ShortSleeve Boxy Tshirt This is the northwest  - 24s Cotton Combed Black Statemant",
+    id: 13,
+    name: "Northline - ShortSleeve Boxy Tshirt NRTHNL Archive Article  - 24s Cotton Combed Black Statemant",
     price: 113000,
     oldPrice: 250000,
     avgRating: 5,
     totalReviews: 10800,
     images: [
+      "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineShortSleeveBoxyStyle_archive_WhiteStatement.webp",
+      "https://nl.hostinesia.my.id/public/image/SizeChart/SizeChartNorthlineShortsleeve.webp",
+    ],
+    colors: ["Black"],
+    sizes: ["M", "L", "XL"],
+    stock: 20,
+    deskripsi:
+      "Northline - ShortSleeve Boxy Tshirt NRTHNL Archive Article  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
+  },
+  {
+    id: 14,
+    name: "Northline - ShortSleeve Boxy Tshirt This is the northwest.  - 24s Cotton Combed Black Statemant",
+    price: 113000,
+    oldPrice: 250000,
+    avgRating: 4.9,
+    totalReviews: 20400,
+    images: [
       "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineShortSleeveBoxyStyle_northwest_WhiteStatement.webp",
       "https://nl.hostinesia.my.id/public/image/SizeChart/SizeChartNorthlineShortsleeve.webp",
     ],
-    colors: ["White"],
+    colors: ["Black"],
     sizes: ["M", "L", "XL"],
     stock: 20,
     deskripsi:
-      "Northline - ShortSleeve Boxy Tshirt This is the northwest  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: White\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
-  },
-  {
-    id: 13,
-    name: "Northline - LongSleeve Boxy Tshirt This is the northwest  - 24s Cotton Combed Black Statemant",
-    priceLong: 127000,
-    price: 127000,
-    oldPrice: 250000,
-    avgRating: 4.5,
-    totalReviews: 7500,
-    images: [
-      "https://nl.hostinesia.my.id/public/image/NorthlineArticles/NorthlineLongSleeveBoxyStyle_northwest_WhiteStatement.webp",
-      "https://nl.hostinesia.my.id/public/image/SizeChart/SizeChartNorthlineLongsleeve.webp",
-    ],
-    colors: ["White"],
-    sizes: ["M", "L", "XL"],
-    stock: 20,
-    deskripsi:
-      "Northline - LongSleeve Boxy Tshirt This is the northwest  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: longSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: White\n        Fit: Boxy / Relaxed Fit\n        Lengan: Panjang\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
+      "Northline - ShortSleeve Boxy Tshirt This is the northwest.  - 24s Cotton Combed Black Statemant.\n\n        Archive Article dari Northline dengan desain Black Statement yang menghadirkan karakter minimalis dan modern. \n        Menggunakan potongan boxy fit dengan siluet relaxed sehingga memberikan tampilan casual dan contemporary.\n\n        Detail Produk:\n\n        Brand: Northline\n        Model: ShortSleeve Boxy T-Shirt\n        Article: Archive Article\n        Warna: Black\n        Fit: Boxy / Relaxed Fit\n        Lengan: Pendek\n        Material: Cotton\n        Cocok untuk penggunaan sehari-hari\n        Unisex\n\n        Catatan:\n        Mohon perhatikan panduan ukuran sebelum melakukan pemesanan. \n        Warna produk dapat terlihat sedikit berbeda tergantung pencahayaan dan layar perangkat.\n\n        #Northline #ArchiveArticle #BoxyTshirt #BlackStatement #BoxyFit #CasualWear",  
   },
 ];
 
