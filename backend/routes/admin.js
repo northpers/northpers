@@ -55,8 +55,9 @@ router.post('/login', async (req, res) => {
       return res.json({ success: false, message: 'Hanya admin yang boleh login' });
     }
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
-    res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-    res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+    const secureFlag = !!(req.secure || req.headers['x-forwarded-proto'] === 'https');
+    res.cookie('nl_jwt', token, { httpOnly: true, secure: secureFlag, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+    res.cookie('logged_in', '1', { httpOnly: false, secure: secureFlag, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
     res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
