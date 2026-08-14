@@ -135,20 +135,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const me = await api('/api/auth/me');
     if (!me.success || !me.user) {
-      document.getElementById('sidebar').classList.add('collapsed');
-      document.getElementById('sidebar-overlay').classList.add('show');
-      document.getElementById('page-title').textContent = 'Login Admin';
-      document.getElementById('page-breadcrumb').innerHTML = '';
-      renderLoginAuthFull();
+      window.location.href = '/AppNorthAuthAdmin';
       return;
     }
     const roleCheck = await api('/api/admin/dashboard');
     if (!roleCheck.success) {
-      document.getElementById('sidebar').classList.add('collapsed');
-      document.getElementById('sidebar-overlay').classList.add('show');
-      document.getElementById('page-title').textContent = 'Login Admin';
-      document.getElementById('page-breadcrumb').innerHTML = '';
-      renderLoginAuthFull();
+      window.location.href = '/AppNorthAuthAdmin';
       return;
     }
     adminUser = me.user;
@@ -161,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkWaStatus();
     setInterval(checkWaStatus, 30000);
   } catch (e) {
-    window.location.href = '/AppNorthAuth';
+    window.location.href = '/AppNorthAuthAdmin';
   }
 });
 
@@ -199,7 +191,7 @@ function navTo(page) {
     case 'reports': renderReports(content); break;
     case 'seller-earnings': renderSellerEarnings(content); break;
     case 'settings': renderSettings(content); break;
-    case "login-auth": renderLoginAuthFull(); break;
+    case "login-auth": window.location.href = '/AppNorthAuthAdmin'; break;
     case 'ai-models': renderAiModels(content); break;
   }
   if (page === 'chat') {
@@ -1465,104 +1457,7 @@ async function rejectNPinjamLoan(id) {
 
 async function logout() {
   await api('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/AppNorthAuth';
-}
-
-function renderLoginAuth(el) {
-  el.innerHTML = '<div id="panel-login-classic" class="bg-white p-5 md:w-[400px] shadow-md max-w-md mx-auto">' +
-    '<div class="flex items-start justify-between mb-8">' +
-    '<div>' +
-    '<h1 class="text-[20px] font-medium text-black leading-none">Log In</h1>' +
-    '</div>' +
-    '</div>' +
-    '<form id="login-form" class="space-y-4">' +
-    '<div>' +
-    '<label class="block text-sm font-medium text-zinc-700 mb-2">Username</label>' +
-    '<input type="text" id="username" required class="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">' +
-    '</div>' +
-    '<div>' +
-    '<label class="block text-sm font-medium text-zinc-700 mb-2">Password</label>' +
-    '<input type="password" id="password" required class="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">' +
-    '</div>' +
-    '<button type="submit" class="w-full py-2 px-4 bg-zinc-900 text-white font-medium rounded-md hover:bg-zinc-800 transition focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-zinc-500">Masuk</button>' +
-    '</form>' +
-    '<div id="login-error" style="color:#DC2626;margin-top:10px;font-size:12px;"></div>' +
-    '</div>';
-  var errorDiv = document.getElementById('login-error');
-  document.getElementById('login-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    var username = document.getElementById('username').value;
-    var password = document.getElementById('password').value;
-    errorDiv.textContent = 'Sedang login...';
-    errorDiv.style.display = 'block';
-    try {
-      var res = await api('/api/admin/login', {
-        method: 'POST',
-        body: JSON.stringify({ username: username, password: password })
-      });
-      if (res.success) {
-        adminUser = res.user;
-        document.getElementById('admin-name').textContent = res.user.name || res.user.username;
-        var initials = (res.user.name || res.user.username || 'AD').trim().split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
-        document.getElementById('admin-avatar').textContent = initials || 'AD';
-        var logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) logoutBtn.addEventListener('click', function (ev) { ev.preventDefault(); logout(); });
-        navTo('dashboard');
-      } else {
-        errorDiv.textContent = res.message || 'Login gagal';
-      }
-    } catch (err) {
-      errorDiv.textContent = 'Error koneksi: ' + err.message;
-    }
-  });
-}
-
-function renderLoginAuthFull() {
-  var content = document.getElementById('page-content');
-  content.innerHTML = '<div class="login-overlay">' +
-    '<div class="login-card">' +
-    '<h2>Login Admin</h2>' +
-    '<form id="login-form-full">' +
-    '<div class="form-group">' +
-    '<label>Username</label>' +
-    '<input type="text" id="username" required>' +
-    '</div>' +
-    '<div class="form-group">' +
-    '<label>Password</label>' +
-    '<input type="password" id="password" required>' +
-    '</div>' +
-    '<button type="submit" class="btn-primary">Masuk</button>' +
-    '</form>' +
-    '<div id="login-error-full" style="color:red;margin-top:10px;display:none;"></div>' +
-    '</div>' +
-    '</div>';
-  var errorDiv = document.getElementById('login-error-full');
-  document.getElementById('login-form-full').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    var username = document.getElementById('username').value;
-    var password = document.getElementById('password').value;
-    errorDiv.textContent = 'Sedang login...';
-    errorDiv.style.display = 'block';
-    try {
-      var res = await api('/api/admin/login', {
-        method: 'POST',
-        body: JSON.stringify({ username: username, password: password })
-      });
-      if (res.success) {
-        adminUser = res.user;
-        document.getElementById('admin-name').textContent = res.user.name || res.user.username;
-        var initials = (res.user.name || res.user.username || 'AD').trim().split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
-        document.getElementById('admin-avatar').textContent = initials || 'AD';
-        var logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) logoutBtn.addEventListener('click', function (ev) { ev.preventDefault(); logout(); });
-        navTo('dashboard');
-      } else {
-        errorDiv.textContent = res.message || 'Login gagal';
-      }
-    } catch (err) {
-      errorDiv.textContent = 'Error koneksi: ' + err.message;
-    }
-  });
+  window.location.href = '/AppNorthAuthAdmin';
 }
 
 let affiliateFilterStatus = '', affiliateSearch = '';
