@@ -670,3 +670,5 @@ router.delete('/chat-ai/history', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.CHAT_AI_QUOTA_MESSAGES = CHAT_AI_QUOTA_MESSAGES;
+module.exports.CHAT_AI_QUOTA_BYTES = CHAT_AI_QUOTA_BYTES;

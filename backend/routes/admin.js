@@ -3,6 +3,9 @@ const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const { grantCommission } = require('./affiliate');
+const aiRoutes = require('./ai');
+const CHAT_AI_QUOTA_MESSAGES = aiRoutes.CHAT_AI_QUOTA_MESSAGES || 500;
+const CHAT_AI_QUOTA_BYTES = aiRoutes.CHAT_AI_QUOTA_BYTES || (2 * 1024 * 1024);
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
