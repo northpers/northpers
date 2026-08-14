@@ -512,7 +512,7 @@ router.post('/chat', async (req, res) => {
             ? buildStoreSystemPrompt(products, history || [])
             : buildSystemPrompt(products, history || []);
 
-        const { reply, usedModel } = await sendChatWithFallback(sessionId, [{ type: 'text', text: message }], systemPrompt);
+        let { reply, usedModel } = await sendChatWithFallback(sessionId, [{ type: 'text', text: message }], systemPrompt);
 
         let matchedProducts = [];
 
