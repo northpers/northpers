@@ -21,6 +21,13 @@ function formatRp(n) {
   return 'Rp ' + parseInt(n || 0).toLocaleString('id-ID');
 }
 
+function formatCost(n) {
+  var v = parseFloat(n || 0);
+  if (v <= 0) return 'Rp 0';
+  if (v < 1) return 'Rp ' + v.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  return formatRp(Math.round(v));
+}
+
 function statusBadge(s) {
   const cls = s === 'success' ? 'badge badge-success' : s === 'cancelled' || s === 'rejected' ? 'badge badge-danger' : s === 'pending' ? 'badge badge-pending' : 'badge badge-info';
   return '<span class="' + cls + '">' + escapeHtml(s) + '</span>';
@@ -1151,18 +1158,55 @@ async function saveSettings() {
   alert('Pengaturan disimpan!');
 }
 
+function formatNum(n) {
+  return (parseInt(n || 0) || 0).toLocaleString('id-ID');
+}
+
+function formatTok(n) {
+  n = parseInt(n || 0) || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+function timeAgo(ts) {
+  if (!ts) return '-';
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return '-';
+  var s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 0) s = 0;
+  if (s < 60) return s + ' dtk lalu';
+  if (s < 3600) return Math.floor(s / 60) + ' mnt lalu';
+  if (s < 86400) return Math.floor(s / 3600) + ' jam lalu';
+  return Math.floor(s / 86400) + ' hari lalu';
+}
+
 async function renderAiModels(el) {
   try {
     var d = await api('/api/admin/ai-models');
-    var html = '<div class="card"><div class="section-title">Model AI Chat</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span class="badge' + (d.active ? ' badge-success' : '') + '">'+ (d.active ? d.activeName : 'Tidak Aktif') +'</span>' +
+    var s = d.summary || {};
+    var activeName = d.active ? escapeHtml(d.activeName) : 'Tidak Aktif';
+
+    var html =
+      '<div class="grid-stats">' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F"></div><div class="info"><h3>' + formatNum(s.totalMessages) + '</h3><p>Total Pesan AI</p></div></div>' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=85654&format=png&color=DF414F"></div><div class="info"><h3>' + formatTok(s.totalTokens) + '</h3><p>Total Token</p></div></div>' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=8Cqj7iGP1mxd&format=png&color=DF414F"></div><div class="info"><h3>' + formatCost(s.estCost) + '</h3><p>Estimasi Biaya</p></div></div>' +
+      '<div class="card stat-card"><div class="icon"><img src="https://img.icons8.com/?size=100&id=6F6U0v4RcOXe&format=png&color=DF414F"></div><div class="info"><h3>' + (s.totalEnabled || 0) + ' / ' + (s.totalActive || 0) + '</h3><p>Model En/Activ</p></div></div>' +
+      '</div>' +
+
+      '<div class="card" style="margin-bottom:16px"><div class="section-title">Ringkasan Penggunaan AI</div>' +
+      '<p style="font-size:12px;color:#6b7280;margin:0 0 12px">Aktif: <span class="badge badge-success">' + activeName + '</span> &middot; Terakhir digunakan: ' + timeAgo(s.lastUsedAt) + ' &middot; Rata-rata token/pesan: ' + (parseInt(s.totalMessages) > 0 ? formatNum(Math.round(s.totalTokens / s.totalMessages)) : '0') + '</p></div>' +
+
+      '<div class="card"><div class="section-title">Model AI Chat</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span class="badge' + (d.active ? ' badge-success' : '') + '">' + activeName + '</span>' +
       '<button class="btn btn-outline btn-sm" onclick="selectAiModel(\'' + (d.active ? d.active.provider + '/' + d.active.model_id : '') + '\')">Gunakan</button></div>' +
-      '<table class="w-full" style="font-size:12px;"><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
+      '<table class="w-full" style="font-size:12px;"><thead><tr><th>Provider</th><th>Model</th><th>Status</th><th>Pesan</th><th>Token</th><th>Terakhir Digunakan</th><th>Aksi</th></tr></thead><tbody>';
     (d.models || []).forEach(function (m) {
       var status = (m.is_active && m.enabled) ? 'Aktif' : (m.enabled ? 'Tersedia' : 'Nonaktif');
       var statusClass = (m.is_active && m.enabled) ? 'badge-success' : (m.enabled ? 'badge-pending' : 'badge-gray');
       var enableBtn = m.enabled ? '<button class="btn btn-sm btn-outline" onclick="enableAiModel(' + m.id + ')">Aktifkan</button>' : '<button class="btn btn-sm btn-outline disabled" disabled>Nonaktif</button>';
-      html += '<tr><td>' + escapeHtml(m.provider) + '</td><td>' + escapeHtml(m.model_id) + '</td><td><span class="badge ' + statusClass + '">' + status + '</span></td><td>' + enableBtn + '</td></tr>';
+      html += '<tr><td>' + escapeHtml(m.provider) + '</td><td>' + escapeHtml(m.model_id) + '</td><td><span class="badge ' + statusClass + '">' + status + '</span></td><td>' + formatNum(m.total_messages) + '</td><td>' + formatTok(m.total_tokens) + '</td><td>' + timeAgo(m.last_used_at) + '</td><td>' + enableBtn + '</td></tr>';
     });
     html += '</tbody></table>' +
       '<div style="margin-top:24px"><button class="btn btn-primary" onclick="refreshAiModels()">Refresh</button> <button class="btn btn-secondary" onclick="testAiModel()">Test Model</button></div>';

@@ -809,13 +809,33 @@ router.get('/settings', async (req, res) => {
 // ---------- AI Models (chat) ----------
 router.get('/ai-models', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT id, provider, model_id, display_name, is_active, enabled, last_error, last_checked_at FROM ai_models ORDER BY is_active DESC, id ASC');
+    const [rows] = await db.execute('SELECT id, provider, model_id, display_name, is_active, enabled, last_error, last_checked_at, total_messages, total_tokens, last_used_at FROM ai_models ORDER BY is_active DESC, id ASC');
     const [activeRows] = await db.execute("SELECT provider, model_id FROM ai_models WHERE is_active=1 AND enabled=1 LIMIT 1");
+
+    const [[totals]] = await db.execute(`
+      SELECT 
+        COALESCE(SUM(total_messages),0) AS total_messages,
+        COALESCE(SUM(total_tokens),0) AS total_tokens,
+        COALESCE(SUM(CASE WHEN provider<>'opencode' THEN total_tokens * 0.000003 ELSE 0 END),0) AS est_cost,
+        COUNT(CASE WHEN enabled=1 THEN 1 END) AS total_enabled,
+        COUNT(CASE WHEN is_active=1 AND enabled=1 THEN 1 END) AS total_active,
+        MAX(last_used_at) AS last_used_at
+      FROM ai_models
+    `);
+
     res.json({
       success: true,
       models: rows,
       active: activeRows[0] || null,
-      activeName: activeRows[0] ? `${activeRows[0].provider}/${activeRows[0].model_id}` : null
+      activeName: activeRows[0] ? `${activeRows[0].provider}/${activeRows[0].model_id}` : null,
+      summary: {
+        totalMessages: totals.total_messages,
+        totalTokens: totals.total_tokens,
+        estCost: totals.est_cost,
+        totalEnabled: totals.total_enabled,
+        totalActive: totals.total_active,
+        lastUsedAt: totals.last_used_at
+      }
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

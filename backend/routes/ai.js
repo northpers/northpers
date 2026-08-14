@@ -455,6 +455,17 @@ async function markModelError(provider, modelID, msg) {
     } catch (e) {}
 }
 
+async function recordModelUsage(provider, modelID, replyText) {
+    try {
+        const estTokens = Math.max(1, Math.ceil((replyText || '').length / 4));
+        await db.execute(
+            'UPDATE ai_models SET total_messages = total_messages + 1, total_tokens = total_tokens + ?, last_used_at = NOW() WHERE provider=? AND model_id=?',
+            [estTokens, provider, modelID]
+        );
+        aiModelsCache = null;
+    } catch (e) {}
+}
+
 async function getChatModelFallbackOrder() {
     const models = await getAiModels();
     return models.filter(m => m.enabled === 1).map(m => ({ provider: m.provider, modelID: m.model_id }));
@@ -475,6 +486,7 @@ async function sendChatWithFallback(sessionId, messageParts, systemPrompt) {
             }, { timeout: 120000 });
             const reply = data.parts?.find(p => p.type === 'text')?.text;
             if (reply) {
+                await recordModelUsage(m.provider, m.modelID, reply);
                 return { reply, usedModel: `${m.provider}/${m.modelID}` };
             }
             lastError = new Error('Kosong');
