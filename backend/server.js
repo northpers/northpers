@@ -437,6 +437,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// Security: Block direct exposure of sensitive project files, source maps, configs, and hidden files
+const SENSITIVE_EXTENSIONS = /\.(map|lock|env|ini|git|bak|sql|yml|yaml|ts|jsx|tsx|py|sh|md|txt)$/i;
+const SENSITIVE_FILENAMES = /^(package\.json|package-lock\.json|tailwind\.config\.js|vite\.config\.js|\.user\.ini|\.gitignore)$/i;
+const SENSITIVE_DIRS = /^\/(node_modules|\.git|\.wwebjs|\.venv|test|scripts)/i;
+
+app.use((req, res, next) => {
+  const cleanPath = req.path.split('?')[0];
+  const filename = path.basename(cleanPath).toLowerCase();
+
+  res.removeHeader('SourceMap');
+  res.removeHeader('X-SourceMap');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  if (
+    SENSITIVE_DIRS.test(cleanPath) ||
+    SENSITIVE_FILENAMES.test(filename) ||
+    SENSITIVE_EXTENSIONS.test(filename) ||
+    (filename.startsWith('.') && !filename.startsWith('.well-known'))
+  ) {
+    return res.status(404).send('Not Found');
+  }
+  next();
+});
+
 app.use(
   express.static(path.join(__dirname, "../frontend"), {
     extensions: ["html"],

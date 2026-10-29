@@ -69,3 +69,57 @@ setInterval(() => {
     checkGlobalNotifications();
   }
 }, 30000);
+
+
+// Source & DevTools Protection Shield
+(function initSourceShield() {
+  try {
+    const isDev = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+    const allowDev = isDev && (localStorage.getItem('north_dev_inspect') === '1');
+    if (allowDev) return;
+
+    // 1. Disable Right Click (Context Menu)
+    document.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    }, { capture: true });
+
+    // 2. Disable DevTools & View Source Keyboard Shortcuts
+    document.addEventListener('keydown', function (e) {
+      if (
+        e.key === 'F12' ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, { capture: true });
+
+    // 3. Debugger Trap (Freezes DevTools if forced open via menu)
+    function antiDebug() {
+      function check(n) {
+        if (('' + n / n).length !== 1 || n % 20 === 0) {
+          (function () {}).constructor('debugger')();
+        } else {
+          debugger;
+        }
+        check(++n);
+      }
+      try {
+        check(0);
+      } catch (err) {}
+    }
+
+    // Only run persistent debugger loop on production or non-dev
+    if (!isDev) {
+      setInterval(antiDebug, 1000);
+      try {
+        console.log = function () {};
+        console.info = function () {};
+        console.warn = function () {};
+        console.table = function () {};
+      } catch (e) {}
+    }
+  } catch (err) {}
+})();
