@@ -4,7 +4,7 @@ async function loadModalStructure() {
 
   if (document.getElementById("product-modal")) return;
   try {
-    const response = await fetch("/AppNorthModalProduct");
+    const response = await fetch("/AppNorthModalProduct?v=productinfo20261024");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const html = await response.text();
     document.body.insertAdjacentHTML("beforeend", html);
@@ -40,9 +40,27 @@ const ORIGINAL_PAGE_TITLE = document.title;
 
 let appliedVoucher = {};
 
+let shippingQuote = null;
+
 let VOUCHERS = [
   { id: 'free_shipping', label: 'Gratis Ongkir', desc: 'Bebas biaya kirim untuk semua produk Northline', discountPct: 0, group: 'free' },
 ];
+
+function isFreeShippingVoucher(voucher) {
+  return !!voucher && (voucher.id === 'free_shipping' || voucher.type === 'free_shipping');
+}
+
+function isKarawangZone() {
+  return !!shippingQuote && shippingQuote.zone === 'karawang';
+}
+
+function getEffectiveShippingFee() {
+  if (!shippingQuote) return { fee: null, label: '' };
+  if (isFreeShippingVoucher(appliedVoucher[currentProductId]) && isKarawangZone()) {
+    return { fee: 0, label: 'GRATIS' };
+  }
+  return { fee: shippingQuote.fee, label: 'Rp ' + shippingQuote.fee.toLocaleString('id-ID') };
+}
 
 function isLoggedIn() {
   const cookies = document.cookie.split(';');
@@ -187,16 +205,16 @@ function renderSliderProductCard(product) {
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
     + aiPickBadge
-    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
+    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-gray-100 border border-gray-200 text-[#DF414F] text-[10px] md:text-xs tracking-wider px-2 py-0.5 stock-sold" style="font-family: "Orbitron", sans-serif;">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'
     + '<img src="https://down-id.img.susercontent.com/file/id-11134258-8224q-mkvvibsp8oowa6.webp" style="height: 180px;" loading="lazy">'
     + '</div>'
     + '<div class="mt-1 px-2">'
     + '<div class="block w-full leading-tight">'
-    + '<span class="inline-flex items-center justify-center rounded gap-1 bg-red-600 text-white px-1.5 py-0.5 text-[9px] tracking-wider shadow-sm whitespace-nowrap mr-1 align-middle select-none" style="font-family: \'Bruno Ace\', sans-serif;">'
-    + 'Northline'
-    + '</span>'
+    // + '<span class="inline-flex items-center justify-center rounded gap-1 bg-red-600 text-white px-1.5 py-0.5 text-[9px] tracking-wider shadow-sm whitespace-nowrap mr-1 align-middle select-none" style="font-family: \'Bruno Ace\', sans-serif;">'
+    // + 'Northline'
+    // + '</span>'
     + '<h3 class="inline md:hidden text-sm md:text-base text-gray-800 tracking-tighter break-words align-middle" style="-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden;">' + product.name + '</h3>'
     + '</div>'
     + '<div class="flex justify-between items-center">'
@@ -247,6 +265,8 @@ function ensureGridLoaders() {
 }
 
 window.renderNorthlineGrids = async function () {
+  window.__nrtLastMainRenderer = "grids";
+  nrtEnsureCategoryFilterBar();
   ensureGridLoaders();
   let sorted;
   try {
@@ -259,21 +279,24 @@ window.renderNorthlineGrids = async function () {
     });
     return;
   }
+  const base = nrtApplyCategoryFilter(sorted);
   const main = document.getElementById('product-grid');
   if (main) {
-    const featured = sorted.filter(p => p.featured);
-    const list = featured.length ? featured : sorted;
-    main.innerHTML = list.map(renderProductCard).join('');
+    const featured = base.filter(p => p.featured);
+    const list = featured.length ? featured : base;
+    main.innerHTML = list.length ? list.map(renderProductCard).join('') : nrtCategoryEmptyHtml();
   }
   const recom = document.getElementById('product-grid-recom');
   if (recom) {
     const isSlider = recom.classList.contains('overflow-x-auto');
-    recom.innerHTML = sorted.map(isSlider ? renderSliderProductCard : renderProductCard).join('');
+    recom.innerHTML = base.length ? base.map(isSlider ? renderSliderProductCard : renderProductCard).join('') : nrtCategoryEmptyHtml();
   }
   if (typeof syncProductCardRatings === 'function') syncProductCardRatings();
 };
 
 window.renderNorthlineGridsAll = async function () {
+  window.__nrtLastMainRenderer = "all";
+  nrtEnsureCategoryFilterBar();
   ensureGridLoaders();
   let sorted;
   try {
@@ -286,13 +309,141 @@ window.renderNorthlineGridsAll = async function () {
     });
     return;
   }
+  const base = nrtApplyCategoryFilter(sorted);
   const main = document.getElementById('product-grid');
-  if (main) main.innerHTML = sorted.map(renderProductCard).join('');
+  if (main) main.innerHTML = base.length ? base.map(renderProductCard).join('') : nrtCategoryEmptyHtml();
   const recom = document.getElementById('product-grid-recom');
   if (recom) {
     const isSlider = recom.classList.contains('overflow-x-auto');
-    recom.innerHTML = sorted.map(isSlider ? renderSliderProductCard : renderProductCard).join('');
+    recom.innerHTML = base.length ? base.map(isSlider ? renderSliderProductCard : renderProductCard).join('') : nrtCategoryEmptyHtml();
   }
+  if (typeof syncProductCardRatings === 'function') syncProductCardRatings();
+};
+
+const NRT_READY_CATEGORIES = [
+  { key: 'tshirt', label: 'T-Shirt' },
+  { key: 'shortsleeve', label: 'ShortSleeve' },
+  { key: 'longsleeve', label: 'LongSleeve' },
+  { key: 'sweatpants', label: 'Sweatpants' },
+  { key: 'hoodie', label: 'Hoodie' },
+  { key: 'kidstshirt', label: 'T-Shirt Kids' },
+];
+
+function nrtReadyCategories(product) {
+  const n = String(product.name || "").toLowerCase();
+  const cats = [];
+  const kids = /kids/.test(n);
+  if (/t-?shirt/.test(n) && !kids) cats.push("tshirt");
+  if (/short\s*sleeve/.test(n)) cats.push("shortsleeve");
+  if (/long\s*sleeve/.test(n)) cats.push("longsleeve");
+  if (/sweat\s*pants/.test(n)) cats.push("sweatpants");
+  if (/hoodie/.test(n)) cats.push("hoodie");
+  if (/work\s*shirt/.test(n)) cats.push("workshirt");
+  if (kids) cats.push("kidstshirt");
+  return cats;
+}
+
+// =========================================
+// Filter Kategori Global (semua product grid)
+// UI sama seperti filter Product Grid Ready (aside kiri)
+// =========================================
+const NRT_FILTER_CATEGORIES = [
+  { key: "tshirt", label: "T-Shirt" },
+  { key: "shortsleeve", label: "ShortSleeve" },
+  { key: "longsleeve", label: "LongSleeve" },
+  { key: "sweatpants", label: "Sweatpants" },
+  { key: "hoodie", label: "Hoodie" },
+  { key: "kidstshirt", label: "T-Shirt Kids" },
+  { key: "workshirt", label: "Workshirt" },
+];
+
+window.nrtActiveCategories = [];
+window.__nrtLastMainRenderer = "grids";
+
+function nrtApplyCategoryFilter(list) {
+  if (!window.nrtActiveCategories || !window.nrtActiveCategories.length) return list;
+  return list.filter(p => nrtReadyCategories(p).some(c => window.nrtActiveCategories.includes(c)));
+}
+
+function nrtCategoryEmptyHtml() {
+  return '<div style="text-align:center;padding:48px 0;color:#9ca3af;font-size:12px;width:100%;grid-column:1/-1">Tidak ada produk untuk kategori ini.</div>';
+}
+
+function nrtEnsureCategoryFilterBar() {
+  if (document.getElementById("nrt-category-filter")) return;
+  const ids = ["product-grid-recom", "product-grid", "product-grid-ready", "kategori-grids"];
+  let anchor = null;
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el) { anchor = el; break; }
+  }
+  if (!anchor) return;
+
+  if (!document.getElementById("nrt-category-filter-style")) {
+    const st = document.createElement("style");
+    st.id = "nrt-category-filter-style";
+    st.textContent =
+      "#nrt-category-filter{display:none}" +
+      "@media (min-width:1540px){#nrt-category-filter{display:block;position:absolute;right:100%;margin-right:16px;top:0;width:11rem;height:100%;background:#fff;border:1px solid #e5e7eb;padding:12px}}";
+    document.head.appendChild(st);
+  }
+
+  const target = anchor.parentElement || anchor;
+  if (getComputedStyle(target).position === "static") target.style.position = "relative";
+
+  const aside = document.createElement("aside");
+  aside.id = "nrt-category-filter";
+  aside.innerHTML =
+    '<p class="text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2">Filter Kategori</p>'
+    + NRT_FILTER_CATEGORIES.map(c =>
+      '<label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">'
+      + '<input type="checkbox" class="nrt-cat-checkbox" value="' + c.key + '" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">'
+      + c.label
+      + "</label>"
+    ).join("");
+
+  aside.addEventListener("change", function (e) {
+    if (!e.target.classList || !e.target.classList.contains("nrt-cat-checkbox")) return;
+    window.nrtActiveCategories = Array.from(aside.querySelectorAll(".nrt-cat-checkbox:checked")).map(cb => cb.value);
+    window.renderNorthlineAllGrids();
+  });
+
+  target.parentNode.insertBefore(aside, target);
+}
+
+window.renderNorthlineAllGrids = function () {
+  const fn = window.__nrtLastMainRenderer === "all" ? window.renderNorthlineGridsAll : window.renderNorthlineGrids;
+  if (typeof fn === "function") fn();
+  if (typeof window.renderNorthlineCategoryGrids === "function") window.renderNorthlineCategoryGrids();
+  if (typeof window.renderNorthlineReadyGrid === "function") window.renderNorthlineReadyGrid();
+};
+
+document.addEventListener("change", function (e) {
+  if (e.target && e.target.classList && e.target.classList.contains('ready-cat-checkbox')) {
+    window.renderNorthlineReadyGrid();
+  }
+});
+
+window.renderNorthlineReadyGrid = async function () {
+  nrtEnsureCategoryFilterBar();
+  const el = document.getElementById('product-grid-ready');
+  if (!el) return;
+  if (!el.querySelector('.loader-dots')) el.innerHTML = gridLoaderHtml();
+  try {
+    await window.northlineCatalog;
+  } catch (e) {
+    el.innerHTML = gridErrorHtml();
+    return;
+  }
+  const checked = Array.from(document.querySelectorAll('.ready-cat-checkbox:checked')).map(cb => cb.value);
+  let ready = nrtApplyCategoryFilter(getSortedCatalog().filter(p => p.stock && p.stock > 0));
+  if (checked.length) ready = ready.filter(p => nrtReadyCategories(p).some(c => checked.includes(c)));
+  const emptyMsg = checked.length
+    ? 'Belum ada produk ready untuk kategori ini.'
+    : 'Belum ada produk ready stok.';
+  el.innerHTML = ready.length
+    ? ready.map(renderProductCard).join('')
+    : '<div style="text-align:center;padding:48px 0;color:#9ca3af;font-size:12px;width:100%;grid-column:1/-1">' + emptyMsg + '</div>';
   if (typeof syncProductCardRatings === 'function') syncProductCardRatings();
 };
 
@@ -304,10 +455,11 @@ const NRT_CATEGORY_GROUPS = [
 ];
 
 window.renderNorthlineCategoryGrids = async function () {
+  nrtEnsureCategoryFilterBar();
   await window.northlineCatalog;
   const container = document.getElementById('kategori-grids');
   if (!container) return;
-  const sorted = getSortedCatalog();
+  const sorted = nrtApplyCategoryFilter(getSortedCatalog());
   container.innerHTML = NRT_CATEGORY_GROUPS.map(function (g) {
     const list = sorted.filter(p => (p.categories || []).includes(g.key));
     if (!list.length) return '';
@@ -505,16 +657,16 @@ function renderProductCard(product) {
     + '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto">'
     + '<img src="' + img + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy">'
     + aiPickBadge
-    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-transparent border border-gray-200 text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5">Stok Habis</span></div>' : '')
+    + (soldOut ? '<div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"><span class="bg-gray-100 border border-gray-200 text-[#DF414F] text-[10px] md:text-xs tracking-wider px-2 py-0.5 stock-sold" style="font-family: "Orbitron", sans-serif;">Stok Habis</span></div>' : '')
     + '</div>'
     + '<div class="relative -mt-[150px] pointer-events-none">'
     + '<img src="https://down-id.img.susercontent.com/file/id-11134258-8224q-mkvvibsp8oowa6.webp" style="height: 180px;" loading="lazy">'
     + '</div>'
     + '<div class="mt-1 px-2">'
     + '<div class="block w-full leading-tight">'
-    + '<span class="float-left inline-flex items-center justify-center rounded gap-1 bg-red-600 text-white px-1.5 py-0.5 text-[9px] tracking-wider shadow-sm whitespace-nowrap mr-1.5 mt-0.5 select-none" style="font-family: \'Bruno Ace\', sans-serif;">'
-    + 'Northline'
-    + '</span>'
+    // + '<span class="float-left inline-flex items-center justify-center rounded gap-1 bg-red-600 text-white px-1.5 py-0.5 text-[9px] tracking-wider shadow-sm whitespace-nowrap mr-1.5 mt-0.5 select-none" style="font-family: \'Bruno Ace\', sans-serif;">'
+    // + 'Northline'
+    // + '</span>'
     + '<h3 class="inline md:hidden text-sm md:text-base text-gray-800 tracking-tighter break-words" style="-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden;">' + product.name + '</h3>'
     + '</div>'
     + '<div class="flex justify-between items-center">'
@@ -600,6 +752,36 @@ function getCurrentPrice(product) {
     return basePrice + (sizeExtra[selectedSize] || 0);
 }
 
+function updateShippingFeeDisplay() {
+  const valueEl = document.getElementById("shipping-fee-value");
+  if (!valueEl) return;
+  if (!shippingQuote) {
+    valueEl.innerText = '—';
+    return;
+  }
+  const eff = getEffectiveShippingFee();
+  valueEl.innerText = eff.label;
+}
+
+async function refreshShippingQuote() {
+  try {
+    const res = await fetch("/api/shipping/quote", { credentials: "include" });
+    if (!res.ok) {
+      shippingQuote = null;
+    } else {
+      const data = await res.json();
+      if (data && data.canShip) {
+        shippingQuote = { zone: data.zone, label: data.label, fee: data.fee, address: data.address || '' };
+      } else {
+        shippingQuote = null;
+      }
+    }
+  } catch (e) {
+    shippingQuote = null;
+  }
+  updateShippingFeeDisplay();
+}
+
 function updateProductPrice() {
   const product = products.find((p) => p.id === currentProductId);
   if (!product) return;
@@ -611,11 +793,11 @@ function updateProductPrice() {
   const checkoutNote = document.getElementById("voucher-checkout-note");
   const currentPrice = getCurrentPrice(product);
   const voucher = appliedVoucher[currentProductId];
-  let displayPrice = currentPrice;
+  const qty = getCurrentQty();
+  const subtotal = currentPrice * qty;
+  let displayPrice = subtotal;
   let discountText = '';
   if (voucher) {
-    const qty = getCurrentQty();
-    const subtotal = currentPrice * qty;
     let discountAmount = 0;
     if (voucher.discountPct > 0) {
       discountAmount = Math.round(subtotal * (voucher.discountPct / 100));
@@ -656,6 +838,7 @@ function updateProductPrice() {
     if (note) { note.classList.remove("hidden"); note.textContent = `Telah menggunakan ${voucher.discountText}`; }
     if (checkoutNote) { checkoutNote.classList.remove("hidden"); checkoutNote.textContent = `Voucher aktif: ${discountText}`; }
   }
+  updateShippingFeeDisplay();
 }
 
 async function openProductDetail(productId) {
@@ -696,10 +879,11 @@ async function openProductDetail(productId) {
     ratingNumberEl.innerText = currentAvgRating > 0 ? Number(currentAvgRating).toFixed(1) : "0";
   }
   if (ratingStarsEl) {
-    const full = Math.floor(currentAvgRating);
+    const full = Math.min(Math.floor(currentAvgRating), 5);
     const half = currentAvgRating - full >= 0.5 ? 1 : 0;
+    const empty = Math.max(5 - full - half, 0);
     ratingStarsEl.innerText =
-      "★".repeat(full) + (half ? "⯨" : "") + "☆".repeat(5 - full - half);
+      "★".repeat(full) + (half ? "⯨" : "") + "☆".repeat(empty);
   }
   if (reviewCountEl) {
     reviewCountEl.innerText = formatReviewCount(currentTotalReviews);
@@ -718,6 +902,7 @@ async function openProductDetail(productId) {
   }
 
   updateProductPrice();
+  refreshShippingQuote();
   const oldPriceEl = document.getElementById("detail-old-price");
   if (oldPriceEl) {
     if (product.oldPrice) {
@@ -869,6 +1054,35 @@ function closeModal() {
   history.pushState({}, "", window.location.pathname);
 }
 
+function openImageZoom() {
+  const box = document.getElementById("preview-box");
+  const img = document.getElementById("main-preview");
+  if (!box || !img || !img.src || img.src.endsWith("...")) return;
+  box.classList.add("zoomed");
+}
+
+function closeImageZoom() {
+  const box = document.getElementById("preview-box");
+  if (box) box.classList.remove("zoomed");
+}
+
+function toggleImageZoom() {
+  const box = document.getElementById("preview-box");
+  if (!box) return;
+  if (box.classList.contains("zoomed")) {
+    closeImageZoom();
+  } else {
+    openImageZoom();
+  }
+}
+
+if (!window.__nlFsImageViewerListener) {
+  window.__nlFsImageViewerListener = true;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeImageZoom();
+  });
+}
+
 function updateSelectedLabels() {
   const colorLabel = document.getElementById("selected-color-text");
   const sizeLabel = document.getElementById("selected-size-text");
@@ -1004,6 +1218,7 @@ function alterQty(amount) {
     currentVal = product.stock;
   }
   input.value = currentVal;
+  updateProductPrice();
 }
 
 async function getFreshUserData(userId) {
@@ -1036,43 +1251,48 @@ async function triggerCheckout() {
     return;
   }
   let parsedUser = null;
+  let userData = null;
   try {
     const meRes = await fetch(_d('9kzs9k ~r9wo'), { credentials: "include" });
     if (meRes.ok) {
       const meData = await meRes.json();
-      const me = meData.data || meData.user || meData;
-      if (me && me.id) parsedUser = { id: me.id };
-    } else if (meRes.status === 401 || meRes.status === 403) {
-      handleSessionExpired();
-      resetCheckoutButton();
-      return;
+      const me = meData.data || meData.user;
+      if (meData.success && me && me.id) {
+        userData = me;
+        parsedUser = { id: me.id };
+      }
     }
-  } catch (e) {}
-  if (!parsedUser) {
-    if (typeof isLoggedIn === 'function' && isLoggedIn()) {
-      handleSessionExpired();
-    } else {
-      showIosModal(
-        "Login Yuk!, Biar bisa checkout Article dari Northline!",
-      );
-    }
-    resetCheckoutButton();
-    return;
+  } catch (e) {
+    console.error("Gagal memeriksa sesi:", e);
   }
-  const freshUser = await getFreshUserData(parsedUser.id);
-  if (!freshUser || !freshUser.address || freshUser.address.trim() === "") {
-    showIosModal(
-      "Isi dulu alamat pengiriman di profile, Ya! Masa bajunya mau dikirim ke kuburan.",
-    );
-    resetCheckoutButton();
-    return;
+  if (parsedUser) {
+    const freshUser = await getFreshUserData(parsedUser.id);
+    if (freshUser) userData = { ...userData, ...freshUser };
+  }
+  let shippingFee = 0;
+  let shippingLabel = "";
+  if (userData && userData.address) {
+    try {
+      const quoteRes = await fetch("/api/shipping/quote", { credentials: "include" });
+      if (quoteRes.ok) {
+        const quoteData = await quoteRes.json();
+        if (quoteData && quoteData.canShip) {
+          shippingQuote = { zone: quoteData.zone, label: quoteData.label, fee: quoteData.fee };
+          const effectiveQuote = getEffectiveShippingFee();
+          shippingFee = effectiveQuote.fee;
+          shippingLabel = effectiveQuote.label;
+        }
+      }
+    } catch (error) {
+      console.error("Gagal mengambil estimasi ongkir:", error);
+    }
   }
   const qty = parseInt(document.getElementById("modal-qty-input").value);
   const currentPrice = getCurrentPrice(product);
   const subtotal = currentPrice * qty;
   let discountAmount = getAppliedVoucherDiscount(currentProductId);
   let isDiscounted = discountAmount > 0;
-  if (!isDiscounted) {
+  if (parsedUser && !isDiscounted) {
     try {
       const discountCheck = await fetch(_d('9kzs9mromu7ns}my x~9') + parsedUser.id);
       const discountData = await discountCheck.json();
@@ -1087,7 +1307,10 @@ async function triggerCheckout() {
   const voucherFinalPrice = getAppliedVoucherFinalPrice(currentProductId, subtotal);
   const totalAfterDiscount = voucherFinalPrice;
   const checkoutPayload = {
-    userId: parsedUser.id,
+    userId: parsedUser ? parsedUser.id : null,
+    shippingName: userData?.name || "",
+    shippingPhone: userData?.phone || "",
+    shippingAddress: userData?.address || "",
     productId: product.id,
     code: product.code || currentProductCode || "",
     voucherId: appliedVoucher[currentProductId]?.type || "",
@@ -1109,7 +1332,9 @@ async function triggerCheckout() {
 
     subtotal,
     discountAmount,
-    totalPrice: totalAfterDiscount,
+    totalPrice: totalAfterDiscount + shippingFee,
+    shippingFee,
+    shippingLabel,
     isDiscounted,
   };
   setTimeout(() => {
@@ -1424,7 +1649,10 @@ async function loadProductComments(productId) {
 
     if (comments.length === 0) return;
 
-    commentsList.innerHTML = comments
+    const maxVisible = 2;
+    const hasMore = comments.length > maxVisible;
+
+    const reviewCardsArr = comments
       .map((comment) => {
         const stars =
           "★".repeat(comment.rating) + "☆".repeat(5 - comment.rating);
@@ -1481,12 +1709,42 @@ async function loadProductComments(productId) {
                           (comment.replyAt ? '<p class="text-[8px] text-gray-400">' + new Date(comment.replyAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) + '</p>' : '') +
                         '</div>' : ''}
                     </div>`;
-      })
-      .join("");
+      });
+
+    const allReviewCards = reviewCardsArr.join("");
+    const visibleCards = hasMore ? reviewCardsArr.slice(0, maxVisible).join("") : allReviewCards;
+    const hiddenCards = hasMore ? reviewCardsArr.slice(maxVisible).join("") : '';
+
+    const seeAllToggle = hasMore
+      ? `<span onclick="toggleAllReviews()" data-total="${comments.length}"
+          class="inline-flex items-center gap-1 cursor-pointer text-[10px] md:text-[11px] font-semibold text-[#DF414F] uppercase tracking-widest select-none hover:text-red-700">
+          Lihat Semua Ulasan (${comments.length})
+          <svg id="reviews-toggle-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="transition-transform"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </span>`
+      : '';
+
+    commentsList.innerHTML = seeAllToggle + visibleCards + `<div id="reviews-more" class="hidden">${hiddenCards}</div>`;
   } catch (error) {
     console.error("Error loading comments:", error);
     commentsList.innerHTML =
       '<p class="text-[10px] text-red-500 font-medium">Gagal memuat ulasan produk.</p>';
+  }
+}
+
+function toggleAllReviews() {
+  const moreEl = document.getElementById("reviews-more");
+  const toggleEl = document.querySelector('#product-comments-list > span[onclick="toggleAllReviews()"]');
+  const arrow = document.getElementById("reviews-toggle-arrow");
+  if (!moreEl) return;
+  const total = toggleEl ? parseInt(toggleEl.getAttribute('data-total') || '0', 10) : 0;
+  if (moreEl.classList.contains("hidden")) {
+    moreEl.classList.remove("hidden");
+    if (toggleEl) toggleEl.firstChild.textContent = 'Sembunyikan Ulasan ';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  } else {
+    moreEl.classList.add("hidden");
+    if (toggleEl) toggleEl.firstChild.textContent = 'Lihat Semua Ulasan (' + total + ') ';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
   }
 }
 
@@ -1785,53 +2043,206 @@ function startModalSearchPlaceholder(productName) {
 }
 
 function initModalSearch() {
-  const ms = document.getElementById("modal-product-search");
-  const rb = document.getElementById("modal-search-result");
+  const modal = document.getElementById("product-modal");
+  const ms = modal?.querySelector("#modal-product-search");
+  const rb = modal?.querySelector("#modal-search-result");
+  const cameraButton = modal?.querySelector(".modal-product-search-camera");
+  const cameraInput = modal?.querySelector("#modal-product-search-camera-input");
   if (!ms || !rb) return;
-  let t;
+  let searchTimer;
+  let aiTimer;
+  let requestId = 0;
 
-  function storeItem(name, url) {
-    return `<a href="${url}" class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F" class="w-5 h-5 flex-shrink-0"><span class="font-medium">${name}</span></a>`;
+  function renderProductItem(product, ai = false) {
+    const name = escapeHtml(product.name || product.product_name || "");
+    const id = escapeHtml(product.id);
+    const code = escapeHtml(product.code || "");
+    const source = escapeHtml(product.source || "local");
+    const price = typeof product.price === "number"
+      ? `Rp${product.price.toLocaleString("id-ID")}`
+      : (product.price || "");
+    const badge = ai
+      ? '<img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=000000" class="w-4 h-4 shrink-0" alt="AI">'
+      : "";
+    return `
+      <div class="modal-search-product flex items-center gap-3 px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700"
+        data-id="${id}" data-code="${code}" data-source="${source}">
+        ${product.image ? `<img src="${escapeHtml(product.image)}" alt="" class="w-12 h-12 rounded-md object-cover bg-gray-100 shrink-0" loading="lazy">` : ""}
+        <span class="min-w-0 flex-1">
+          <span class="block truncate">${name}</span>
+          ${price ? `<span class="block text-xs text-[#DF414F] mt-0.5">${escapeHtml(price)}</span>` : ""}
+        </span>
+        ${badge}
+      </div>
+    `;
   }
 
-  function prodItem(name, id) {
-    return `<div class="px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 truncate msi" data-id="${id}">${name} ...</div>`;
+  function renderModalResults(keyword, products, sellers) {
+    const normalizedKeyword = keyword.toLowerCase();
+    const seen = new Set();
+    let html = "";
+    let hasResults = false;
+
+    if ("Northline".toLowerCase().includes(normalizedKeyword)) {
+      html += `<a href="/AppNorthStore" class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-100 border-b border-gray-100 text-sm text-gray-700"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F" class="w-4 h-4 shrink-0"><span>Northline</span></a>`;
+      hasResults = true;
+    }
+
+    sellers.forEach(seller => {
+      if (!seller.store_name || !seller.store_name.toLowerCase().includes(normalizedKeyword)) return;
+      html += `<a href="/public/seller/${encodeURIComponent(seller.id)}" class="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-100 border-b border-gray-100 text-sm text-gray-700"><img src="https://img.icons8.com/?size=100&id=5B2IjBNporYk&format=png&color=DF414F" class="w-4 h-4 shrink-0"><span>${escapeHtml(seller.store_name)}</span></a>`;
+      hasResults = true;
+    });
+
+    products.forEach(product => {
+      const id = String(product.id);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      html += renderProductItem(product);
+      hasResults = true;
+    });
+
+    rb.innerHTML = hasResults
+      ? html
+      : '<div class="p-4 text-center text-gray-400 text-sm">Produk tidak ditemukan</div>';
+  }
+
+  async function searchProducts(keyword, currentRequest) {
+    const localPromise = (async () => {
+      await window.northlineCatalog;
+      return (window.northlineProducts || products)
+        .filter(product => (product.name || "").toLowerCase().includes(keyword.toLowerCase()))
+        .map(product => ({ ...product, source: "local" }));
+    })();
+    const apiPromise = (async () => {
+      try {
+        const response = await fetch(`/api/products/search?q=${encodeURIComponent(keyword)}`);
+        if (!response.ok) throw new Error(`Pencarian produk gagal (${response.status}).`);
+        const data = await response.json();
+        const apiProducts = Array.isArray(data) ? data : (data.products || []);
+        return {
+          products: apiProducts.filter(product => product.id).map(product => ({
+            ...product,
+            name: product.name || product.product_name,
+            source: product.source === "catalog" ? "catalog" : "database"
+          })),
+          sellers: Array.isArray(data.sellers) ? data.sellers : []
+        };
+      } catch (error) {
+        console.error("API product search failed:", error);
+        return { products: [], sellers: [] };
+      }
+    })();
+
+    try {
+      const [local, api] = await Promise.all([localPromise, apiPromise]);
+      if (currentRequest !== requestId || ms.value.trim() !== keyword) return;
+      renderModalResults(keyword, [...local, ...api.products], api.sellers);
+      if (keyword.length >= 2) {
+        clearTimeout(aiTimer);
+        aiTimer = setTimeout(async () => {
+          try {
+            const response = await fetch(`${_d('9kzs9}ok|mr7|omywwoxn')}?q=${encodeURIComponent(keyword)}`);
+            const data = await response.json();
+            if (currentRequest !== requestId || ms.value.trim() !== keyword) return;
+            if (!data.success || !Array.isArray(data.products) || !data.products.length) return;
+            const section = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3" alt=""> AI Recommended</div>';
+            const aiProducts = data.products.map(product => ({
+              ...product,
+              name: product.name || product.product_name,
+              source: "catalog"
+            }));
+            rb.insertAdjacentHTML("afterbegin", section + aiProducts.map(product => renderProductItem(product, true)).join(""));
+          } catch (error) {
+            console.error("AI product recommendations failed:", error);
+          }
+        }, 600);
+      }
+    } catch (error) {
+      if (currentRequest !== requestId) return;
+      console.error("Modal product search failed:", error);
+      rb.innerHTML = '<div class="p-4 text-center text-red-600 text-sm">Pencarian produk gagal. Silakan coba lagi.</div>';
+    }
   }
 
   ms.addEventListener("input", () => {
-    clearTimeout(t);
-    const kw = ms.value.trim();
-    if (!kw) { rb.classList.add("hidden"); rb.innerHTML = ""; return; }
-    t = setTimeout(async () => {
-      const k = kw.toLowerCase();
-      let h = "";
-      let any = false;
-      const seen = new Set();
-      if ("Northline".toLowerCase().includes(k)) { h += storeItem("Northline", "/AppNorthStore"); any = true; }
-      const src = window.northlineProducts || products;
-      src.filter(p => p.name && p.name.toLowerCase().includes(k)).forEach(p => { if (!seen.has(String(p.id))) { seen.add(String(p.id)); h += prodItem(p.name, p.id); any = true; } });
-      try {
-        const r = await fetch(_d('9kzs9z|yn m~}9}ok|mrI{G') + encodeURIComponent(kw));
-        const d = await r.json();
-        if (Array.isArray(d.products)) {
-          if (Array.isArray(d.sellers)) d.sellers.forEach(s => { if (s.store_name && s.store_name.toLowerCase().includes(k)) { h += storeItem(s.store_name, `/public/seller/${s.id}`); any = true; } });
-          d.products.filter(p => p.id).forEach(p => { if (!seen.has(String(p.id))) { seen.add(String(p.id)); h += prodItem(p.name || p.product_name, p.id); any = true; } });
-        }
-      } catch (e) {}
-      if (!any) { rb.classList.add("hidden"); rb.innerHTML = ""; return; }
-      rb.innerHTML = h;
-      rb.classList.remove("hidden");
-    }, 300);
+    clearTimeout(searchTimer);
+    clearTimeout(aiTimer);
+    const keyword = ms.value.trim();
+    requestId += 1;
+    if (!keyword) {
+      rb.classList.add("hidden");
+      rb.innerHTML = "";
+      return;
+    }
+    rb.classList.remove("hidden");
+    rb.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Mencari produk...</div>';
+    const currentRequest = requestId;
+    searchTimer = setTimeout(() => searchProducts(keyword, currentRequest), 300);
   });
 
   rb.addEventListener("click", (e) => {
     if (e.target.closest("a[href]")) return;
-    const el = e.target.closest(".msi");
+    const el = e.target.closest(".modal-search-product");
     if (!el) return;
-    const id = el.dataset.id;
-    const p = products.find(x => String(x.id) === String(id)) || (window.northlineProducts || []).find(x => String(x.id) === String(id));
-    if (p) openProductDetail(p.id);
+    const ref = el.dataset.code || el.dataset.id;
+    const source = el.dataset.source;
+    if ((source === "local" || source === "catalog") && typeof openProductDetail === "function") {
+      openProductDetail(ref);
+    } else if (typeof openProduct === "function") {
+      openProduct(ref, source || "database");
+    } else if (typeof openProductDetail === "function") {
+      openProductDetail(ref);
+    }
   });
+
+  if (cameraButton && cameraInput) {
+    cameraButton.addEventListener("click", () => cameraInput.click());
+    cameraInput.addEventListener("change", async () => {
+      const file = cameraInput.files && cameraInput.files[0];
+      if (!file) return;
+      requestId += 1;
+      const currentRequest = requestId;
+      clearTimeout(searchTimer);
+      clearTimeout(aiTimer);
+      rb.classList.remove("hidden");
+      rb.innerHTML = `
+        <div class="p-4 text-center text-gray-600 text-sm flex items-center justify-center gap-3">
+          <span class="flex items-center gap-1.5">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#DF414F] animate-bounce"></span>
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#DF414F] animate-bounce [animation-delay:120ms]"></span>
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#DF414F] animate-bounce [animation-delay:240ms]"></span>
+          </span>
+          <span>Sedang mencari produk serupa</span>
+        </div>
+      `;
+      try {
+        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+          throw new Error(file.size > 5 * 1024 * 1024 ? "Ukuran gambar maksimal 5 MB." : "Pilih file gambar yang valid.");
+        }
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await fetch("/api/search/image", { method: "POST", body: formData });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Pencarian gambar gagal. Silakan coba lagi.");
+        }
+        if (currentRequest !== requestId) return;
+        if (!Array.isArray(data.products) || !data.products.length) {
+          rb.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">${escapeHtml(data.message || "Produk yang cocok tidak ditemukan di katalog.")}</div>`;
+          return;
+        }
+        const section = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3" alt=""> Produk katalog paling mirip</div>';
+        rb.innerHTML = section + data.products.map(product => renderProductItem({ ...product, source: "catalog" }, true)).join("");
+      } catch (error) {
+        if (currentRequest !== requestId) return;
+        console.error("Modal image search failed:", error);
+        rb.innerHTML = `<div class="p-4 text-center text-red-600 text-sm">${escapeHtml(error.message || "Pencarian gambar gagal. Silakan coba lagi.")}</div>`;
+      } finally {
+        cameraInput.value = "";
+      }
+    });
+  }
 
   document.addEventListener("click", (e) => {
     if (!e.target.closest("#modal-product-search") && !e.target.closest("#modal-search-result")) rb.classList.add("hidden");
@@ -1841,6 +2252,7 @@ function initModalSearch() {
 window.addEventListener("DOMContentLoaded", async () => {
   await loadModalStructure();
   initModalSearch();
+  nrtEnsureCategoryFilterBar();
   await window.northlineCatalog;
   window.renderNorthlineGrids();
 
@@ -1944,6 +2356,87 @@ function toggleProductMenu() {
   }
 }
 
+function openProductInformation() {
+  const product = window.currentProduct;
+  const overlay = document.getElementById("product-information-overlay");
+  if (!product || !overlay) return showIosModal("Informasi produk tidak tersedia");
+  document.getElementById("product-information-name").textContent = product.name || "Produk Northline";
+  overlay.classList.remove("hidden");
+  overlay.classList.add("flex");
+}
+
+function closeProductInformation() {
+  const overlay = document.getElementById("product-information-overlay");
+  if (!overlay) return;
+  overlay.classList.add("hidden");
+  overlay.classList.remove("flex");
+}
+
+function openProductReport() {
+  const product = window.currentProduct;
+  const overlay = document.getElementById("product-report-overlay");
+  const form = document.getElementById("product-report-form");
+  const feedback = document.getElementById("product-report-feedback");
+  if (!product || !overlay || !form) return showIosModal("Informasi produk tidak tersedia");
+  form.reset();
+  if (feedback) {
+    feedback.textContent = "";
+    feedback.classList.add("hidden");
+  }
+  document.getElementById("product-report-name").textContent = product.name || "Produk Northline";
+  overlay.classList.remove("hidden");
+  overlay.classList.add("flex");
+}
+
+function closeProductReport() {
+  const overlay = document.getElementById("product-report-overlay");
+  if (!overlay) return;
+  overlay.classList.add("hidden");
+  overlay.classList.remove("flex");
+}
+
+async function submitProductReport(event) {
+  event.preventDefault();
+  const product = window.currentProduct;
+  const submitButton = document.getElementById("product-report-submit");
+  const feedback = document.getElementById("product-report-feedback");
+  if (!product || !submitButton || !feedback) return;
+  const reason = document.getElementById("product-report-reason").value;
+  const details = document.getElementById("product-report-details").value.trim();
+  submitButton.disabled = true;
+  submitButton.textContent = "Mengirim...";
+  feedback.classList.add("hidden");
+  try {
+    const response = await fetch("/api/products/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        productId: String(product.id),
+        productCode: product.code || "",
+        productName: product.name || "",
+        productImage: product.images?.[0] || "",
+        reason,
+        details
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Laporan gagal dikirim. Silakan coba lagi.");
+    }
+    feedback.textContent = data.message || "Laporan berhasil dikirim dan akan ditinjau oleh admin.";
+    feedback.className = "border-y border-gray-300 py-3 text-sm text-gray-800";
+    document.getElementById("product-report-form").reset();
+    setTimeout(closeProductReport, 1800);
+  } catch (error) {
+    feedback.textContent = error.message || "Laporan gagal dikirim. Silakan coba lagi.";
+    feedback.className = "border-y border-gray-300 py-3 text-sm text-gray-800";
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Kirim Laporan";
+  }
+}
+
 document.addEventListener("click", function (e) {
   const menu = document.getElementById("product-menu");
   const wrapper = document.getElementById("product-menu-wrapper");
@@ -1953,6 +2446,12 @@ document.addEventListener("click", function (e) {
     menu.classList.add("opacity-0", "invisible", "translate-y-2");
   }
 });
+
+window.openProductInformation = openProductInformation;
+window.closeProductInformation = closeProductInformation;
+window.openProductReport = openProductReport;
+window.closeProductReport = closeProductReport;
+window.submitProductReport = submitProductReport;
 
 document.addEventListener("DOMContentLoaded", function () {
   if (!sessionStorage.getItem(STORAGE_KEYS.NOTIF_SHOWN)) {
@@ -1964,6 +2463,48 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(syncProductCardRatings, 300);
 });
+
+let lastFlashState = null;
+async function syncFlashPrices() {
+  try {
+    const res = await fetch(_d('9kzs9mk~kvyq9z|yn m~}'), { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const next = !!(data && data.flashActive);
+    const flipped = lastFlashState !== null && lastFlashState !== next;
+    lastFlashState = next;
+    if ((data && data.products) && (next || flipped)) {
+      products = data.products;
+      window.northlineProducts = data.products;
+      if (typeof window.renderNorthlineGrids === "function") {
+        try { window.renderNorthlineGrids(); } catch (e) {}
+      }
+      if (typeof syncProductCardRatings === "function") {
+        try { syncProductCardRatings(); } catch (e) {}
+      }
+      if (currentProductId != null && (next || flipped)) {
+        try { updateProductPrice(); } catch (e) {}
+      }
+    }
+  } catch (e) {}
+}
+setInterval(syncFlashPrices, 15000);
+if (typeof io === "function") {
+  try {
+    const flashSocket = io();
+    flashSocket.on("flash-updated", function () {
+      setTimeout(syncFlashPrices, 300);
+    });
+    flashSocket.on("connect", function () {
+      setTimeout(
+        function () {
+          try { syncFlashPrices(); } catch (e) {}
+        },
+        500
+      );
+    });
+  } catch (e) {}
+}
 
 window.openProductDetail = openProductDetail;
 window.closeModal = closeModal;

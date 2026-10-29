@@ -95,6 +95,7 @@ async function handleResendOtp() {
   try {
     const response = await fetch(_d('9kzs9k ~r9}oxn7y~z7yxv$'), {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
       },
@@ -219,30 +220,44 @@ async function handleClassicLogin(e) {
       identifier = identifier.replace("+", "");
     }
   }
+  const loginBtn = document.getElementById("btn-login-classic");
+  if (loginBtn) {
+    loginBtn.disabled = true;
+    loginBtn.innerText = "LOGGING IN...";
+  }
   try {
     const response = await fetch(_d('9kzs9k ~r9vyqsx'), {
       method: "POST",
-      credentials: "include",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier: identifier, password: password }),
     });
     const result = await response.json();
     if (response.ok) {
-      if (result.user) {
-      }
-      showIosModal("You are directed to the account...");
-      window.location.href = authRedirectPath();
+      showIosModal("Login berhasil! Mengalihkan...");
+      setTimeout(function() {
+        window.location.href = authRedirectPath();
+      }, 300);
     } else {
-      showIosModal(`Gagal: No.Handphone/Email atau Password kamu salah`);
+      showIosModal(result.message || "Email/Nomor HP atau Password salah!");
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.innerText = "LOG IN";
+      }
     }
   } catch (err) {
     console.error("Login Error:", err);
+    showIosModal("Gagal terhubung ke server. Periksa koneksi internet kamu.");
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.innerText = "LOG IN";
+    }
   }
 }
 
 async function openQrLoginModal() {
   document.getElementById("qr-login-modal").classList.remove("hidden");
-  const response = await fetch(_d('9kzs9k ~r9m|ok~o7vyqsx7{|'));
+  const response = await fetch(_d('9kzs9k ~r9m|ok~o7vyqsx7{|'), { credentials: "same-origin" });
   const result = await response.json();
   const qrBox = document.getElementById("qr-login-code");
   qrBox.innerHTML = "";
@@ -255,7 +270,7 @@ async function openQrLoginModal() {
 }
 
 async function generateLoginQr() {
-  const response = await fetch(_d('9kzs9k ~r9m|ok~o7vyqsx7{|'));
+  const response = await fetch(_d('9kzs9k ~r9m|ok~o7vyqsx7{|'), { credentials: "same-origin" });
   const result = await response.json();
   const qrBox = document.getElementById("qr-login-code");
   qrBox.innerHTML = "";
@@ -309,6 +324,7 @@ async function handleSendOtp(e) {
   try {
     const response = await fetch(_d('9kzs9k ~r9}oxn7y~z7yxv$'), {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: userPhoneNumber }),
     });
@@ -318,7 +334,12 @@ async function handleSendOtp(e) {
       switchAuthPanel("otp");
       startOtpTimer();
     } else {
-      showIosModal("Pastikan no kamu sudah benar!");
+      let serverMsg = "";
+      try {
+        const j = await response.json();
+        serverMsg = j && j.message ? j.message : "";
+      } catch (e) {}
+      showIosModal(serverMsg || "Pastikan no kamu sudah benar!");
     }
   } catch (err) {
     console.error(err);
@@ -344,6 +365,7 @@ async function handleVerifyOtp() {
   try {
     const response = await fetch(_d('9kzs9k ~r9!o|sp$7y~z'), {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: userPhoneNumber, otpCode: typedOtp }),
     });
@@ -372,27 +394,7 @@ async function handleVerifyOtp() {
 }
 
 async function loginVerifiedUser() {
-  try {
-    const response = await fetch(_d('9kzs9k ~r9vyqsx7y~z7} mmo}}'), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: userPhoneNumber }),
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.success) {
-      showIosModal(result.message);
-
-      window.location.href = authRedirectPath("/index");
-    } else {
-      showIosModal(result.message || "Gagal login otomatis!");
-    }
-  } catch (err) {
-    console.error("Error bypass login:", err);
-    showIosModal("Server sedang sibuk!");
-  }
+  await handleLoginVerifiedUserWithMigration();
 }
 
 async function handleFinalRegister(e) {
@@ -406,10 +408,22 @@ async function handleFinalRegister(e) {
     return;
   }
 
+  const guestTokenEntries = typeof window.getGuestOrderAccessEntries === 'function'
+    ? window.getGuestOrderAccessEntries()
+    : [];
+  const hasGuestOrders = guestTokenEntries.length > 0;
+
+  let guestOrderMigration = null;
+  if (hasGuestOrders) {
+    guestOrderMigration = confirm(
+      "Kami menemukan pesanan guest yang masih tertaut. Ingin memindahkan pesanan tersebut ke akun baru ini?"
+    ) ? "move" : "skip";
+  }
+
   try {
     const response = await fetch(_d('9kzs9k ~r9|oqs}~o|7mywzvo~o'), {
       method: "POST",
-      credentials: "include",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
       },
@@ -418,22 +432,72 @@ async function handleFinalRegister(e) {
         email: email,
         password: password,
         phone: userPhoneNumber,
+        guestOrderMigration,
+        guestOrderTokens: guestTokenEntries.map((entry) => entry.token),
       }),
     });
 
     const result = await response.json();
 
     if (response.ok) {
-
-      showIosModal(
-        "Akun sukses dibikin dan otomatis masuk! Menuju beranda utama",
-      );
-      window.location.href = authRedirectPath("/index");
+      if (result.guestMigrationMessage) {
+        showIosModal(result.guestMigrationMessage);
+      } else {
+        showIosModal(
+          "Akun sukses dibikin dan otomatis masuk! Menuju beranda utama",
+        );
+      }
+      setTimeout(() => {
+        window.location.href = authRedirectPath("/index");
+      }, 500);
     } else {
       showIosModal(result.message || "Gagal membuat akun!");
     }
   } catch (err) {
     console.error("Register Error:", err);
+    showIosModal("Server sedang sibuk!");
+  }
+}
+
+async function handleLoginVerifiedUserWithMigration() {
+  try {
+    const guestTokenEntries = typeof window.getGuestOrderAccessEntries === 'function'
+      ? window.getGuestOrderAccessEntries()
+      : [];
+    const hasGuestOrders = guestTokenEntries.length > 0;
+
+    let guestOrderMigration = null;
+    if (hasGuestOrders) {
+      guestOrderMigration = confirm(
+        "Terdapat pesanan guest yang belum dipindahkan. Pindahkan pesanan ke akun ini sekarang?"
+      ) ? "move" : "skip";
+    }
+
+    const response = await fetch(_d('9kzs9k ~r9vyqsx7y~z7} mmo}}'), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: userPhoneNumber,
+        guestOrderMigration,
+        guestOrderTokens: guestTokenEntries.map((entry) => entry.token),
+      }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      if (result.guestMigrationMessage) {
+        showIosModal(result.guestMigrationMessage);
+      } else {
+        showIosModal(result.message);
+      }
+      window.location.href = authRedirectPath("/index");
+    } else {
+      showIosModal(result.message || "Gagal login otomatis!");
+    }
+  } catch (err) {
+    console.error("Error bypass login:", err);
     showIosModal("Server sedang sibuk!");
   }
 }

@@ -59,7 +59,7 @@ function renderBotMessage(text, products = null, feedback = null, timestamp = nu
   const dislikeActive = feedback === 'disliked' ? 'opacity-100' : 'opacity-40';
   wrapper.innerHTML = `
     <div class="max-w-[100%] md:max-w-[100%]">
-      <div class="bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+      <div class="bg-white minorth border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
         <span class="bot-content">${formatted}</span>
       </div>
       <div class="flex items-center gap-1 mt-1">
@@ -264,7 +264,7 @@ function addUserMessage(message, timestamp) {
     `
         <div class="flex justify-end">
             <div class="max-w-[85%] md:max-w-[75%]">
-                <div class="bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+                <div class="bg-white you border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
                     ${message}
                 </div>
 
@@ -411,7 +411,7 @@ async function sendMessage() {
 
     removeTyping();
 
-    addBotMessageStreaming("Northline Support sedang tidak tersedia.", false, null);
+    addBotMessageStreaming("MiNorth sedang tidak tersedia.", false, null);
     showChatNotification();
   }
 }

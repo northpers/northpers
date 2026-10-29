@@ -19,12 +19,28 @@
   .nl-input{width:100%;height:48px;border:1px solid #d1d5db;padding:0 14px;font-size:14px;background:#fff;color:#111827;outline:none}
   .nl-input:focus{border-color:#DF414F}
   .stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+  .stat-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+  .pub-eyebrow{display:inline-flex;align-items:center;gap:5px;background:#fef2f2;color:#DF414F;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px}
+  .qr-modal{position:fixed;inset:0;background:rgba(17,24,39,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+  .qr-box{background:#fff;width:100%;max-width:270px;padding:18px;text-align:center}
+  .share-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .share-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #d1d5db;color:#6b7280;cursor:pointer;transition:.15s}
+  .share-btn:hover{border-color:#DF414F;color:#DF414F}
+  .chip{padding:0 12px;height:30px;display:inline-flex;align-items:center;background:#fff;border:1px solid #d1d5db;color:#6b7280;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .chip:hover{border-color:#DF414F;color:#DF414F}
+  .chip.active{background:#DF414F;border-color:#DF414F;color:#fff}
+  .sort-select{height:30px;border:1px solid #d1d5db;background:#fff;color:#6b7280;font-size:11px;font-weight:600;padding:0 8px;cursor:pointer;outline:none}
+  .sort-select:focus{border-color:#DF414F}
+  .tier{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0}
+  @media(max-width:1024px){.stat-grid,.stat-grid-4{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:768px){.stat-grid,.stat-grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.stat-grid,.stat-grid-4{grid-template-columns:repeat(2,1fr)}}
   .tab-btn{padding:0 12px;height:34px;font-size:12px;font-weight:600;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer}
   .tab-btn.active{background:#DF414F;border-color:#DF414F;color:#fff}
   .product-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
-  @media(max-width:1024px){.stat-grid{grid-template-columns:repeat(3,1fr)}.product-grid{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:768px){.stat-grid{grid-template-columns:repeat(2,1fr)}.product-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:480px){.stat-grid{grid-template-columns:repeat(2,1fr)}.product-grid{grid-template-columns:repeat(2,1fr);gap:2px}}
+  @media(max-width:1024px){.product-grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:768px){.product-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.product-grid{grid-template-columns:repeat(2,1fr);gap:2px}}
   .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;font-size:13px;padding:12px 24px;z-index:9999;display:none}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{background:#f9fafb;color:#6b7280;font-weight:600;text-align:left;padding:12px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
@@ -92,36 +108,7 @@
                             <img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">
                             Bahasa Indonesia
                         </span>
-                        <div id="lang-dropdown"
-                            class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
-                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
-                            <div class="py-2">
-                                <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Indonesia
-                                </button>
-                                <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Malaysia
-                                </button>
-                                <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full object-cover">
-                                    English (Singapore)
-                                </button>
-                                <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full object-cover">
-                                    ไทย
-                                </button>
-                                <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full object-cover">
-                                    Tiếng Việt
-                                </button>
-                                <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full object-cover">
-                                    English
-                                </button>
-                            </div>
-                        </div>
+                        
                     </div>
                     <div class="relative group cursor-pointer">
                         <a href="/AppNorthAuth" id="auth-menu-btn" class="font-bold hover:opacity-90">
@@ -312,12 +299,12 @@
 </section>
 
     <!-- FOOTER -->
-    <div id="FTORNRT"></div>
+    <div id="AppNorthFooter"></div>
     <script>
         fetch("https://nl.hostinesia.my.id/html/AppNorthFooter")
             .then(res => res.text())
             .then(data => {
-                document.getElementById("FTORNRT").innerHTML = data;
+                document.getElementById("AppNorthFooter").innerHTML = data;
             });
     </script>
 
@@ -431,7 +418,7 @@
                     </div>
                     <div>
                         <div class="font-medium text-sm">
-                            Northline Support
+                            MiNorth
                         </div>
                         <div id="chat-header-status" class="text-[11px] text-white/80 flex items-center gap-1">
                             24/7 Support Center
@@ -479,7 +466,7 @@
             class="flex-1 overflow-y-auto bg-[#f6f6f6] px-4 py-3 space-y-3">
             <div class="flex items-start gap-1.5 md:gap-2">
                 <div class="max-w-[85%] md:max-w-[80%]">
-                    <div class="overflow-hidden h-[35px] md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+                    <div class="overflow-hidden h-[35px] minorth md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
                         <div id="welcome-text-page">
                             Hi 👋 Selamat datang di Northline!
                         </div>
@@ -491,25 +478,25 @@
             </div>
         </div>
 
-        <div class="border-t bg-white p-2">
+        <div id="keyboard-target" class="border-t bg-white p-2 transition-all duration-200">
             <div id="quick-questions" class="flex gap-2 overflow-x-auto mb-2">
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Produk apa aja?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Harga berapa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ada size apa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Cara order gimana?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ready stock?
                 </button>
             </div>
@@ -518,10 +505,10 @@
                     id="chat-input"
                     type="text"
                     placeholder="Type a message..."
-                    class="flex-1 h-8 md:h-10 border border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
+                    class="flex-1 h-8 border md:rounded-none rounded-full border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
                 <button
                     id="send-message"
-                    class="px-3 md:px-5 h-8 md:h-10 bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
+                    class="px-3 md:px-5 h-8 md:rounded-none rounded-full bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
                     <img src="https://img.icons8.com/?size=100&id=bmqaSU1DN4QP&format=png&color=ffffff" class="h-6 w-6">
                 </button>
             </div>
@@ -545,16 +532,17 @@
     <div class="toast" id="aff-toast"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
     <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
     <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthPayment.js?v=0000v14pay"></script>
-    <script src="/java/AppNorthCatalog.js?v=0000v40cat"></script>
+    <script src="/java/AppNorthPayment.js?v=0000v18guestorders"></script>
+    <script src="/java/AppNorthCatalog.js?v=0000v58productreport"></script>
     <script src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
     <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
-    <script src="/src/services/AppNorthSearch.js?v=0000v15cat"></script>
-    <script src="/src/services/AppNorthOrders.js?v=0000v14sec"></script>
-    <script src="/src/services/AppNorthWishlist.js?v=0000v19wl"></script>
+    <script src="/src/services/AppNorthSearch.js?v=0000v18visualsearchbounce"></script>
+    <script src="/src/services/AppNorthOrders.js?v=0000v24guestorders"></script>
+    <script src="/src/services/AppNorthWishlist.js?v=0000v20wl"></script>
     <script src="/seller-products/AppNorthSellerProductDetail.js?v=0000v11sec"></script>
     <script src="/src/services/AppNorthAiService.js?v=0000v11ai"></script>
 
@@ -694,7 +682,10 @@
         }
     </script>
 <script>
-var affState = { data: null, products: [], tab: 'products', linkBase: window.location.origin + '/?product=' };
+var PUBLIC_CODE = (location.pathname.match(/\/affiliate\/([^\/?#]+)/) || [])[1] || '';
+var IS_PUBLIC = '';
+try { IS_PUBLIC = PUBLIC_CODE ? decodeURIComponent(PUBLIC_CODE) : ''; } catch (e) { IS_PUBLIC = PUBLIC_CODE; }
+var affState = { data: null, products: [], tab: 'products', profile: null, publicData: null, pubFilter: { cat: '', sort: 'new' }, linkBase: window.location.origin + '/?product=' };
 
 function affToast(msg) {
   var t = document.getElementById('aff-toast');
@@ -721,12 +712,21 @@ function fmtRpShort(n) {
 
 async function affApi(path, opts) {
   opts = opts || {};
-  var res = await fetch(path, {
-    method: opts.method || 'GET',
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-    body: opts.body || undefined,
-    credentials: 'include'
-  });
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var timer = null;
+  if (ctrl) timer = setTimeout(function () { ctrl.abort(); }, opts.timeout || 15000);
+  var res;
+  try {
+    res = await fetch(path, {
+      method: opts.method || 'GET',
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+      body: opts.body || undefined,
+      credentials: 'include',
+      signal: ctrl ? ctrl.signal : undefined
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   var j;
   try { j = await res.json(); } catch (e) { j = { success: false }; }
   if (j && j.error === "Sesi login tidak ditemukan, token kosong") return { success: false, auth: false };
@@ -752,8 +752,15 @@ function fallbackCopy(text, label) {
   document.body.removeChild(ta);
 }
 
+function activeAffCode() {
+  if (IS_PUBLIC) {
+    return (affState.publicData && affState.publicData.profile && affState.publicData.profile.code) || IS_PUBLIC;
+  }
+  return (affState.data && affState.data.code) || '';
+}
+
 function productLink(code) {
-  return affState.linkBase + code + '&aff=' + affState.data.code;
+  return affState.linkBase + code + '&aff=' + activeAffCode();
 }
 
 function renderHero() {
@@ -773,13 +780,15 @@ function renderHero() {
     '</div>' +
     '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:10px;color:#6b7280">' +
     '<span><b style="color:#DF414F">Kode:</b> ' + esc(d.code) + '</span>' +
-    '<span><b>Komisi:</b> <b style="color:#DF414F">7%</b> (&lt; Rp 200rb) · <b style="color:#DF414F">6%</b> (Rp 200–299rb) · <b style="color:#DF414F">5%</b> (≥ Rp 300rb)</span>' +
+    '<span><b>Komisi:</b> <b style="color:#DF414F">0,5%</b> <span style="color:#9ca3af">(10 pembelian pertama)</span> · <b>Tanpa komisi</b> <span style="color:#9ca3af">(pembelian ke-11 dan seterusnya)</span></span>' +
     '</div>' +
     '<div style="margin-top:14px;padding:12px;border:1px solid #f3f4f6;background:#fafafa">' +
     '<div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:8px">Syarat &amp; Kebijakan Affiliate Northline</div>' +
     '<ul style="margin:0;padding-left:16px;font-size:10px;color:#6b7280;line-height:1.8">' +
     '<li>Komisi dihitung dari transaksi yang berhasil dan tidak dibatalkan melalui link affiliate kamu.</li>' +
-    '<li>Tarif komisi: 7% untuk transaksi &lt; Rp 200.000, 6% untuk Rp 200.000–299.000, dan 5% untuk ≥ Rp 300.000.</li>' +
+    '<li>10 pembelian pertama mendapatkan komisi 0,5% dari nilai transaksi.</li>' +
+    '<li>Pembelian ke-11 dan seterusnya tidak mendapatkan komisi.</li>' +
+    '<li>Mulai pembelian ke-11, komisi menjadi 5% untuk semua produk.</li>' +
     '<li>Pencairan komisi hanya dapat dilakukan setelah status komisi berstatus <b>paid</b> dan diverifikasi oleh admin Northline.</li>' +
     '<li>Dilarang melakukan spam link, pemasaran menyesatkan, atau menyalahgunakan kode affiliate milik orang lain.</li>' +
     '<li>Komisi dapat dibatalkan jika terdeteksi transaksi palsu, pesanan dibatalkan, atau pelanggaran kebijakan.</li>' +
@@ -814,6 +823,7 @@ function renderTabBar() {
   return '<div style="display:flex;gap:8px;margin:16px 0 12px">' +
     '<button class="tab-btn' + (affState.tab === 'products' ? ' active' : '') + '" onclick="setAffTab(\'products\')">Semua Produk</button>' +
     '<button class="tab-btn' + (affState.tab === 'commissions' ? ' active' : '') + '" onclick="setAffTab(\'commissions\')">Riwayat Komisi</button>' +
+    '<button class="tab-btn' + (affState.tab === 'profile' ? ' active' : '') + '" onclick="setAffTab(\'profile\')">Profil Publik</button>' +
     '</div>';
 }
 
@@ -835,12 +845,14 @@ function affCard(p) {
   var models = (p.models || []).map(function (m) {
     return '<span class="inline-block bg-gray-100 text-gray-600 text-[9px] px-1.5 py-0.5">' + esc(String(m).charAt(0) + String(m).slice(1).toLowerCase()) + '</span>';
   }).join('');
-  var commission = p.commissionRate != null ? p.commissionRate : 0;
+  var commission = p.commissionRate != null ? Number(p.commissionRate) : 0;
+  var commissionText = commission <= 0 ? 'Tanpa komisi'
+    : 'Komisi ' + String(commission).replace('.', ',') + '%';
   var aiPickBadge = p.aiPick
     ? '<span class="absolute top-1 left-1 flex items-center gap-0.5 bg-white border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-bold text-gray-700 shadow-sm"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3">AI Recomended</span>'
     : '';
   return '<div class="hover-bottom group bg-white w-full shadow-sm border border-gray-200 hover:border-[#DF414F]">' +
-    '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto" onclick="window.open(affState.linkBase + \'' + (p.code || p.id) + '\')">' +
+    '<div class="relative bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer h-auto" onclick="window.open(productLink(\'' + esc(p.code || p.id) + '\'))">' +
     '<img src="' + esc(img) + '" class="w-full h-auto block transition duration-300" alt="North Line Product" loading="lazy" onerror="this.src=\'/public/icons/default.png\'">' +
     aiPickBadge +
     '</div>' +
@@ -852,7 +864,7 @@ function affCard(p) {
     '<span class="text-[#DF414F] font-bold text-[12px] md:text-sm">' + fmtRp(p.price) + '</span>' +
     '<span class="flex items-center gap-0.5 text-[#DF414F] text-[9px] font-medium"><img src="https://img.icons8.com/?size=100&id=52172&format=png&color=DF414F" class="w-3 h-3 md:w-4 md:h-4" loading="lazy"></span>' +
     '</div>' +
-    '<span class="text-[9px] md:text-[10px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-1.5 py-0.5 whitespace-nowrap">Komisi ' + commission + '%</span>' +
+    '<span class="text-[9px] md:text-[10px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-1.5 py-0.5 whitespace-nowrap">' + commissionText + '</span>' +
     '</div>' +
     '<div class="flex items-center gap-1 mt-1 text-gray-500">' +
     '<span class="text-amber-400 text-[9px] md:text-[10px]">☆☆☆☆☆</span>' +
@@ -860,7 +872,7 @@ function affCard(p) {
     '<span class="mx-1 h-2.5 border-l border-gray-100"></span>' +
     '<span class="text-[9px] md:text-[10px] tracking-tight">5-7 Hari</span>' +
     '</div>' +
-    '<button class="w-full h-8 mt-2 mb-2 bg-[#DF414F] text-white text-[11px] md:text-[12px] font-semibold flex items-center justify-center gap-1 cursor-pointer hover:brightness-95 border-none" onclick="copyText(productLink(\'' + (p.code || p.id) + '\'), \'Link produk disalin!\')">' +
+    '<button class="w-full h-8 mt-2 mb-2 bg-[#DF414F] text-white text-[11px] md:text-[12px] font-semibold flex items-center justify-center gap-1 cursor-pointer hover:brightness-95 border-none" onclick="copyText(productLink(\'' + esc(p.code || p.id) + '\'), \'Link produk disalin!\')">' +
     '<img src="https://img.icons8.com/?size=100&id=86236&format=png&color=ffffff" class="w-3 h-3 md:w-4 md:h-4" loading="lazy"> SALIN LINK' +
     '</button>' +
     '</div></div>';
@@ -878,9 +890,416 @@ function renderCommissions() {
     '</tbody></table></div>';
 }
 
+function renderProfileSettings() {
+  var p = affState.profile || {};
+  var path = '/affiliate/' + affState.data.code;
+  var full = window.location.origin + path;
+
+  return '<div class="nl-card">' +
+    '<div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:4px">Profil Publik</div>' +
+    '<p style="font-size:10px;color:#6b7280;margin:0 0 16px;line-height:1.7">' +
+      'Buat halaman profil yang bisa dibagikan ke orang lain, seperti link bio di TikTok. ' +
+      ' anybody yang membuka link itu akan melihat profil, statistik, dan produk Northline. ' +
+      'Halaman hanya menampilkan nama, foto, dan teks yang kamu isi di bawah — bukan data akun pribadi.' +
+    '</p>' +
+
+    '<div style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #f3f4f6;background:#fafafa;margin-bottom:16px;flex-wrap:wrap">' +
+      '<div style="flex:1;min-width:160px;height:30px;border:1px solid #d1d5db;background:#fff;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="aff-profile-link">' + esc(full) + '</div>' +
+      '<button class="nl-btn" style="height:30px;padding:0 16px;font-size:12px" onclick="copyText(document.getElementById(\'aff-profile-link\').textContent, \'Link profil disalin!\')">Salin</button>' +
+      '<a class="nl-btn nl-btn-ghost" style="height:30px;padding:0 16px;font-size:12px" href="' + esc(path) + '" target="_blank" rel="noopener">Buka</a>' +
+    '</div>' +
+
+    '<label style="display:block;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tagline</label>' +
+    '<input id="aff-p-tagline" class="nl-input" style="height:42px" maxlength="140" placeholder="Contoh: Style harian worth it, harga warung" value="' + esc(p.tagline || '') + '">' +
+    '<p style="font-size:9px;color:#9ca3af;margin:4px 0 14px"><span id="aff-p-tagline-count">' + (p.tagline || '').length + '</span>/140</p>' +
+
+    '<label style="display:block;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Tentang kamu</label>' +
+    '<textarea id="aff-p-bio" class="nl-input" style="height:110px;padding:12px 14px;resize:vertical;line-height:1.6" maxlength="500" placeholder="Ceritakan kenapa orang harus belanja lewat link kamu.">' + esc(p.bio || '') + '</textarea>' +
+    '<p style="font-size:9px;color:#9ca3af;margin:4px 0 16px"><span id="aff-p-bio-count">' + (p.bio || '').length + '</span>/500</p>' +
+
+    '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #f3f4f6;background:#fafafa;cursor:pointer">' +
+      '<input type="checkbox" id="aff-p-visible" ' + (p.profileVisible ? 'checked' : '') + ' class="w-4 h-4 mt-0.5" style="accent-color:#DF414F;flex-shrink:0">' +
+      '<span style="font-size:11px;color:#374151;line-height:1.6">Tampilkan profil publik saya<br><span style="font-size:10px;color:#9ca3af">Kalau mati, link profil tidak bisa dibuka anybody.</span></span>' +
+    '</label>' +
+
+    '<button class="nl-btn w-full" style="margin-top:14px" id="aff-p-save" onclick="saveAffProfile(this)">Simpan Profil</button>' +
+  '</div>';
+}
+
+async function saveAffProfile(btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Menyimpan...'; }
+  try {
+    var res = await affApi('/api/affiliate/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        tagline: document.getElementById('aff-p-tagline').value,
+        bio: document.getElementById('aff-p-bio').value,
+        profileVisible: document.getElementById('aff-p-visible').checked
+      })
+    });
+    if (res.success) {
+      affToast('Profil disimpan');
+      await loadAffProfile();
+      renderAff();
+    } else {
+      affToast(res.message || 'Gagal menyimpan profil');
+    }
+  } catch (e) {
+    affToast('Gagal menyimpan profil');
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Simpan Profil'; }
+}
+
+async function loadAffProfile() {
+  try {
+    var res = await affApi('/api/affiliate/profile/mine');
+    affState.profile = (res && res.success) ? res : { tagline: '', bio: '', profileVisible: false };
+  } catch (e) {
+    affState.profile = { tagline: '', bio: '', profileVisible: false };
+  }
+}
+
+function affStat(label, value) {
+  return '<div class="nl-card" style="padding:12px 10px;text-align:center">' +
+    '<div style="font-size:16px;font-weight:700;color:#DF414F;line-height:1">' + esc(value) + '</div>' +
+    '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-top:5px">' + esc(label) + '</div>' +
+  '</div>';
+}
+
+function renderPublicUnavailable() {
+  document.getElementById('aff-content').innerHTML =
+    '<div class="nl-card" style="text-align:center;padding:48px 20px">' +
+      '<div style="width:56px;height:56px;margin:0 auto 14px;background:#DF414F;color:#fff;font-weight:700;font-size:22px;border-radius:9999px;display:flex;align-items:center;justify-content:center">!</div>' +
+      '<h1 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 6px">Profil tidak tersedia</h1>' +
+      '<p style="font-size:11px;color:#6b7280;margin:0 auto 18px;max-width:320px;line-height:1.7">Profil ini tidak ditemukan atau dimatikan oleh pemiliknya.</p>' +
+      '<a href="/" class="nl-btn">Kembali ke Toko</a>' +
+    '</div>';
+}
+
+var PUB_ICON = {
+  wa: '<path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.26-.46-2.4-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.35-.35.52-.52.17-.18.23-.3.35-.5.11-.2.06-.37-.06-.52-.12-.15-.66-1.59-.91-2.18-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.07c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.42-.07-.12-.27-.2-.57-.34M12.05 21.8h-.01a9.9 9.9 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.89 9.89-9.89 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.43 9.89-9.88 9.89M20.52 3.52A11.8 11.8 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.9 11.9 0 0 0 5.69 1.45c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41z"/>',
+  tg: '<path d="M11.94 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.06zm4.96 7.22c.1 0 .32.02.47.14.15.12.25.3.26.53.02.09.03.3.02.47-.18 1.9-.96 6.5-1.36 8.63-.17.9-.5 1.2-.82 1.23-.7.06-1.23-.46-1.9-.9-1.06-.7-1.65-1.13-2.68-1.8-1.19-.78-.42-1.21.26-1.91.17-.19 3.24-2.98 3.3-3.23.01-.03.02-.15-.05-.21-.08-.07-.18-.04-.25-.03-.11.03-1.8 1.14-5.06 3.35-.48.33-.92.49-1.3.48-.43 0-1.26-.24-1.87-.44-.75-.24-1.35-.37-1.3-.79.03-.21.33-.43.9-.66 3.5-1.53 5.83-2.53 7-3.01 3.33-1.39 4.02-1.63 4.47-1.64z"/>',
+  x: '<path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.96 6.82H1.68l7.73-8.84-1.76-11.24H8.08l4.71 6.23 5.45-6.23zm-1.16 17.52h1.83L7.08 4.13H5.12l12 15.64z"/>',
+  fb: '<path d="M24 12.07C24 5.44 18.63 0 12 0S0 5.44 0 12.07c0 5.99 4.39 10.95 10.13 11.85v-8.38H7.08v-3.47h3.05V9.43c0-3.01 1.79-4.67 4.53-4.67 1.31 0 2.69.24 2.69.24v2.95h-1.51c-1.49 0-1.96.93-1.96 1.87v2.25h3.33l-.53 3.47h-2.8v8.38c5.74-.9 10.12-5.87 10.12-11.85z"/>',
+  copy: '<path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/>',
+  qr: 'https://img.icons8.com/windows/100/DF414F/qr-code.png'
+};
+
+function pubIcon(name, size) {
+  var sz = size || 16;
+  var v = PUB_ICON[name];
+  if (v.slice(0, 4) === 'http') {
+    return '<img src="' + v + '" width="' + sz + '" height="' + sz + '" alt="" style="display:block;flex-shrink:0">';
+  }
+  return '<svg viewBox="0 0 24 24" width="' + sz + '" height="' + sz + '" fill="currentColor" aria-hidden="true">' + v + '</svg>';
+}
+
+function pubMainLink() {
+  var pr = (affState.publicData && affState.publicData.profile) || {};
+  return window.location.origin + '/?aff=' + (pr.code || IS_PUBLIC);
+}
+
+function pubCategories() {
+  var seen = {}, out = [];
+  var list = (affState.publicData && affState.publicData.products) || [];
+  list.forEach(function (p) {
+    (p.categories || []).forEach(function (c) {
+      if (c && !seen[c]) { seen[c] = 1; out.push(c); }
+    });
+  });
+  return out.sort();
+}
+
+function sharePublic(kind) {
+  var pr = (affState.publicData && affState.publicData.profile) || {};
+  var link = pubMainLink();
+  var text = 'Lihat profil affiliate ' + (pr.name || 'Northline') + ' di Northline: ' + link;
+  var urls = {
+    wa: 'https://wa.me/?text=' + encodeURIComponent(text),
+    tg: 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text),
+    x: 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text),
+    fb: 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link)
+  };
+  if (!urls[kind]) return;
+  window.open(urls[kind], '_blank', 'noopener');
+}
+
+var PUB_QR_SRC = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+var pubQrState = 0;
+
+function closePubQr() {
+  var m = document.getElementById('pub-qr-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function togglePubQr() {
+  var modal = document.getElementById('pub-qr-modal');
+  if (!modal) return;
+  if (modal.style.display === 'flex') { closePubQr(); return; }
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  if (pubQrState === 2) { drawPubQr(); return; }
+  if (pubQrState === 1) return;
+  pubQrState = 1;
+  var box = document.getElementById('pub-qr');
+  if (box) box.innerHTML = '<div style="font-size:10px;color:#9ca3af;padding:12px">Menyiapkan QR&hellip;</div>';
+  if (window.QRCode) { pubQrState = 2; drawPubQr(); return; }
+  var sc = document.createElement('script');
+  sc.src = PUB_QR_SRC;
+  sc.async = true;
+  sc.onload = function () { pubQrState = 2; drawPubQr(); };
+  sc.onerror = function () {
+    pubQrState = 3;
+    var b = document.getElementById('pub-qr');
+    if (b) b.innerHTML = '<div style="font-size:10px;color:#9ca3af;padding:12px">QR tidak dapat dimuat. Gunakan tombol Salin Link.</div>';
+  };
+  document.head.appendChild(sc);
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closePubQr();
+});
+
+function pubQrAvatarHtml() {
+  var pr = (affState.publicData && affState.publicData.profile) || {};
+  if (!pr.avatar) return '';
+  return '<img class="pub-qr-avatar" src="' + esc(pr.avatar) + '" alt="" ' +
+    'style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);' +
+    'width:34px;height:34px;border-radius:9999px;object-fit:cover;background:#fff;' +
+    'padding:4px;box-shadow:0 0 0 3px #fff" onerror="this.remove()">';
+}
+
+function drawPubQr() {
+  var box = document.getElementById('pub-qr');
+  if (!box || !window.QRCode) return;
+  box.innerHTML = '';
+  box.style.position = 'relative';
+  box.style.width = '172px';
+  box.style.height = '172px';
+  box.style.margin = '0 auto';
+  try {
+    new window.QRCode(box, {
+      text: pubMainLink(),
+      width: 148,
+      height: 148,
+      colorDark: '#111827',
+      colorLight: '#ffffff',
+      correctLevel: window.QRCode.CorrectLevel.H
+    });
+    // qrcodejs menaruh <canvas>/<img> sebagai anak pertama; avatar ditumpuk di tengah
+    var av = document.createElement('div');
+    av.innerHTML = pubQrAvatarHtml();
+    var node = av.firstChild;
+    if (node) box.appendChild(node);
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:10px;color:#9ca3af;padding:12px">QR gagal dibuat.</div>';
+  }
+}
+
+function renderPublicProducts() {
+  var box = document.getElementById('pub-products');
+  if (!box) return;
+  var all = (affState.publicData && affState.publicData.products) || [];
+  var f = affState.pubFilter;
+  var list = all.filter(function (p) {
+    return !f.cat || (p.categories || []).indexOf(f.cat) !== -1;
+  });
+  var sorted = list.slice();
+  if (f.sort === 'asc') sorted.sort(function (a, b) { return (a.price || 0) - (b.price || 0); });
+  else if (f.sort === 'desc') sorted.sort(function (a, b) { return (b.price || 0) - (a.price || 0); });
+  else sorted.sort(function (a, b) { return (b.id || 0) - (a.id || 0); });
+
+  box.innerHTML = sorted.length
+    ? sorted.map(function (p) { return affCard(p); }).join('')
+    : '<div class="nl-card" style="grid-column:1/-1;text-align:center;color:#9ca3af;padding:40px">' +
+      (all.length ? 'Tidak ada produk pada kategori ini.' : 'Belum ada produk tersedia') + '</div>';
+
+  var cnt = document.getElementById('pub-count');
+  if (cnt) cnt.textContent = sorted.length + ' produk';
+
+  var chips = document.querySelectorAll('#pub-chips .chip');
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].className = 'chip' + (chips[i].getAttribute('data-cat') === f.cat ? ' active' : '');
+  }
+  var sel = document.getElementById('pub-sort');
+  if (sel && sel.value !== f.sort) sel.value = f.sort;
+}
+
+function setPubCat(cat) {
+  affState.pubFilter.cat = (affState.pubFilter.cat === cat) ? '' : cat;
+  renderPublicProducts();
+}
+
+function setPubSort(v) {
+  affState.pubFilter.sort = v;
+  renderPublicProducts();
+}
+
+function renderPublicProfile(data) {
+  var pr = data.profile;
+  var st = pr.stats || {};
+  var products = data.products || [];
+  var cats = pubCategories();
+  var joined = pr.joinedAt ? new Date(pr.joinedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+  var mainLink = pubMainLink();
+  var initials = String(pr.name || '?').trim().split(/\s+/).slice(0, 2).map(function (s) { return s.charAt(0).toUpperCase(); }).join('');
+  var avatarHtml = pr.avatar
+    ? '<img src="' + esc(pr.avatar) + '" class="object-cover" style="width:76px;height:76px;border-radius:9999px;box-shadow:0 0 0 3px #fff,0 0 0 5px #DF414F;flex-shrink:0" alt="' + esc(pr.name) + '" onerror="this.src=\'/public/icons/default.png\'">'
+    : '<div style="width:76px;height:76px;border-radius:9999px;box-shadow:0 0 0 3px #fff,0 0 0 5px #DF414F;background:#DF414F;color:#fff;font-weight:700;font-size:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + esc(initials || '?') + '</div>';
+
+  document.title = pr.name + ' | Affiliate Northline';
+
+  (function syncOg() {
+    var origin = window.location.origin;
+    var img = origin + '/api/affiliate/avatar/' + encodeURIComponent(pr.code || IS_PUBLIC);
+    var set = function(attr, key, val) {
+      var el = document.head.querySelector('meta[property="' + attr + '"]') || document.head.querySelector('meta[name="' + key + '"]');
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attr.indexOf('og:') === 0 ? 'property' : 'name', attr.indexOf('og:') === 0 ? attr : key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', val);
+    };
+    var own = [pr.tagline, pr.bio].map(function (v) { return String(v || '').trim(); })
+      .filter(function (v) { return v.length >= 15; })[0];
+    var desc = own
+      ? own.slice(0, 160)
+      : 'Link affiliate ' + (pr.name || 'Northline') + ' di Northline. Beli lewat link ini agar komisi masuk ke profil.';
+    set('og:title', 'twitter:title', pr.name + ' | Affiliate Northline');
+    set('og:description', 'twitter:description', desc.slice(0, 200));
+    set('og:image', 'twitter:image', img);
+  })();
+
+  var shareBtn = function (kind, label) {
+    return '<button class="share-btn" type="button" title="' + label + '" aria-label="' + label + '" onclick="sharePublic(\'' + kind + '\')">' + pubIcon(kind, 17) + '</button>';
+  };
+
+  document.getElementById('aff-content').innerHTML =
+    '<div class="nl-card" style="padding:18px 16px">' +
+      '<span class="pub-eyebrow">' + pubIcon('qr', 11) + ' Profil Affiliate</span>' +
+      '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:12px">' +
+        avatarHtml +
+        '<div style="flex:1;min-width:170px">' +
+          '<h1 style="margin:0;font-size:19px;font-weight:700;color:#111827;word-break:break-word;line-height:1.25">' + esc(pr.name) + '</h1>' +
+          '<p style="margin:3px 0 0;font-size:11px;color:#9ca3af">@' + esc(pr.username) + '</p>' +
+          (pr.tagline ? '<p style="margin:7px 0 0;font-size:13px;font-weight:600;color:#DF414F;line-height:1.4">' + esc(pr.tagline) + '</p>' : '') +
+          '<p style="margin:7px 0 0;font-size:10px;color:#9ca3af">Anggota sejak ' + esc(joined) + '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6">' +
+        '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:5px">Tentang</div>' +
+        '<div style="font-size:12.5px;color:#374151;line-height:1.75;white-space:pre-wrap;word-break:break-word">' +
+          (pr.bio ? esc(pr.bio) : '<span style="color:#9ca3af">Affiliate resmi Northline. Beli lewat link di halaman ini agar komisi masuk ke profil ini.</span>') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="nl-card" style="padding:14px 16px;margin-top:12px">' +
+      '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:8px">Link Affiliate</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<div style="flex:1;min-width:180px;height:34px;border:1px solid #d1d5db;background:#f9fafb;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="pub-aff-link">' + esc(mainLink) + '</div>' +
+        '<button class="nl-btn" style="height:34px;padding:0 14px;font-size:11px;gap:6px" onclick="copyText(document.getElementById(\'pub-aff-link\').textContent, \'Link affiliate disalin!\')">' + pubIcon('copy', 15) + ' Salin</button>' +
+        '<button class="share-btn" id="pub-qr-btn" type="button" title="Tampilkan QR" aria-label="Tampilkan QR" onclick="togglePubQr()">' + pubIcon('qr', 17) + '</button>' +
+      '</div>' +
+      '<div class="share-row" style="margin-top:10px">' +
+        '<span style="font-size:10px;color:#9ca3af;margin-right:2px">Bagikan:</span>' +
+        shareBtn('wa', 'Bagikan ke WhatsApp') +
+        shareBtn('tg', 'Bagikan ke Telegram') +
+        shareBtn('x', 'Bagikan ke X') +
+        shareBtn('fb', 'Bagikan ke Facebook') +
+      '</div>' +
+    '</div>' +
+
+    '<div class="stat-grid-4" style="margin-top:12px">' +
+      affStat('Klik', String(st.clicks || 0)) +
+      affStat('Pembeli', String(st.buyers || 0)) +
+      affStat('Pesanan', String(st.orders || 0)) +
+      affStat('Konversi', (st.conversion || 0) + '%') +
+    '</div>' +
+
+    '<div class="nl-card" style="padding:14px 16px;margin-top:12px">' +
+      '<div class="tier"><span style="font-size:11px;color:#6b7280">10 pembelian pertama</span><span style="font-size:13px;font-weight:700;color:#DF414F">0,5%</span></div>' +
+      '<div class="tier" style="border-top:1px solid #f3f4f6"><span style="font-size:11px;color:#6b7280">Pembelian ke-11 dan seterusnya</span><span style="font-size:12px;font-weight:700;color:#6b7280">Tanpa komisi</span></div>' +
+      '<p style="margin:9px 0 0;font-size:10px;color:#9ca3af;line-height:1.6">Komisi masuk ke affiliate profil ini dari setiap pembelian yang memakai link di halaman ini.</p>' +
+    '</div>' +
+
+    '<div style="display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 10px;gap:10px;flex-wrap:wrap">' +
+      '<h2 style="margin:0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#111827">Produk</h2>' +
+      '<span id="pub-count" style="font-size:10px;color:#9ca3af">' + esc(products.length) + ' produk</span>' +
+    '</div>' +
+    (cats.length
+      ? '<div id="pub-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' +
+          '<button class="chip active" type="button" data-cat="" onclick="setPubCat(\'\')">Semua</button>' +
+          cats.map(function (c) {
+            return '<button class="chip" type="button" data-cat="' + esc(c) + '" onclick="setPubCat(\'' + esc(c) + '\')">' + esc(c.charAt(0).toUpperCase() + c.slice(1)) + '</button>';
+          }).join('') +
+        '</div>'
+      : '<div id="pub-chips" style="display:none"></div>') +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
+      '<select class="sort-select" id="pub-sort" onchange="setPubSort(this.value)" aria-label="Urutkan produk">' +
+        '<option value="new">Terbaru</option>' +
+        '<option value="asc">Harga terendah</option>' +
+        '<option value="desc">Harga tertinggi</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="product-grid" id="pub-products"></div>' +
+
+    '<div class="qr-modal" id="pub-qr-modal" onclick="if(event.target===this)closePubQr()">' +
+      '<div class="qr-box">' +
+        '<div style="font-size:13px;font-weight:700;color:#111827">QR Link Affiliate</div>' +
+        '<div style="font-size:10px;color:#9ca3af;margin-top:2px">Pindai untuk membuka link</div>' +
+        '<div id="pub-qr" style="display:flex;justify-content:center;align-items:center;padding:10px 0"></div>' +
+        '<div style="font-size:10px;color:#6b7280;word-break:break-all;line-height:1.5">' + esc(mainLink) + '</div>' +
+        '<button class="nl-btn" type="button" style="width:100%;margin-top:12px" onclick="closePubQr()">Tutup</button>' +
+      '</div>' +
+    '</div>';
+
+  renderPublicProducts();
+}
+
+function trackPublicHit() {
+  try {
+    var aff = new URLSearchParams(window.location.search).get('aff');
+    if (!aff || aff !== IS_PUBLIC) return;
+    fetch('/api/affiliate/hit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ code: aff })
+    }).catch(function () {});
+  } catch (e) {}
+}
+
+async function loadPublicProfile() {
+  var box = document.getElementById('aff-content');
+  try {
+    var res = await affApi('/api/affiliate/profile/' + encodeURIComponent(IS_PUBLIC), { timeout: 8000 });
+    if (!res || !res.success || !res.available) {
+      renderPublicUnavailable();
+      return;
+    }
+    affState.publicData = res;
+    renderPublicProfile(res);
+  } catch (e) {
+    renderPublicUnavailable();
+  }
+  if (box && box.innerHTML.indexOf('loader-dots') !== -1) {
+    renderPublicUnavailable();
+  }
+}
+
 function renderAff() {
+  if (IS_PUBLIC) {
+    if (affState.publicData) renderPublicProfile(affState.publicData);
+    else renderPublicUnavailable();
+    return;
+  }
   var html = renderHero() + renderStats() + renderTabBar();
-  html += affState.tab === 'products' ? renderProducts() : renderCommissions();
+  if (affState.tab === 'products') html += renderProducts();
+  else if (affState.tab === 'commissions') html += renderCommissions();
+  else html += renderProfileSettings();
   document.getElementById('aff-content').innerHTML = html;
 }
 
@@ -901,7 +1320,26 @@ function shareAff(type) {
   }
 }
 
+document.addEventListener('input', function (e) {
+  var map = { 'aff-p-tagline': 'aff-p-tagline-count', 'aff-p-bio': 'aff-p-bio-count' };
+  var target = e.target && e.target.id;
+  if (!target || !map[target]) return;
+  var out = document.getElementById(map[target]);
+  if (out) out.textContent = String(e.target.value || '').length;
+});
+
 document.addEventListener('DOMContentLoaded', async function () {
+  if (IS_PUBLIC) {
+    trackPublicHit();
+    var guard = setTimeout(function () {
+      var box = document.getElementById('aff-content');
+      if (box && box.innerHTML.indexOf('loader-dots') !== -1) renderPublicUnavailable();
+    }, 9000);
+    await loadPublicProfile();
+    clearTimeout(guard);
+    return;
+  }
+
   try {
     var me = await affApi('/api/auth/me');
     if (!me.success || !me.user) {
@@ -909,14 +1347,15 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
     var enable = await affApi('/api/affiliate/enable', { method: 'POST', body: JSON.stringify({}) });
-    if (!enable.success) { affToast(enable.message || 'Gagal mengaktifkan affiliate'); return; }
+    if (!enable.success) { affToast(enable.message || 'Gagal mengaktifkan affiliate'); document.getElementById('aff-content').innerHTML = '<div style="text-align:center;padding:60px 0;color:#ef4444;font-size:14px">' + esc(enable.message || 'Gagal mengaktifkan affiliate') + '</div>'; return; }
     var dash = await affApi('/api/affiliate/dashboard');
     if (!dash.success) { window.location.href = '/auth'; return; }
     dash.name = me.user.name || me.user.username;
     dash.avatar = me.user.avatar || '';
     affState.data = dash;
-    var prods = await affApi('/api/affiliate/products');
+    var prods = await affApi('/api/affiliate/products' + (affState.data && affState.data.code ? '?code=' + encodeURIComponent(affState.data.code) : ''));
     affState.products = (prods && prods.products) || [];
+    await loadAffProfile();
     renderAff();
   } catch (e) {
     document.getElementById('aff-content').innerHTML = '<div style="text-align:center;padding:60px 0;color:#ef4444;font-size:14px">Terjadi kesalahan. Muat ulang halaman.</div>';

@@ -5,12 +5,160 @@ const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const { grantCommission } = require('./affiliate');
+const { getOrderReceiptState } = require('../utils/orderValidation');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   console.error("[FATAL] JWT_SECRET environment variable is not set!");
   process.exit(1);
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+function setAuthCookies(res, token) {
+    const cookieOpts = {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000
+    };
+    res.cookie('nl_jwt', token, cookieOpts);
+    res.cookie('logged_in', '1', {
+        ...cookieOpts,
+        httpOnly: false
+    });
+}
+
+function clearAuthCookies(res) {
+    const clearOpts = { path: '/' };
+    res.clearCookie('nl_jwt', clearOpts);
+    res.clearCookie('logged_in', clearOpts);
+    res.clearCookie('session', clearOpts);
+    res.clearCookie('user_session', clearOpts);
+    res.clearCookie('nrt_aff', clearOpts);
+    res.clearCookie('nl_aff', clearOpts);
+}
+
+function normalizeGuestTokens(input) {
+    const raw = Array.isArray(input) ? input : [input];
+    const tokens = [];
+    for (const value of raw) {
+        if (typeof value !== 'string') continue;
+        const token = value.trim();
+        if (/^[a-f0-9]{64}$/i.test(token)) tokens.push(token);
+    }
+    return [...new Set(tokens)];
+}
+
+function normalizeGuestOrderMigrationDecision(input) {
+    if (typeof input === 'boolean') return input ? 'move' : 'skip';
+    if (typeof input !== 'string') return null;
+    const value = input.trim().toLowerCase();
+    if (['yes', 'true', 'move', 'migrate', 'transfer'].includes(value)) return 'move';
+    if (['no', 'false', 'skip', 'later', 'cancel'].includes(value)) return 'skip';
+    return null;
+}
+
+function getGuestTokensFromRequest(req) {
+    const rawValue = req.headers?.['x-guest-order-token'] || req.cookies?.guest_order_tokens || req.body?.guestOrderTokens || req.body?.guestOrderToken || req.query?.guestOrderTokens;
+    return normalizeGuestTokens(rawValue);
+}
+
+async function countGuestOrdersForTokens(guestTokens) {
+    if (!Array.isArray(guestTokens) || guestTokens.length === 0) return 0;
+    const hashes = guestTokens.map((token) => crypto.createHash('sha256').update(token).digest('hex'));
+    const placeholders = hashes.map(() => '?').join(',');
+    const [rows] = await db.execute(
+        `SELECT COUNT(*) AS total
+         FROM transactions
+         WHERE user_id IS NULL
+           AND guest_access_token_hash IN (${placeholders})
+           AND status != 'cancelled'`,
+        hashes
+    );
+    return Number(rows?.[0]?.total || 0);
+}
+
+async function migrateGuestOrdersToUser(userId, guestTokens) {
+    if (!userId || !Array.isArray(guestTokens) || guestTokens.length === 0) {
+        return { migrated: 0, skipped: guestTokens?.length || 0 };
+    }
+
+    let migrated = 0;
+    for (const token of guestTokens) {
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const [result] = await db.execute(
+            `UPDATE transactions
+             SET user_id = ?, guest_access_token_hash = NULL
+             WHERE user_id IS NULL AND guest_access_token_hash = ? AND status != 'cancelled'`,
+            [userId, tokenHash]
+        );
+        migrated += result && result.affectedRows ? result.affectedRows : 0;
+    }
+
+    return { migrated, skipped: Math.max(0, guestTokens.length - migrated) };
+}
+
+async function completeOrderReceipt({ orderId, userId = null, guestTokenHash = null }) {
+    const conn = await db.getConnection();
+    const ownerClause = userId === null
+        ? 'user_id IS NULL AND guest_access_token_hash = ?'
+        : 'user_id = ?';
+    const ownerParams = userId === null ? [guestTokenHash] : [userId];
+    try {
+        await conn.beginTransaction();
+        const [[order]] = await conn.execute(
+            `SELECT order_id, user_id, status, delivery_status
+             FROM transactions WHERE order_id = ? AND ${ownerClause} LIMIT 1 FOR UPDATE`,
+            [orderId, ...ownerParams],
+        );
+        if (!order) {
+            await conn.rollback();
+            return { result: 'not_found' };
+        }
+        const receiptState = getOrderReceiptState(order.status, order.delivery_status);
+        if (receiptState === 'not_paid') {
+            await conn.rollback();
+            return { result: 'not_paid' };
+        }
+        if (receiptState === 'already_complete') {
+            await conn.commit();
+            return { result: 'already_complete' };
+        }
+        if (receiptState === 'not_shipped') {
+            await conn.rollback();
+            return { result: 'not_shipped' };
+        }
+
+        await conn.execute(
+            `UPDATE transactions SET delivery_status='Pesanan Selesai'
+             WHERE order_id = ? AND ${ownerClause} AND status = 'success'`,
+            [orderId, ...ownerParams],
+        );
+        await conn.execute(
+            `INSERT INTO tracking_events (order_id, status, description, location, lat, lng)
+             VALUES (?, 'Pesanan Selesai', 'Pelanggan mengonfirmasi pesanan diterima', NULL, NULL, NULL)`,
+            [orderId],
+        );
+        if (order.user_id !== null) {
+            await conn.execute(
+                'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
+                [order.user_id, 'Pesanan Selesai', `Pesanan ${orderId} telah dikonfirmasi diterima.`],
+            );
+        }
+        await conn.commit();
+        return { result: 'completed' };
+    } catch (error) {
+        try {
+            await conn.rollback();
+        } catch (rollbackError) {
+            console.error('Gagal rollback konfirmasi penerimaan order:', rollbackError);
+        }
+        throw error;
+    } finally {
+        conn.release();
+    }
 }
 
 const getCookie = (req, name) => {
@@ -24,6 +172,50 @@ const getCookie = (req, name) => {
     }
     return null;
 };
+
+async function verifyTokenIfPresent(req, res, next) {
+    const authorization = req.headers.authorization || '';
+    const bearerToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : null;
+    let cookieToken = null;
+    try {
+        cookieToken = getCookie(req, 'nl_jwt');
+    } catch (error) {
+        if (bearerToken) {
+            return res.status(401).json({ success: false, message: 'Token login tidak valid' });
+        }
+        req.user = null;
+        return next();
+    }
+    const token = bearerToken || cookieToken;
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+    let authData;
+    try {
+        authData = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+        if (bearerToken) {
+            return res.status(401).json({ success: false, message: 'Token login tidak valid atau sudah kedaluwarsa' });
+        }
+        req.user = null;
+        return next();
+    }
+    try {
+        const [[user]] = await db.execute(
+            'SELECT auth_version FROM user_northline WHERE id = ?',
+            [authData.id]
+        );
+        if (!user || (authData.authVersion || 0) !== user.auth_version) {
+            return res.status(401).json({ success: false, message: 'Sesi berakhir, silakan login ulang' });
+        }
+        req.user = authData;
+        return next();
+    } catch (error) {
+        console.error('Gagal memvalidasi sesi tracking:', error);
+        return res.status(500).json({ success: false, message: 'Gagal memvalidasi sesi login' });
+    }
+}
 
 router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -89,8 +281,7 @@ router.post('/login', async (req, res) => {
             last_login_ua: ua
         };
 
-        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        setAuthCookies(res, token);
 
         return res.status(200).json({
             message: "Login sukses!",
@@ -145,12 +336,7 @@ const verifyToken = async (req, res, next) => {
 };
 
 router.post('/logout', (req, res) => {
-    res.clearCookie('nl_jwt', { path: '/' });
-    res.clearCookie('session', { path: '/' });
-    res.clearCookie('user_session', { path: '/' });
-    res.clearCookie('logged_in', { path: '/' });
-    res.clearCookie('nrt_aff', { path: '/' });
-    res.clearCookie('nl_aff', { path: '/' });
+    clearAuthCookies(res);
     res.json({ success: true, message: "Logout berhasil" });
 });
 
@@ -588,10 +774,7 @@ router.post('/northpay/settings/logout-all', verifyToken, async (req, res) => {
             'UPDATE user_northline SET csrf_token=?, auth_version = auth_version + 1, northpay_device_token=NULL, northpay_biometric_enabled=0 WHERE id=?',
             [newCsrf, req.user.id]
         );
-        res.clearCookie('nl_jwt', { path: '/' });
-        res.clearCookie('session', { path: '/' });
-        res.clearCookie('user_session', { path: '/' });
-        res.clearCookie('logged_in', { path: '/' });
+        clearAuthCookies(res);
         res.json({ success: true, message: 'Berhasil logout dari semua perangkat' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -649,7 +832,7 @@ router.post('/northpay/settings/pin/verify', verifyToken, async (req, res) => {
 router.get('/api/user/profile', verifyToken, async (req, res) => {
     const loggedInUsername = req.user.username; 
 
-    const query = "SELECT username, name, email, phone, gender, avatar, created_at FROM user_northline WHERE username = ?";
+    const query = "SELECT username, name, email, phone, gender, birth_date, avatar, created_at FROM user_northline WHERE username = ?";
     
     db.query(query, [loggedInUsername], (err, results) => {
         if (err) {
@@ -668,18 +851,58 @@ router.get('/api/user/profile', verifyToken, async (req, res) => {
     });
 });
 
+function normalizeBirthDate(value) {
+    if (value === undefined) return { provided: false };
+    if (value === null || value === '') return { provided: true, value: null };
+
+    const raw = String(value).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return { error: "Tanggal lahir tidak valid" };
+    }
+
+    const [y, m, d] = raw.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) {
+        return { error: "Tanggal lahir tidak valid" };
+    }
+
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    if (dt.getTime() > today) {
+        return { error: "Tanggal lahir tidak boleh di masa depan" };
+    }
+    const minDate = Date.UTC(now.getUTCFullYear() - 120, now.getUTCMonth(), now.getUTCDate());
+    if (dt.getTime() < minDate) {
+        return { error: "Tanggal lahir tidak valid" };
+    }
+
+    return { provided: true, value: raw };
+}
+
 router.put('/user/profile/update', verifyToken, async (req, res) => {
     try {
         const { name, email, phone, gender } = req.body;
         const userId = req.user.id;
 
-        await db.execute(
-            "UPDATE user_northline SET name = ?, email = ?, phone = ?, gender = ? WHERE id = ?",
-            [name, email, phone, gender, userId]
-        );
-        
+        const birth = normalizeBirthDate(req.body.birth_date);
+        if (birth.error) {
+            return res.status(400).json({ success: false, message: birth.error });
+        }
+
+        if (birth.provided) {
+            await db.execute(
+                "UPDATE user_northline SET name = ?, email = ?, phone = ?, gender = ?, birth_date = ? WHERE id = ?",
+                [name, email, phone, gender, birth.value, userId]
+            );
+        } else {
+            await db.execute(
+                "UPDATE user_northline SET name = ?, email = ?, phone = ?, gender = ? WHERE id = ?",
+                [name, email, phone, gender, userId]
+            );
+        }
+
         await logNotification(userId, "Profile Updated", "Your profile information has been updated.");
-        
+
         res.json({ success: true, message: "Profile updated" });
     } catch (err) {
         console.error("Error update profile:", err);
@@ -728,7 +951,7 @@ router.get('/me', async (req, res) => {
                 return res.status(200).json({ success: false, user: null });
             }
             const [users] = await db.execute(
-                'SELECT id, username, name, email, phone, gender, created_at, avatar, address, last_login_ip, last_login_ua, seller, role FROM user_northline WHERE id = ?',
+                'SELECT id, username, name, email, phone, gender, birth_date, created_at, avatar, address, last_login_ip, last_login_ua, seller, role FROM user_northline WHERE id = ?',
                 [authData.id]
             );
             if (users.length === 0) {
@@ -744,6 +967,14 @@ router.get('/me', async (req, res) => {
 router.post('/check-phone-otp', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ message: "Nomor handphone wajib diisi!" });
+
+    const waClient = req.waitWaClient ? await req.waitWaClient(20000) : req.whatsappClient;
+    if (!waClient) {
+        return res.status(503).json({
+            success: false,
+            message: "WhatsApp sedang tersambung ulang, coba kirim ulang OTP dalam 30 detik."
+        });
+    }
 
     try {
         const [users] = await db.execute('SELECT id, username, phone FROM user_northline WHERE phone = ?', [phone]);
@@ -765,7 +996,7 @@ router.post('/check-phone-otp', async (req, res) => {
         const targetId = `${formattedPhone}@c.us`;
 
         const msgText = `*Northline Security Code*\n\nKode verifikasi Anda adalah: *${otpCode}*.\nKode ini rahasia dan berlaku selama 3 menit.`;
-        await client.sendMessage(targetId, msgText);
+        await waClient.sendMessage(targetId, msgText);
 
         return res.status(200).json({
             message: "OTP berhasil dikirim ke WhatsApp!",
@@ -806,19 +1037,17 @@ router.post('/send-otp-only', async (req, res) => {
         const secretOtp = Math.floor(
             100000 + Math.random() * 900000
         ).toString();
-        tempOtpStorage[formattedPhone] = {
-            otp: secretOtp,
-            expires: Date.now() + (5 * 60 * 1000), 
-            cooldown: Date.now() + (60 * 1000) 
-        };
         const messageText =
 `*Northline Authentication*
 Kode verifikasi kamu adalah: *${secretOtp}*
 Jangan bagikan kode ini ke siapa pun.`;
-        if (!req.whatsappClient) {
-            throw new Error("WhatsApp bot offline!");
+        const waBot = req.waitWaClient ? await req.waitWaClient(20000) : req.whatsappClient;
+        if (!waBot) {
+            return res.status(503).json({
+                success: false,
+                message: "WhatsApp sedang tersambung ulang, coba kirim ulang OTP dalam 30 detik."
+            });
         }
-        const waBot = req.whatsappClient;
         console.log(`[OTP] Checking number ${formattedPhone}`);
         const numberDetails = await waBot.getNumberId(formattedPhone);
         if (!numberDetails) {
@@ -832,16 +1061,21 @@ Jangan bagikan kode ini ke siapa pun.`;
             linkPreview: false,
             sendSeen: false
         });
+        tempOtpStorage[formattedPhone] = {
+            otp: secretOtp,
+            expires: Date.now() + (5 * 60 * 1000), 
+            cooldown: Date.now() + (60 * 1000) 
+        };
         console.log(`[OTP] OTP terkirim ke ${formattedPhone}`);
         return res.status(200).json({
             success: true,
             message: "OTP berhasil dikirim!"
         });
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({
+        console.error("[OTP] Gagal kirim OTP:", error);
+        return res.status(502).json({
             success: false,
-            message: error.message || "Internal server error"
+            message: "Gagal mengirim OTP lewat WhatsApp. Coba lagi sebentar lagi."
         });
     }
 });
@@ -949,6 +1183,11 @@ router.post('/register-complete', async (req, res) => {
             [username, email, hashedPassword, formattedPhone, '/frontend/public/icons/default.png']
         );
 
+        const guestTokens = getGuestTokensFromRequest(req);
+        const migrationChoice = normalizeGuestOrderMigrationDecision(req.body?.guestOrderMigration || req.body?.migrateGuestOrders || req.body?.moveGuestOrders);
+        const migrated = guestTokens.length > 0 && (migrationChoice === null || migrationChoice === 'move')
+            ? await migrateGuestOrdersToUser(result.insertId, guestTokens)
+            : { migrated: 0, skipped: guestTokens.length || 0 };
 
         const csrfToken = crypto.randomBytes(32).toString('hex');
         await db.execute('UPDATE user_northline SET csrf_token=? WHERE id=?', [csrfToken, result.insertId]);
@@ -959,8 +1198,7 @@ router.post('/register-complete', async (req, res) => {
         );
 
         const userPayload = { id: result.insertId, username, email, phone: formattedPhone };
-        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        setAuthCookies(res, token);
 
         return res.status(201).json({
             success: true,
@@ -968,7 +1206,11 @@ router.post('/register-complete', async (req, res) => {
             userId: result.insertId,
             token: token,
             csrfToken,
-            user: userPayload
+            user: userPayload,
+            migratedGuestOrders: migrated.migrated || 0,
+            guestMigrationMessage: migrated.migrated > 0
+                ? `Kami memindahkan ${migrated.migrated} pesanan dari guest ke akun kamu.`
+                : "Tidak ada pesanan guest yang perlu dipindahkan."
         });
 
     } catch (error) {
@@ -1000,6 +1242,12 @@ router.post('/login-otp-success', async (req, res) => {
 
         const user = users[0];
 
+        const guestTokens = getGuestTokensFromRequest(req);
+        const migrationChoice = normalizeGuestOrderMigrationDecision(req.body?.guestOrderMigration || req.body?.migrateGuestOrders || req.body?.moveGuestOrders);
+        const migrated = guestTokens.length > 0 && (migrationChoice === null || migrationChoice === 'move')
+            ? await migrateGuestOrdersToUser(user.id, guestTokens)
+            : { migrated: 0, skipped: guestTokens.length || 0 };
+
         const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.connection?.remoteAddress || 'unknown';
         const ua = req.headers['user-agent'] || '';
 
@@ -1014,8 +1262,7 @@ router.post('/login-otp-success', async (req, res) => {
             JWT_SECRET,            { expiresIn: '1d' }
         );
 
-        res.cookie('nl_jwt', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-        res.cookie('logged_in', '1', { httpOnly: false, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+        setAuthCookies(res, token);
 
         console.log(`[Bypass Login] User ${user.username} berhasil login langsung via OTP WhatsApp.`);
 
@@ -1032,7 +1279,11 @@ router.post('/login-otp-success', async (req, res) => {
                 avatar: user.avatar,
                 last_login_ip: ip,
                 last_login_ua: ua
-            }
+            },
+            migratedGuestOrders: migrated.migrated || 0,
+            guestMigrationMessage: migrated.migrated > 0
+                ? `Kami memindahkan ${migrated.migrated} pesanan dari guest ke akun kamu.`
+                : "Tidak ada pesanan guest yang perlu dipindahkan."
         });
 
     } catch (error) {
@@ -1070,8 +1321,6 @@ router.get('/products/:productId/comments', async (req, res) => {
         const formattedComments = rows.map(row => ({
             id: row.id,
             productId: row.product_id,
-            orderId: row.order_id,
-            userId: row.user_id,
             userName: row.username,
             userAvatar: row.user_avatar,
             rating: row.rating,
@@ -1254,50 +1503,29 @@ router.post('/checkout', async (req, res) => {
 
 router.post('/confirm-manual-payment', verifyToken, async (req, res) => {
     try {
-        const { orderId } = req.body; 
-
-        const [orderCheck] = await db.query("SELECT user_id, status FROM transactions WHERE order_id = ?", [orderId]);
+        const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId.trim() : '';
+        if (!orderId || orderId.length > 100) {
+            return res.status(400).json({ success: false, message: "ID pesanan tidak valid" });
+        }
+        const [orderCheck] = await db.query(
+            "SELECT user_id, status FROM transactions WHERE order_id = ?",
+            [orderId],
+        );
         if (orderCheck.length === 0) {
             return res.status(404).json({ success: false, message: "Order tidak ditemukan" });
         }
-        if (orderCheck[0].user_id !== req.user.id) {
+        if (Number(orderCheck[0].user_id) !== Number(req.user.id)) {
             return res.status(403).json({ success: false, message: "Forbidden" });
         }
         if (orderCheck[0].status === 'success') {
             return res.json({ success: true, message: "Pesanan ini sudah dikonfirmasi sebelumnya." });
         }
-
-        await db.query("UPDATE transactions SET status = 'success' WHERE order_id = ?", [orderId]);
-        await grantCommission(orderId).catch(e => console.error('grantCommission:', e.message));
-        
-        const [rows] = await db.query(`
-            SELECT t.product_name, t.chosen_size, t.chosen_color, t.total_price, 
-                   u.username as customer_name, u.phone as customer_phone
-            FROM transactions t
-            JOIN users u ON t.user_id = u.id
-            WHERE t.order_id = ?
-        `, [orderId]);
-
-        if (rows.length > 0) {
-            const orderData = rows[0];
-            const client = global.whatsappClient;
-
-            let rawPhone = orderData.customer_phone;
-            if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.slice(1);
-            const targetWhatsAppId = `${rawPhone}@c.us`;
-
-            const message = `*NORTHLINE ORDER CONFIRMED* 🏎️🔥\n\n` +
-                            `Halo Bro *${orderData.customer_name}*,\n` +
-                            `Pembayaran manual untuk Order ID *${orderId}* telah kami verifikasi!\n\n` +
-                            `*DETAIL ITEM BELANJAAN:* \n` +
-                            `👕 Produk: ${orderData.product_name}\n` +
-                            `💰 Total Bayar: *Rp ${parseInt(orderData.total_price).toLocaleString('id-ID')}*\n\n` +
-                            `Status: *LUNAS (PAID)* ✅`;
-
-            await client.sendMessage(targetWhatsAppId, message);
-            res.json({ success: true, message: "Manual payment confirmed & WA sent!" });
-        }
+        return res.status(409).json({
+            success: false,
+            message: "Pembayaran belum dapat dianggap lunas dari konfirmasi pelanggan. Pesanan perlu diverifikasi admin.",
+        });
     } catch (error) {
+        console.error("Manual payment confirmation failed:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -1352,29 +1580,99 @@ router.get('/user-orders/:userId', verifyToken, async (req, res) => {
     }
 });
 
-router.post('/orders/confirm-receipt', verifyToken, async (req, res) => {
-    try {
-        const { orderId } = req.body || {};
-        if (!orderId) return res.status(400).json({ success: false, message: "orderId wajib diisi" });
+router.get('/guest-orders', async (req, res) => {
+    const guestToken = req.headers['x-guest-order-token'];
+    if (typeof guestToken !== 'string' || !/^[a-f0-9]{64}$/i.test(guestToken)) {
+        return res.status(401).json({ success: false, message: "Token pesanan guest tidak valid" });
+    }
 
-        const [orders] = await db.execute(
-            'SELECT order_id, delivery_status FROM transactions WHERE order_id=? AND user_id=?',
-            [orderId, req.user.id]
-        );
-        if (orders.length === 0) {
+    try {
+        const guestTokenHash = crypto.createHash('sha256').update(guestToken).digest('hex');
+        const [orders] = await db.query(`
+            SELECT
+                order_id,
+                product_id,
+                product_name,
+                product_image,
+                chosen_color,
+                chosen_size,
+                chosen_model,
+                quantity,
+                total_price,
+                status AS payment_status,
+                delivery_status,
+                tracking_number,
+                tracking_courier,
+                shipped_at,
+                is_discounted,
+                estimated_arrival,
+                created_at,
+                payment_method,
+                shipping_address,
+                EXISTS(SELECT 1 FROM product_reviews pr WHERE pr.order_id = transactions.order_id AND pr.product_id = transactions.product_id) AS reviewed
+            FROM transactions
+            WHERE user_id IS NULL AND guest_access_token_hash = ?
+            ORDER BY created_at DESC
+        `, [guestTokenHash]);
+
+        res.json({ success: true, orders });
+    } catch (error) {
+        console.error("Error Get Guest Orders:", error);
+        res.status(500).json({ success: false, message: "Gagal memuat pesanan guest" });
+    }
+});
+
+router.post('/guest-orders/confirm-receipt', async (req, res) => {
+    const guestToken = req.headers['x-guest-order-token'];
+    const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId.trim() : '';
+    if (!orderId || orderId.length > 100) {
+        return res.status(400).json({ success: false, message: "orderId tidak valid" });
+    }
+    if (typeof guestToken !== 'string' || !/^[a-f0-9]{64}$/i.test(guestToken)) {
+        return res.status(401).json({ success: false, message: "Token pesanan guest tidak valid" });
+    }
+
+    try {
+        const guestTokenHash = crypto.createHash('sha256').update(guestToken).digest('hex');
+        const { result } = await completeOrderReceipt({ orderId, guestTokenHash });
+        if (result === 'not_found') {
             return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
         }
-        const ds = String(orders[0].delivery_status || '').toLowerCase();
-        if (ds.includes('selesai')) {
+        if (result === 'not_paid') {
+            return res.status(409).json({ success: false, message: "Pesanan belum dibayar" });
+        }
+        if (result === 'already_complete') {
             return res.json({ success: true, message: "Pesanan sudah selesai" });
         }
-        if (!ds.includes('dikirim')) {
+        if (result === 'not_shipped') {
             return res.status(400).json({ success: false, message: "Pesanan belum dikirim, tidak bisa dikonfirmasi" });
         }
-        await db.execute(
-            "UPDATE transactions SET delivery_status='Pesanan Selesai' WHERE order_id=? AND user_id=?",
-            [orderId, req.user.id]
-        );
+        return res.json({ success: true, message: "Pesanan diterima, terima kasih!" });
+    } catch (error) {
+        console.error("Guest confirm receipt error:", error);
+        return res.status(500).json({ success: false, message: "Gagal mengonfirmasi pesanan" });
+    }
+});
+
+router.post('/orders/confirm-receipt', verifyToken, async (req, res) => {
+    try {
+        const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId.trim() : '';
+        if (!orderId || orderId.length > 100) {
+            return res.status(400).json({ success: false, message: "orderId tidak valid" });
+        }
+        const { result } = await completeOrderReceipt({ orderId, userId: req.user.id });
+        if (result === 'not_found') {
+            return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
+        }
+        if (result === 'not_paid') {
+            return res.status(409).json({ success: false, message: "Pesanan belum dibayar" });
+        }
+        if (result === 'already_complete') {
+            return res.json({ success: true, message: "Pesanan sudah selesai" });
+        }
+        if (result === 'not_shipped') {
+            return res.status(400).json({ success: false, message: "Pesanan belum dikirim, tidak bisa dikonfirmasi" });
+        }
         res.json({ success: true, message: "Pesanan diterima, terima kasih!" });
     } catch (err) {
         console.error("confirm receipt error:", err);
@@ -1456,7 +1754,13 @@ router.post('/send-otp-for-password', verifyToken, async (req, res) => {
         
         tempOtpStorage[phone] = { otp: secretOtp, expires: Date.now() + (5 * 60 * 1000) };
 
-        const waBot = req.whatsappClient;
+        const waBot = req.waitWaClient ? await req.waitWaClient(20000) : req.whatsappClient;
+        if (!waBot) {
+            return res.status(503).json({
+                success: false,
+                message: "WhatsApp sedang tersambung ulang, coba kirim ulang OTP dalam 30 detik."
+            });
+        }
         const messageText = `*Northline Security*\n\nYour verification code is: *${secretOtp}*\nDo not share this code with anyone.`;
         
         let formattedPhone = phone.replace(/[^0-9]/g, '');
@@ -1832,20 +2136,7 @@ router.post('/user/face-id/authenticate/complete', async (req, res) => {
         const token = jwt.sign({ id: user.id, username: user.username, authVersion: user.auth_version || 0 }, JWT_SECRET, { expiresIn: '1d' });
 
         // Set cookie
-        res.cookie('nl_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 24 * 60 * 60 * 1000
-        });
-        res.cookie('logged_in', '1', {
-            httpOnly: false,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 24 * 60 * 60 * 1000
-        });
+        setAuthCookies(res, token);
 
         webauthnChallenges.delete(user.id);
 
@@ -1989,11 +2280,11 @@ router.get('/user/qr-login/status/:sessionId', async (req, res) => {
 // (pindah ke routes/ai.js)
 // ===========================================
 
-router.get('/tracking/:orderId', async (req, res) => {
+router.get('/tracking/:orderId', verifyTokenIfPresent, async (req, res) => {
     try {
         const { orderId } = req.params;
         const [orders] = await db.query(
-            `SELECT t.order_id, t.product_id, t.product_name, t.product_image,
+            `SELECT t.order_id, t.user_id, t.product_id, t.product_name, t.product_image,
                 t.chosen_color, t.chosen_size, t.chosen_model, t.quantity,
                 t.total_price, t.status AS payment_status, t.delivery_status,
                 t.tracking_number, t.tracking_courier, t.shipped_at,
@@ -2004,6 +2295,25 @@ router.get('/tracking/:orderId', async (req, res) => {
         if (orders.length === 0) {
             return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
         }
+        if (orders[0].user_id === null) {
+            const guestToken = req.headers['x-guest-order-token'];
+            if (typeof guestToken !== 'string' || !/^[a-f0-9]{64}$/i.test(guestToken)) {
+                return res.status(401).json({ success: false, message: "Token pesanan guest tidak valid" });
+            }
+            const guestTokenHash = crypto.createHash('sha256').update(guestToken).digest('hex');
+            const [authorizedOrders] = await db.query(
+                'SELECT order_id FROM transactions WHERE order_id=? AND user_id IS NULL AND guest_access_token_hash=? LIMIT 1',
+                [orderId, guestTokenHash]
+            );
+            if (authorizedOrders.length === 0) {
+                return res.status(403).json({ success: false, message: "Tidak memiliki akses ke pesanan ini" });
+            }
+        } else if (!req.user) {
+            return res.status(401).json({ success: false, message: "Login diperlukan untuk melihat tracking pesanan ini" });
+        } else if (Number(orders[0].user_id) !== Number(req.user.id)) {
+            return res.status(403).json({ success: false, message: "Tidak memiliki akses ke pesanan ini" });
+        }
+        delete orders[0].user_id;
         const [events] = await db.query(
             "SELECT id, order_id, status, description, location, lat, lng, created_at FROM tracking_events WHERE order_id = ? ORDER BY id ASC",
             [orderId],

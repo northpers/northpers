@@ -89,6 +89,19 @@
     </div>
 
     <script>
+        async function checkLoggedIn() {
+            try {
+                var res = await fetch('/api/auth/me', {
+                    credentials: 'same-origin'
+                });
+                var data = await res.json();
+                if (data.success && data.user && data.user.role === 'admin') {
+                    window.location.href = '/AppNorthAdmin';
+                }
+            } catch (e) {}
+        }
+        checkLoggedIn();
+
         var eyeOpen = false;
         var toggleBtn = document.getElementById('toggle-password');
         if (toggleBtn) toggleBtn.addEventListener('click', function () {
@@ -111,6 +124,7 @@
                 var res = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ username: username, password: password })
                 });
                 var data = await res.json();

@@ -9,6 +9,8 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@github/copilot-sdk": "^1.0.22",
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",

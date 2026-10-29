@@ -45,6 +45,18 @@ function injectDataToUI(data) {
   } else {
   }
 
+  const birthdateInput = document.getElementById("user-birthdate");
+  if (birthdateInput) {
+    const raw = data.birth_date ? String(data.birth_date).trim() : "";
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    birthdateInput.value = match ? `${match[1]}-${match[2]}-${match[3]}` : "";
+    if (!birthdateInput.max) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      birthdateInput.max = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    }
+  }
+
   const genderRadios = document.getElementsByName("gender");
 
   if (data.gender && data.gender.trim() !== "") {
@@ -350,6 +362,7 @@ async function fetchUserData() {
         email: apiUser.email || "",
         phone: apiUser.phone || "",
         gender: apiUser.gender || "",
+        birth_date: apiUser.birth_date || "",
         avatar: apiUser.avatar || "",
         created_at:
           apiUser.created_at || apiUser.createdAt || new Date().toISOString(),
@@ -393,11 +406,14 @@ async function updateUserProfile(event) {
     'input[name="gender"]:checked',
   )?.value;
 
+  const birthdateInput = document.getElementById("user-birthdate");
+
   const updatedPayload = {
     name: document.getElementById("user-fullname").value,
     email: document.getElementById("user-email").value,
     phone: document.getElementById("user-phone").value,
     gender: selectedGender,
+    birth_date: birthdateInput ? birthdateInput.value : "",
   };
 
   try {
@@ -415,9 +431,12 @@ async function updateUserProfile(event) {
 
       await fetchUserData();
     } else {
-      showIosModal(
-        "Gagal mengupdate profile!, Server sedang sibuk",
-      );
+      let message = "Gagal mengupdate profile!, Server sedang sibuk";
+      try {
+        const err = await response.json();
+        if (err && err.message) message = err.message;
+      } catch (parseError) {}
+      showIosModal(message);
     }
   } catch (error) {
     console.error("Error Updating Profile:", error);
@@ -708,6 +727,7 @@ function switchAccountTab(tabName) {
     profileSection.classList.remove("hidden");
   } else if (tabName === "password" && passwordSection) {
     passwordSection.classList.remove("hidden");
+    refreshSuggestedPassword();
   } else if (tabName === "notif" && notifSection) {
     notifSection.classList.remove("hidden");
     markNotifRead();
@@ -943,7 +963,7 @@ function renderOrders() {
       '</div>' +
 
       (o.payment_status === 'pending' ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
-        '<button class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Bayar Sekarang</button>' +
+        '<button onclick="window.retryPayment(\'' + escapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Bayar Sekarang</button>' +
       '</div>' : '') +
       (o.payment_status === 'cancelled' ? '<div class="px-3 py-2 border-t border-gray-100 text-center text-[10px] text-red-400">Pesanan dibatalkan</div>' : '') +
       (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('dikirim') ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
@@ -1053,13 +1073,46 @@ function trackingMapHtml(order) {
     '</div></div>';
 }
 
-function drawTrackingMap(order, events, origin) {
+const TRACK_OSRM = 'https://router.project-osrm.org/route/v1/driving/';
+const TRACK_ROUTE_CACHE = {};
+const TRACK_TRUCK_ICON = 'https://img.icons8.com/?size=100&id=t5k8wbKOBK1J&format=png&color=DF414F';
+
+function trackingRouteKey(coords) {
+  return coords.map(c => c[0].toFixed(5) + ',' + c[1].toFixed(5)).join(';');
+}
+
+async function fetchTrackingRoadRoute(coords) {
+  if (!coords || coords.length < 2) return null;
+  const key = trackingRouteKey(coords);
+  if (TRACK_ROUTE_CACHE[key]) return TRACK_ROUTE_CACHE[key];
+  const url = TRACK_OSRM + coords.map(c => c[1].toFixed(6) + ',' + c[0].toFixed(6)).join(';')
+    + '?overview=full&geometries=geojson';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.routes || !data.routes.length) return null;
+    const line = (data.routes[0].geometry || {}).coordinates;
+    if (!line || line.length < 2) return null;
+    const path = line.map(c => [c[1], c[0]]);
+    TRACK_ROUTE_CACHE[key] = path;
+    return path;
+  } catch (e) {
+    return null;
+  }
+}
+
+function truckIconHtml() {
+    return '<div style="background:white;border:2px solid #DF414F;border-radius:50px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;padding:2px;"><img src="' + TRACK_TRUCK_ICON + '"style="display:block;width:20px;height:20px;" alt="truk pengiriman"></div>';
+}
+
+async function drawTrackingMap(order, events, origin) {
   const container = document.getElementById('tracking-map-container');
   const dest = parseCoordinatesFromAddress(order.shipping_address);
   const points = [];
   if (origin) points.push({ lat: origin.lat, lng: origin.lng, kind: 'origin', label: 'Toko Northline' });
   (events || []).forEach((e, i) => {
-    if (e.lat != null && e.lng != null) points.push({ lat: Number(e.lat), lng: Number(e.lng), kind: 'event', index: i + 1, label: e.status });
+    if (e.lat != null && e.lng != null) points.push({ lat: Number(e.lat), lng: Number(e.lng), kind: 'event', index: i + 1, label: e.status, location: e.location, time: e.created_at });
   });
   if (dest) points.push({ lat: dest.lat, lng: dest.lng, kind: 'dest', label: 'Alamat Penerima' });
 
@@ -1075,7 +1128,19 @@ function drawTrackingMap(order, events, origin) {
 
   const coordPoints = points.map(p => [p.lat, p.lng]);
 
-  points.forEach(p => {
+  let lastEventIdx = -1;
+  points.forEach((p, i) => { if (p.kind === 'event') lastEventIdx = i; });
+
+  points.forEach((p, i) => {
+    if (p.kind === 'event' && i === lastEventIdx) {
+      const icon = L.divIcon({ html: truckIconHtml(), className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+      L.marker([p.lat, p.lng], { icon, zIndexOffset: 1000 }).addTo(map).bindPopup(
+        '<b>' + escapeHtml(p.label) + '</b>' +
+        (p.location ? '<br>' + escapeHtml(p.location) : '') +
+        (p.time ? '<br><span style="font-size:11px;color:#6b7280">' + new Date(p.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</span>' : '')
+      );
+      return;
+    }
     let iconHtml = null;
     if (p.kind === 'origin') {
       iconHtml = '<div style="background:#16a34a;border:2px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>';
@@ -1085,20 +1150,45 @@ function drawTrackingMap(order, events, origin) {
       iconHtml = '<div style="background:#DF414F;border:2px solid #fff;border-radius:50%;width:18px;height:18px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)">' + p.index + '</div>';
     }
     const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
-    L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup('<b>' + escapeHtml(p.label) + '</b>');
+    L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(
+      '<b>' + escapeHtml(p.label) + '</b>' + (p.location ? '<br>' + escapeHtml(p.location) : '')
+    );
   });
 
-  if (coordPoints.length >= 2) {
-    L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.85, dashArray: '1,8' }).addTo(map);
-    L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.9 }).addTo(map);
+  let routeLayers = [];
+  function drawRoute(path) {
+    routeLayers.forEach(l => map.removeLayer(l));
+    routeLayers = [
+      L.polyline(path, { color: '#DF414F', weight: 4, opacity: 1, lineJoin: 'round' })
+    ];
+    routeLayers.forEach(l => l.addTo(map));
   }
 
-  map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
+  if (coordPoints.length >= 2) {
+    map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
+    drawRoute(coordPoints);
+    const road = await fetchTrackingRoadRoute(coordPoints);
+    if (road && trackingMapInstance === map) {
+      drawRoute(road);
+      map.fitBounds(L.latLngBounds(road).pad(0.2));
+    }
+  } else {
+    map.fitBounds(L.latLngBounds(coordPoints).pad(0.6));
+  }
+
+  map.whenReady(function () {
+    setTimeout(function () { map.invalidateSize(); }, 60);
+    setTimeout(function () { map.invalidateSize(); }, 300);
+  });
 }
 
 async function openTrackingMap(orderId) {
   try {
-    const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), { credentials: 'include' });
+    const guestOrderToken = window.getGuestOrderTokenForOrder?.(orderId);
+    const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), {
+      credentials: 'include',
+      headers: guestOrderToken ? { 'X-Guest-Order-Token': guestOrderToken } : {},
+    });
     const data = await res.json();
     if (!data.success) {
       showIosModal(data.message || 'Gagal memuat tracking');
@@ -1757,6 +1847,33 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+function generateRandomPassword(length = 14) {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*";
+  const all = upper + lower + digits + symbols;
+  const rand = (str) => str[Math.floor(Math.random() * str.length)];
+  const parts = [rand(upper), rand(lower), rand(digits), rand(symbols)];
+  for (let i = parts.length; i < length; i++) {
+    parts.push(rand(all));
+  }
+  for (let i = parts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [parts[i], parts[j]] = [parts[j], parts[i]];
+  }
+  return parts.join("");
+}
+
+function refreshSuggestedPassword() {
+  const password = generateRandomPassword();
+  const newPassEl = document.getElementById("new-password");
+  const confirmPassEl = document.getElementById("confirm-password");
+  if (newPassEl) newPassEl.value = password;
+  if (confirmPassEl) confirmPassEl.value = password;
+  validateOtpButton();
+}
 
 const otpBtn = document.getElementById("send-otp-btn");
 let otpCooldown = false;

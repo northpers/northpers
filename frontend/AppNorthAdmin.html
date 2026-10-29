@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
-    <title>Northline Admin</title>
+    <title>Northline NPanel</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -32,7 +33,7 @@
         .sidebar nav a.active{background:#f9fafb;}
         .sidebar nav a img{width:18px;height:18px;opacity:.7}
         .sidebar nav a.active img{opacity:1}
-        .sidebar .logout-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:#4b5563;text-decoration:none;border-top:1px solid #e5e7eb;transition:all .15s;cursor:pointer}
+        .sidebar .logout-item{display:flex;align-items:center;gap:10px;font-size:13px;color:#4b5563;text-decoration:none;transition:all .15s;cursor:pointer}
         .sidebar .logout-item:hover{background:#f9fafb;color:#ef4444}
         .sidebar .logout-item img{width:18px;height:18px}
         .sidebar-close{display:none}
@@ -45,8 +46,17 @@
         .hamburger img{width:18px;height:18px}
         .topbar h1{font-size:16px;font-weight:600;color:#111;line-height:1.2}
         .breadcrumb{font-size:11px;color:#9ca3af;margin-top:1px}
+        .admin-search-wrap{position:relative;flex:1;max-width:560px;min-width:120px}
+        .admin-search-input{width:100%;height:36px;border:1px solid #d1d5db;background:#f9fafb;padding:0 12px;font-size:12px}
+        .admin-search-input:focus{background:#fff}
+        .admin-search-results{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:80;display:none;max-height:min(70vh,620px);overflow-y:auto;background:#f3f4f6;border:1px solid #d1d5db;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:8px}
+        .admin-search-results.show{display:block}
+        .admin-search-results .card{padding:10px;margin-bottom:8px}
+        .admin-search-results .card:last-child{margin-bottom:0}
+        .admin-search-results .section-title{margin-bottom:6px}
+        .admin-search-results table td{padding:7px 8px;font-size:11px}
+        .admin-search-results .btn{white-space:nowrap}
         .admin-info{display:flex;align-items:center;gap:12px;flex-shrink:0}
-        .admin-avatar{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fef2f2;border:1px solid #DF414F;color:#DF414F;font-size:12px;font-weight:700}
         .admin-detail{display:flex;flex-direction:column;line-height:1.3}
         .admin-name{font-size:13px;font-weight:600;color:#111}
         .admin-role{font-size:10px;color:#9ca3af}
@@ -103,9 +113,108 @@
         .filter-bar input{flex:1;min-width:200px}
         .star{color:#f59e0b;font-size:14px}
         .star-empty{color:#d1d5db;font-size:14px}
-        .wa-connected{color:#16a34a;font-weight:600;font-size:12px}
-        .wa-disconnected{color:#ef4444;font-weight:600;font-size:12px}
         .loading-state{text-align:center;padding:60px 0;color:#9ca3af;font-size:14px}
+        @keyframes google-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+                /* ===== NPinjam Scanner =====
+           Warna: netral sepenuhnya. Border selalu gray-200, latar selalu
+           gray-100 / putih. Merah Northline (#DF414F) HANYA dipakai pada
+           tombol - tidak lagi untuk border, latar, badge, bar, atau header.
+           Semua panel datar: tanpa border-radius, tanpa box-shadow, tanpa
+           gradient. */
+        .nps-page{background:#f3f4f6;min-height:100%;padding:0 0 32px}
+        .nps-head{background:white;border:1px solid #e5e7eb;padding:16px 20px;margin-bottom:20px}
+        .nps-head h1{font-size:17px;font-weight:700;margin:0;color:#111827;letter-spacing:-.2px}
+        .nps-head p{font-size:12px;margin:4px 0 0;color:#6b7280;line-height:1.5}
+        .nps-grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:20px;align-items:start}
+        .nps-panel{background:#fff;border:1px solid #e5e7eb;padding:16px;margin-bottom:20px}
+        .nps-panel:last-child{margin-bottom:0}
+        .nps-h{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#374151;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid #e5e7eb}
+        .nps-sub{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin:18px 0 8px}
+        .nps-drop{border:1px #d1d5db;background:#f3f4f6;padding:30px 18px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+        .nps-drop:hover,.nps-drag{border-color:#9ca3af;background:#e5e7eb}
+        .nps-drop-title{font-size:14px;font-weight:600;color:#111827;margin-bottom:4px}
+        .nps-drop-hint{font-size:11px;color:#6b7280}
+        .nps-preview{display:block;max-width:100%}
+        .nps-preview img{max-width:100%;max-height:300px;display:block;border:1px solid #e5e7eb}
+        .nps-steps{list-style:none;padding:0;margin:0}
+        .nps-steps li{display:flex;align-items:center;gap:10px;font-size:12px;color:#9ca3af;padding:6px 0}
+        .nps-steps li.done{color:#374151}
+        .nps-steps li.active{color:#111827;font-weight:600}
+        .nps-dot{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:1px solid #d1d5db;color:#9ca3af;background:#fff}
+        .nps-steps li.done .nps-dot{background:#374151;border-color:#374151;color:#fff}
+        .nps-steps li.active .nps-dot{border-color:#6b7280;color:#374151;animation:nps-pulse 1s infinite}
+        @keyframes nps-pulse{0%,100%{background:#f3f4f6}50%{background:#e5e7eb}}
+        .nps-field{margin-bottom:10px}
+        .nps-field label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px}
+        .nps-field input,.nps-field textarea,.nps-input{width:100%;border:1px solid #e5e7eb;background:#f3f4f6;padding:8px 10px;font-size:13px;font-family:inherit;color:#111827;border-radius:0}
+        .nps-field input:focus,.nps-field textarea:focus,.nps-input:focus{outline:2px solid #9ca3af;outline-offset:-1px;border-color:#9ca3af;background:#fff}
+        .nps-field.low input,.nps-field.low textarea{border-color:#9ca3af;background:#e5e7eb}
+        .nps-field textarea{resize:vertical;min-height:56px}
+        .nps-conf{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border:1px solid #e5e7eb;color:#374151;background:#f3f4f6}
+        .nps-conf-high{background:#374151;border-color:#374151;color:#fff}
+        .nps-conf-medium{background:#e5e7eb;border-color:#e5e7eb;color:#374151}
+        .nps-conf-low{background:#fff;border-color:#d1d5db;color:#6b7280;border-style:dashed}
+        .nps-bar{height:6px;background:#e5e7eb;overflow:hidden}
+        .nps-bar span{display:block;height:100%;background:#374151}
+        .nps-bar.medium span{background:#6b7280}
+        .nps-bar.low span{background:#9ca3af}
+        /* Status (bukan keyakinan). Arahnya terbalik dari keyakinan:
+           "solid" berarti perlu tindakan, "line" berarti aman. Skala
+           keyakinan nps-conf-* tidak dipakai di sini karena solid di sana
+           artinya keyakinan tinggi - kalau dipakai untuk status, "berhasil"
+           dan "perbaiki" akan tampil sama. */
+        .nps-flag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border:1px solid #e5e7eb}
+        .nps-flag-solid{background:#374151;border-color:#374151;color:#fff}
+        .nps-flag-tint{background:#e5e7eb;border-color:#e5e7eb;color:#374151}
+        .nps-flag-line{background:#fff;border-color:#d1d5db;color:#6b7280}
+        .nps-note{padding:10px 12px;font-size:12px;margin-bottom:14px;border:1px solid #e5e7eb;background:#f3f4f6;color:#374151;line-height:1.55}
+        .nps-note-solid{background:#c93643;color:#fff}
+        .nps-note-soft{background:#e5e7eb;border-color:#e5e7eb;color:#374151}
+        .nps-note-quiet{background:#fff;border-color:#e5e7eb;color:#6b7280}
+        .nps-cand{display:block;width:100%;text-align:left;padding:9px 11px;border:1px solid #e5e7eb;background:#f3f4f6;cursor:pointer;margin-bottom:6px;font-family:inherit;transition:border-color .15s,background .15s}
+        .nps-cand:hover{border-color:#9ca3af;background:#e5e7eb}
+        .nps-cand.active{border-color:#9ca3af;background:#e5e7eb;border-left:3px solid #374151}
+        .nps-cand-addr{font-size:12px;color:#111827;font-weight:600;margin-bottom:3px;line-height:1.4}
+        .nps-cand-meta{font-size:11px;color:#6b7280}
+        .nps-map{height:340px;width:100%;border:1px solid #e5e7eb;background:#f3f4f6}
+        .nps-privacy{font-size:11px;color:#9ca3af;line-height:1.6}
+        .nps-privacy strong{color:#6b7280}
+        .nps-meta{font-size:11px;color:#9ca3af;line-height:1.6}
+        .nps-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+        .nps-kv{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:6px 0;border-bottom:1px solid #e5e7eb}
+        .nps-kv:last-child{border-bottom:0}
+        .nps-kv b{font-weight:600;color:#6b7280}
+        .nps-kv span{color:#111827;text-align:right;word-break:break-word}
+        .nps-list-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #e5e7eb}
+        .nps-list-item:last-child{border-bottom:0}
+        .nps-list-main{min-width:0}
+        .nps-list-name{font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .nps-list-sub{font-size:11px;color:#6b7280;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .nps-list-actions{display:flex;gap:6px;flex-shrink:0}
+        /* Tombol satu-satunya tempat merah Northline dipakai. */
+        .nps-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #DF414F;background:#DF414F;color:#fff;font-family:inherit;transition:background .15s,border-color .15s}
+        .nps-btn:hover{background:#c93643;border-color:#c93643}
+        .nps-btn:disabled{opacity:.45;cursor:not-allowed}
+        .nps-btn-alt{background:#f3f4f6;border-color:#e5e7eb;color:#374151}
+        .nps-btn-alt:hover{background:#e5e7eb;border-color:#d1d5db;color:#111827}
+        .nps-btn-sm{padding:5px 9px;font-size:11px}
+        .nps-empty{text-align:center;padding:28px 12px;color:#9ca3af;font-size:12px;line-height:1.6}
+        .nps-share-out{margin-top:10px;padding:10px 12px;border:1px dashed #d1d5db;background:#f3f4f6;font-size:11px;color:#374151;line-height:1.6;word-break:break-all}
+        .nps-share-out a{color:#374151;font-weight:600}
+        @media(max-width:1100px){.nps-grid{grid-template-columns:minmax(0,1fr)}}
+        @media(max-width:900px){.nps-map{height:260px}}
+        /* ===== Security Page ===== */
+        .sec-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:16px}
+        .sec-card h3{font-size:13px;font-weight:600;margin:0 0 14px 0;display:flex;align-items:center;gap:8px;color:#374151}
+        .sec-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .sec-tabs{display:flex;gap:4px;margin-bottom:16px;background:#f9fafb;padding:4px;border-radius:8px}
+        .sec-tab{padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:#6b7280;transition:all .15s;border:none;background:none}
+        .sec-tab:hover{color:#374151}
+        .sec-tab.active{background:#fff;color:#111;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+        .sec-table{width:100%;border-collapse:collapse}
+        .sec-table td,.sec-table th{padding:8px 10px;text-align:left;font-size:12px;border-bottom:1px solid #f3f4f6}
+        .sec-table th{font-weight:600;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+        .sec-label{color:#9ca3af;font-weight:500;width:120px}
         /* ===== Chat ===== */
         .chat-container{display:flex;height:calc(100vh - 160px);border:1px solid #e5e7eb;background:#fff}
         .chat-users{width:300px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;background:#fff;flex-shrink:0}
@@ -154,6 +263,10 @@
             .hamburger{display:flex}
             .content{padding:12px}
             .topbar{padding:0 12px}
+            .admin-search-wrap{max-width:none;min-width:0}
+            .admin-search-input{height:34px;padding:0 8px;font-size:11px}
+            .admin-search-results{position:fixed;top:56px;left:8px;right:8px;max-height:calc(100vh - 72px)}
+            .admin-search-results .card{overflow-x:auto}
             .admin-role{display:none}
             .two-col{grid-template-columns:1fr}
             .grid-stats{grid-template-columns:repeat(2,1fr);gap:10px}
@@ -216,19 +329,63 @@
                 <a href="#" data-page="chat"><img src="https://img.icons8.com/?size=100&id=d7iUgF8ZrDaO&format=png&color=000000"><span>Chat</span></a>
             </div>
         </div>
+        <div class="nav-group" data-group="promo">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('promo')">Promo<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="flash-discount"><img src="https://img.icons8.com/?size=100&id=12089&format=png&color=000000"><span>Setting Price</span></a>
+            </div>
+        </div>
         <div class="nav-group" data-group="platform">
             <button class="nav-group-toggle" onclick="toggleNavGroup('platform')">Platform<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
             <div class="nav-group-content">
                 <a href="#" data-page="notifications"><img src="https://img.icons8.com/?size=100&id=11642&format=png&color=000000"><span>Notifikasi</span></a>
                 <a href="#" data-page="whatsapp"><img src="https://img.icons8.com/?size=100&id=16712&format=png&color=000000"><span>WA Notifikasi</span></a>
                 <a href="#" data-page="npinjam"><img src="https://img.icons8.com/?size=100&id=215&format=png&color=000000"><span>NPinjam</span></a>
-                <a href="#" data-page="ai-models"><img src="https://img.icons8.com/?size=100&id=8830&format=png&color=000000"><span>Model AI</span></a>
-                <a href="#" data-page="login-auth"><img src="https://img.icons8.com/?size=100&id=2759&format=png&color=000000"><span>Login</span></a>
+                <a href="#" data-page="npinjam-scanner"><img src="https://img.icons8.com/?size=100&id=10481&format=png&color=000000"><span>NPinjam Scanner</span></a>
+                <a href="#" data-page="ai-models"><img src="https://img.icons8.com/?size=100&id=Imv4VIewVo4o&format=png&color=000000"><span>Model AI</span></a>
                 <a href="#" data-page="settings"><img src="https://img.icons8.com/?size=100&id=364&format=png&color=000000"><span>Pengaturan</span></a>
             </div>
         </div>
+        <div class="nav-group" data-group="database">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('database')">SQL Database Manager<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="/AppNorthDbManager.html" target="_blank" style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#4b5563;text-decoration:none;transition:all .15s;border-left:3px solid transparent"><img src="https://img.icons8.com/?size=100&id=fN6GSbdrRGnd&format=png&color=000000"><span>MySQL Manager</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="monitoring">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('monitoring')">Monitoring<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="logs"><img src="https://img.icons8.com/?size=100&id=VJlFFoarAfBc&format=png&color=000000"><span>Access Logs</span></a>
+                <a href="#" data-page="traffic"><img src="https://img.icons8.com/?size=100&id=5bNLU6ys1X6y&format=png&color=000000"><span>Traffic Analytics</span></a>
+                <a href="#" data-page="visitors"><img src="https://img.icons8.com/?size=100&id=63555&format=png&color=000000"><span>Visitors</span></a>
+                <a href="#" data-page="server"><img src="https://img.icons8.com/?size=100&id=1340&format=png&color=000000"><span>Server Status</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="domain">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('domain')">Domain<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="domain-manager"><img src="https://img.icons8.com/?size=100&id=J24KjuCfPGqG&format=png&color=000000"><span>Domain Manager</span></a>
+                <a href="#" data-page="domain"><img src="https://img.icons8.com/?size=100&id=JEbsATj1ZJZQ&format=png&color=000000"><span>Domain Status</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="files">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('files')">Files<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="filemanager"><img src="https://img.icons8.com/?size=100&id=2828&format=png&color=000000"><span>File Manager</span></a>
+            </div>
+        </div>
+        <div class="nav-group" data-group="system">
+            <button class="nav-group-toggle" onclick="toggleNavGroup('system')">System<img src="https://img.icons8.com/?size=100&id=2760&format=png&color=000000"></button>
+            <div class="nav-group-content">
+                <a href="#" data-page="techstack"><img src="https://img.icons8.com/?size=100&id=184&format=png&color=000000"><span>Tech Stack</span></a>
+                <a href="#" data-page="security"><img src="https://img.icons8.com/?size=100&id=2606&format=png&color=000000"><span>Security</span></a>
+            </div>
+        </div>
     </nav>
-    <a href="#" id="logout-btn" class="logout-item"><img src="https://img.icons8.com/?size=100&id=2445&format=png&color=000000"><span>Logout</span></a>
+    <div class="logout-item border-t px-4 py-2">
+        <a href="#" id="logout-btn" class="logout-item"><img src="https://img.icons8.com/?size=100&id=2445&format=png&color=000000"><span>Logout</span></a>
+        <a href="#" data-page="login-auth" class="logout-item"><img src="https://img.icons8.com/?size=100&id=2460&format=png&color=000000"><span>Login</span></a>
+    </div>
 </div>
 <div class="main">
     <div class="topbar">
@@ -239,12 +396,14 @@
                 <p class="breadcrumb" id="breadcrumb">Ringkasan / Dashboard</p>
             </div>
         </div>
+        <div class="admin-search-wrap" id="admin-global-search-wrap">
+            <input id="admin-global-search" class="admin-search-input" type="search" maxlength="100" placeholder="Cari order, pelanggan, produk..." autocomplete="off" onfocus="showAdminGlobalSearch()" oninput="adminGlobalSearchInput(this.value)" onkeydown="if(event.key==='Enter'){adminGlobalSearchNow()}else if(event.key==='Escape'){hideAdminGlobalSearch()}">
+            <div class="admin-search-results" id="admin-global-search-results"></div>
+        </div>
         <div class="admin-info">
-            <span id="wa-status-indicator" class="wa-disconnected">Status: Offline</span>
-            <div class="admin-avatar" id="admin-avatar">AD</div>
             <div class="admin-detail">
                 <span class="admin-name" id="admin-name">Admin</span>
-                <span class="admin-role">Administrator</span>
+                <span class="admin-role" id="admin-ip">Administrator</span>
             </div>
         </div>
     </div>
@@ -256,6 +415,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="/java/AppNorthAdmin.js?v=0000v7panel"></script>
+<script src="/java/AppNorthAdmin.js?v=0000v17settingsprice"></script>
 </body>
 </html>

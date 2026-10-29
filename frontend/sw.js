@@ -19,6 +19,11 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
+    if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/me') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {

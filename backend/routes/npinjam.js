@@ -10,6 +10,10 @@ const { safeExtensionFromMime, detectImageExtFromFile } = require("../utils/uplo
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Ambang similarity (cosine) untuk menyatakan selfie Cocok dengan foto KTP.
+// Harus sama dengan SIMILARITY_THRESHOLD di services/face_verify.py.
+const FACE_MATCH_THRESHOLD = 0.5;
+
 async function verifyToken(req, res, next) {
   let token = null;
   const authHeader = req.headers["authorization"];
@@ -33,8 +37,10 @@ async function verifyToken(req, res, next) {
   }
 }
 
-const upload = require("multer")({
-  storage: require("multer").diskStorage({
+const multer = require("multer");
+
+const upload = multer({
+  storage: multer.diskStorage({
     destination: (req, file, cb) => {
       const dir = path.join(__dirname, "../uploads/npinjam");
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -60,6 +66,32 @@ function generateLoanNumber() {
   return "NPJ-" + ym + "-" + rand;
 }
 
+// Hasil verifikasi wajah dari service InsightFace.
+//
+// Penting: `available` membedakan dua kondisi yang TIDAK BOLEH dicampur:
+//   available=false -> mesinnya tidak jalan (python hilang, model tak ada,
+//                      gambar tidak terbaca). Ini bukan "wajah cocok".
+//   available=true  -> mesin jalan dan memang menilai kecocokan.
+// Sebelumnya semua kegagalan dikembalikan sebagai { success: true, score: 0 },
+// sehingga "tidak bisa diverifikasi" terlihat identik dengan "lolos".
+function faceUnavailable(message) {
+  return { available: false, success: false, score: null, message };
+}
+
+// Hapus file yang sudah ditulis multer ke disk.
+//
+// WAJIB dipanggil di setiap jalur keluar sebelum file di-commit ke database.
+// diskStorage menulis file SEBELUM handler berjalan, jadi setiap return
+// 400/403/500 setelah upload akan meninggalkan file yatim di uploads/ kalau
+// tidak dibersihkan. Kalau tidak, setiap percobaan gagal menumpuk file.
+function discardUploads(files) {
+  const list = Array.isArray(files) ? files : files ? [files] : [];
+  for (const f of list) {
+    if (!f || !f.filename) continue;
+    fs.unlink(path.join(__dirname, "../uploads/npinjam", f.filename), () => {});
+  }
+}
+
 function verifyFaces(ktpPath, selfiePath) {
   return new Promise((resolve) => {
     const pythonBin = process.env.FACE_VERIFY_PYTHON || "/home/hostinesia/northline/.venv/bin/python3";
@@ -74,7 +106,7 @@ function verifyFaces(ktpPath, selfiePath) {
 
     pythonProcess.on("error", (err) => {
       console.error("Face verify spawn error:", err);
-      resolve({ success: true, score: 0, message: "Verifikasi wajah tidak tersedia" });
+      resolve(faceUnavailable("Verifikasi wajah tidak tersedia"));
     });
     pythonProcess.stdout.on("data", (data) => { stdout += data.toString(); });
     pythonProcess.stderr.on("data", (data) => { stderr += data.toString(); });
@@ -82,16 +114,26 @@ function verifyFaces(ktpPath, selfiePath) {
     pythonProcess.on("close", (code) => {
       if (code !== 0) {
         console.error("Face verify error:", stderr);
-        resolve({ success: true, score: 0, message: "Verifikasi wajah tidak tersedia" });
+        resolve(faceUnavailable("Verifikasi wajah tidak tersedia"));
         return;
       }
       try {
         const lines = stdout.trim().split("\n");
         const result = JSON.parse(lines[lines.length - 1]);
-        resolve(result);
+        const score = Number.isFinite(parseFloat(result.score)) ? parseFloat(result.score) : null;
+        // Percayai flag available dari python: ia yang tahu apakah mesinnya
+        // bisa dipakai. Default true supaya script versi lama yang tidak
+        // mengirim flag ini tetap dianggap "mesin jalan".
+        const available = result.available !== false;
+        resolve({
+          available,
+          success: available && result.success === true && score !== null && score >= FACE_MATCH_THRESHOLD,
+          score: available ? score : null,
+          message: result.message || "",
+        });
       } catch (e) {
         console.error("Face verify parse error:", stdout.slice(-300), e.message);
-        resolve({ success: true, score: 0, message: "Verifikasi wajah tidak tersedia" });
+        resolve(faceUnavailable("Verifikasi wajah tidak tersedia"));
       }
     });
   });
@@ -147,12 +189,15 @@ router.post("/apply", verifyToken, upload.fields([
     } = req.body;
 
     if (!nik || !full_name || !birth_date || !gender || !address_city || !mother_maiden_name) {
+      discardUploads(req.files);
       return res.status(400).json({ success: false, message: "Data diri wajib dilengkapi" });
     }
     if (nik.length !== 16) {
+      discardUploads(req.files);
       return res.status(400).json({ success: false, message: "NIK harus 16 digit" });
     }
     if (!emergency_contact_1_name || !emergency_contact_1_phone || !emergency_contact_2_name || !emergency_contact_2_phone) {
+      discardUploads(req.files);
       return res.status(400).json({ success: false, message: "Kontak darurat wajib dilengkapi" });
     }
 
@@ -161,6 +206,7 @@ router.post("/apply", verifyToken, upload.fields([
       [userId]
     );
     if (existing.length > 0) {
+      discardUploads(req.files);
       return res.status(400).json({ success: false, message: "Akun ini sudah memiliki pengajuan NPinjam. Tidak dapat mengajukan kembali." });
     }
 
@@ -168,6 +214,7 @@ router.post("/apply", verifyToken, upload.fields([
     const ktpSelfie = req.files?.ktp_selfie?.[0];
 
     if (!ktpFront || !ktpSelfie) {
+      discardUploads(req.files);
       return res.status(400).json({ success: false, message: "Foto KTP depan dan selfie KTP wajib diupload" });
     }
 
@@ -175,18 +222,33 @@ router.post("/apply", verifyToken, upload.fields([
     const ktpSelfiePath = path.join(__dirname, "../uploads/npinjam", ktpSelfie.filename);
     for (const fp of [ktpFrontPath, ktpSelfiePath]) {
       if (!detectImageExtFromFile(fp)) {
-        fs.unlink(fp, () => {});
+        discardUploads(req.files);
         return res.status(400).json({ success: false, message: "Salah satu file bukan gambar yang valid" });
       }
     }
 
-    const faceMatchScore = parseFloat(req.body.face_match_score);
-    const livenessPassed = req.body.liveness_passed === "true" || req.body.liveness_passed === "1" || req.body.liveness_passed === true ? 1 : 0;
-
-    // Face verification
-    // Face verification is non-blocking: if it fails, the request still goes
-    // through and the admin reviews the photos manually.
+    // Verifikasi wajah WAJIB dijalankan server. Nilai face_match_score dan
+    // liveness_passed dari req.body TIDAK lagi dipercaya: keduanya bisa
+    // dipalsukan siapa saja, dan sebelumnya nilai itulah yang ditampilkan ke
+    // admin serta ikut menghitung skor kredit.
     const verification = await verifyFaces(ktpFrontPath, ktpSelfiePath);
+
+    // Kalau mesinnya jalan dan menyatakan tidak cocok, pengajuan ditolak di
+    // sini. Admin tidak perlu memeriksa manual hanya untuk kasus ini.
+    // Kalau mesinnya tidak tersedia (available=false) pengajuan tetap
+    // diterima dan ditandai untuk review manual - unggahan KTP tidak bisa
+    // ditolak hanya karena server sedang bermasalah.
+    if (verification.available && !verification.success) {
+      discardUploads(req.files);
+      return res.status(400).json({
+        success: false,
+        code: "FACE_MISMATCH",
+        face_verify_score: verification.score,
+        message:
+          verification.message ||
+          "Wajah pada selfie tidak cocok dengan foto KTP. Silakan ulangi dengan wajah terlihat jelas dan pencahayaan cukup.",
+      });
+    }
 
     const ktpFrontUrl = ktpFront.filename;
     const ktpSelfieUrl = ktpSelfie.filename;
@@ -201,8 +263,9 @@ router.post("/apply", verifyToken, upload.fields([
        emergency_contact_1_name, emergency_contact_1_phone,
        emergency_contact_2_name, emergency_contact_2_phone,
        ktp_front_url, ktp_selfie_url,
-       face_match_score, liveness_passed, face_verify_score, face_verify_message, status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`,
+       face_match_score, liveness_passed, face_verify_score, face_verify_message,
+       facial_verification_status, status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`,
       [userId, nik, full_name, birth_place, birth_date, gender,
        address_province, address_city, address_district, address_village,
        address_rt_rw, address_postal_code, address_detail,
@@ -211,10 +274,14 @@ router.post("/apply", verifyToken, upload.fields([
        emergency_contact_1_name, emergency_contact_1_phone,
        emergency_contact_2_name, emergency_contact_2_phone,
        ktpFrontUrl, ktpSelfieUrl,
-       isNaN(faceMatchScore) ? null : faceMatchScore,
-       livenessPassed,
-       verification && !isNaN(parseFloat(verification.score)) ? parseFloat(verification.score) : 0,
-       (verification && verification.message) || null]
+       // face_match_score diisi dari hasil server, bukan dari klien.
+       verification.score,
+       // Liveness hanya dianggap lulus bila selfie memang terdeteksi wajah dan
+       // engine menilai wajah pada foto selfie. Tidak ada lagi nilai dari klien.
+       verification.available && verification.success ? 1 : 0,
+       verification.score,
+       (verification.message || null),
+       verification.available ? (verification.success ? "verified" : "mismatch") : "unavailable"]
     );
 
     await db.execute(
@@ -225,6 +292,8 @@ router.post("/apply", verifyToken, upload.fields([
     res.json({ success: true, message: "Pengajuan NPinjam berhasil dikirim. Silakan tunggu verifikasi." });
   } catch (err) {
     console.error("NPinjam apply error:", err);
+    // Jangan sisakan file yatim kalau INSERT gagal.
+    discardUploads(req.files);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -358,10 +427,26 @@ router.get("/bills", verifyToken, async (req, res) => {
   }
 });
 
-router.post("/loans", verifyToken, async (req, res) => {
+// Multipart untuk selfie verifikasi saat mengajukan pinjaman.
+// Dipisah dari `upload` (diskStorage) karena foto ini hanya perlu hidup
+// selama proses verifikasi - tidak perlu disimpan ke uploads/.
+const loanSelfieUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowed.includes(file.mimetype)) return cb(new Error("Format harus JPG/PNG/WebP"));
+    cb(null, true);
+  },
+});
+
+// Foto KTP yang disetujui admin saat pendaftaran. Ini foto yang benar-benar
+// harus dibandingkan dengan selfie baru - bukan foto selfie yang dulu, karena itu
+// hanya membuktikan "orang yang sama lagi", bukan "pemohon KTP ini".
+router.post("/loans", verifyToken, loanSelfieUpload.single("selfie"), async (req, res) => {
   try {
     const userId = req.user.id;
-    const { loan_amount, tenure_months, purpose, bank_name, bank_account_number, bank_account_name, face_verify_score } = req.body;
+    const { loan_amount, tenure_months, purpose, bank_name, bank_account_number, bank_account_name } = req.body;
     const purposeClean = purpose || null;
 
     const amount = parseFloat(loan_amount);
@@ -409,7 +494,69 @@ router.post("/loans", verifyToken, async (req, res) => {
     const maturityDate = new Date(firstDueDate);
     maturityDate.setDate(maturityDate.getDate() + (tenure - 1) * 7);
 
-    const faceScore = parseFloat(face_verify_score);
+    // --- Verifikasi wajah wajib, dilakukan server ---
+    // req.body.face_verify_score sengaja DIABAIKAN: nilai itu dikirim browser
+    // dan bisa diubah siapa saja. Foto KTP dari pendaftaran yang jadi acuan.
+    const selfieFile = req.file;
+    if (!selfieFile) {
+      return res.status(400).json({
+        success: false,
+        code: "FACE_SELFIE_REQUIRED",
+        message: "Selfie wajah wajib diupload untuk mengajukan pinjaman.",
+      });
+    }
+
+    const [apps] = await db.execute(
+      `SELECT ktp_front_url FROM npinjam_applications
+       WHERE user_id=? AND status='approved'
+       ORDER BY id DESC LIMIT 1`,
+      [userId]
+    );
+    if (apps.length === 0 || !apps[0].ktp_front_url) {
+      return res.status(400).json({
+        success: false,
+        code: "KTP_NOT_FOUND",
+        message: "Foto KTP tidak ditemukan pada pengajuan yang telah disetujui.",
+      });
+    }
+
+    const ktpRefPath = path.join(__dirname, "../uploads/npinjam", apps[0].ktp_front_url);
+    if (!fs.existsSync(ktpRefPath) || !detectImageExtFromFile(ktpRefPath)) {
+      return res.status(400).json({
+        success: false,
+        code: "KTP_FILE_MISSING",
+        message: "File foto KTP tidak tersedia. Hubungi admin untuk upload ulang.",
+      });
+    }
+
+    // Tulis selfie ke file sementara supaya bisa dibaca subprocess InsightFace.
+    const tmpSelfiePath = path.join(
+      __dirname,
+      "../uploads/npinjam",
+      `tmp-selfie-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`
+    );
+    fs.writeFileSync(tmpSelfiePath, selfieFile.buffer);
+    let verification;
+    try {
+      verification = await verifyFaces(ktpRefPath, tmpSelfiePath);
+    } finally {
+      fs.unlink(tmpSelfiePath, () => {});
+    }
+
+    if (verification.available && !verification.success) {
+      return res.status(400).json({
+        success: false,
+        code: "FACE_MISMATCH",
+        face_verify_score: verification.score,
+        message:
+          verification.message ||
+          "Wajah pada selfie tidak cocok dengan foto KTP Anda. Silakan ulangi dengan wajah terlihat jelas.",
+      });
+    }
+
+    const faceScore = verification.score;
+    // null score berarti engine tidak jalan, bukan "nilai 0".
+    const faceStatus = verification.available ? (verification.success ? "verified" : "mismatch") : "unavailable";
     const loanNumber = generateLoanNumber();
     const [existing] = await db.execute(
       "SELECT id FROM npinjam_loans WHERE user_id=? AND status IN ('pending','active') LIMIT 1",
@@ -423,13 +570,13 @@ router.post("/loans", verifyToken, async (req, res) => {
       `INSERT INTO npinjam_loans
       (user_id, loan_number, principal, interest_rate_monthly, tenor_months,
        monthly_installment, total_payable, status, purpose, first_due_date, maturity_date,
-       bank_name, bank_account_number, bank_account_name, face_verify_score)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       bank_name, bank_account_number, bank_account_name, face_verify_score, facial_verification_status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [userId, loanNumber, amount, tc.interest_rate_monthly, tenure,
        weeklyInstallment, totalPayable, "pending", purposeClean,
        firstDueDate.toISOString().split("T")[0], maturityDate.toISOString().split("T")[0],
        bank_name, String(bank_account_number), bank_account_name,
-       isNaN(faceScore) ? null : faceScore]
+       faceScore, faceStatus]
     );
 
     const loanId = result.insertId;

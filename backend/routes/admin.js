@@ -2,15 +2,33 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { grantCommission } = require('./affiliate');
+const { getDeliveryTransitionIssue } = require('../utils/orderValidation');
 const aiRoutes = require('./ai');
+const { listCopilotModels, sendCopilotPrompt } = require('../services/copilotAiClient');
 const CHAT_AI_QUOTA_MESSAGES = aiRoutes.CHAT_AI_QUOTA_MESSAGES || 500;
 const CHAT_AI_QUOTA_BYTES = aiRoutes.CHAT_AI_QUOTA_BYTES || (2 * 1024 * 1024);
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak percobaan login admin. Coba lagi dalam 15 menit.' },
+});
 
 const adminAuth = async (req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  const normalizedIp = ip.replace('::ffff:', '');
+  const isLocalhost = normalizedIp === '127.0.0.1' || normalizedIp === '::1' || normalizedIp === '';
+
+  // Block non-localhost IPs entirely
+  if (!isLocalhost) {
+    return res.status(403).json({ success: false, message: 'Forbidden: admin panel only accessible from localhost' });
+  }
+
   let token = null;
   const bearer = req.headers['authorization'];
   if (bearer) {
@@ -20,47 +38,70 @@ const adminAuth = async (req, res, next) => {
     if (match) token = decodeURIComponent(match[1]);
   }
   if (!token) {
-    // Jika bukan localhost, tetolak langsung; jika localhost, lanjutkan ke cek user
-    if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
-      return res.status(403).json({ success: false, message: 'Forbidden: admin authentication required' });
-    }
+    return res.status(401).json({ success: false, message: 'Unauthorized: token required' });
   }
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const [users] = await db.execute('SELECT id, username, role FROM user_northline WHERE id = ?', [decoded.id]);
-    if (users.length === 0 || users[0].role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Forbidden: admin only' });
-    }
-    req.user = users[0];
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (e) {
     return res.status(401).json({ success: false, message: 'Invalid token' });
   }
+  if (!Number.isSafeInteger(Number(decoded.id)) || Number(decoded.id) < 1) {
+    return res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+  try {
+    const [users] = await db.execute(
+      'SELECT id, username, role, auth_version FROM user_northline WHERE id = ?',
+      [decoded.id],
+    );
+    if (users.length === 0 || users[0].role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Forbidden: admin only' });
+    }
+    if (Number(decoded.authVersion || 0) !== Number(users[0].auth_version || 0)) {
+      return res.status(401).json({ success: false, message: 'Sesi admin berakhir, silakan login ulang' });
+    }
+    req.user = users[0];
+    return next();
+  } catch (err) {
+    console.error('Gagal memvalidasi akses admin:', err);
+    return res.status(500).json({ success: false, message: 'Gagal memvalidasi sesi admin.' });
+  }
 };
 
-router.post('/login', async (req, res) => {
+router.post('/login', adminLoginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ success: false, message: 'Username dan password wajib diisi' });
     }
-    const [users] = await db.execute('SELECT id, username, role, password FROM user_northline WHERE username=?', [username]);
+    const [users] = await db.execute('SELECT id, username, role, password, auth_version FROM user_northline WHERE username=?', [username]);
     if (users.length === 0) {
-      return res.json({ success: false, message: 'Username tidak ditemukan' });
+      return res.status(401).json({ success: false, message: 'Kredensial admin tidak valid' });
     }
     const user = users[0];
     const bcrypt = require('bcrypt');
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.json({ success: false, message: 'Password salah' });
+      return res.status(401).json({ success: false, message: 'Kredensial admin tidak valid' });
     }
     if (user.role !== 'admin') {
-      return res.json({ success: false, message: 'Hanya admin yang boleh login' });
+      return res.status(403).json({ success: false, message: 'Hanya admin yang boleh login' });
     }
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
-    const secureFlag = !!(req.secure || req.headers['x-forwarded-proto'] === 'https');
-    res.cookie('nl_jwt', token, { httpOnly: true, secure: secureFlag, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
-    res.cookie('logged_in', '1', { httpOnly: false, secure: secureFlag, sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60 * 1000 });
+    const token = jwt.sign({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      authVersion: Number(user.auth_version) || 0,
+    }, JWT_SECRET, { expiresIn: '24h' });
+    const cookieOpts = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+    res.cookie('nl_jwt', token, cookieOpts);
+    res.cookie('logged_in', '1', { ...cookieOpts, httpOnly: false });
     res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -68,6 +109,32 @@ router.post('/login', async (req, res) => {
 });
 
 router.use(adminAuth);
+
+async function ensureAdminOperationsTables() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS admin_order_notes (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      order_id VARCHAR(100) NOT NULL,
+      admin_user_id BIGINT UNSIGNED NOT NULL,
+      note TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_admin_order_notes_order_created (order_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS admin_order_audit (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      order_id VARCHAR(100) NOT NULL,
+      admin_user_id BIGINT UNSIGNED NOT NULL,
+      action VARCHAR(40) NOT NULL,
+      from_status VARCHAR(50) NULL,
+      to_status VARCHAR(50) NOT NULL,
+      details TEXT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_admin_order_audit_order_created (order_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+}
 
 async function getStoreOrigin() {
   try {
@@ -90,6 +157,19 @@ router.get('/dashboard', async (req, res) => {
     const [[revenue]] = await db.execute("SELECT COALESCE(SUM(total_price),0) as total FROM transactions WHERE status='success'");
     const [[pendingOrders]] = await db.execute("SELECT COUNT(*) as total FROM transactions WHERE status='pending'");
     const [[pendingOverdue]] = await db.execute("SELECT COUNT(*) as total FROM transactions WHERE status='pending' AND created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE) AND wa_reminded=0");
+    const [[orderOperations]] = await db.execute(`
+      SELECT
+        COALESCE(SUM(status='success'), 0) AS paid_orders,
+        COALESCE(SUM(status='cancelled'), 0) AS cancelled_orders,
+        COALESCE(SUM(status='success' AND (delivery_status IS NULL OR delivery_status='' OR delivery_status='Pesanan Diproses')), 0) AS pending_shipments
+      FROM transactions
+    `);
+    const [[pendingReports]] = await db.execute(
+      "SELECT COUNT(*) AS total FROM product_reports WHERE status='pending'",
+    );
+    const [[unreadSupportMessages]] = await db.execute(
+      "SELECT COUNT(*) AS total FROM chat_messages WHERE sender='user' AND is_read=0",
+    );
 
     const [salesChart] = await db.execute(`
       SELECT DATE(created_at) as date, COUNT(*) as count, COALESCE(SUM(total_price),0) as revenue
@@ -131,6 +211,11 @@ router.get('/dashboard', async (req, res) => {
       revenue: revenue.total,
       pendingOrders: pendingOrders.total,
       pendingOverdue: pendingOverdue.total,
+      paidOrders: orderOperations.paid_orders,
+      cancelledOrders: orderOperations.cancelled_orders,
+      pendingShipments: orderOperations.pending_shipments,
+      pendingReports: pendingReports.total,
+      unreadSupportMessages: unreadSupportMessages.total,
       totalReviews: totalReviews.total,
       totalProducts: totalProducts.total,
       pendingNpinjam: pendingNpinjam.total,
@@ -153,79 +238,453 @@ router.get('/dashboard', async (req, res) => {
 
 router.get('/orders', async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { status, deliveryStatus, search, page = '1', limit = '20', from, to } = req.query;
+    const pageNumber = typeof page === 'string' && /^\d+$/.test(page) ? Number(page) : NaN;
+    const limitNumber = typeof limit === 'string' && /^\d+$/.test(limit) ? Number(limit) : NaN;
+    const validDate = (value) => {
+      if (value === undefined || value === '') return true;
+      if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const date = new Date(`${value}T00:00:00Z`);
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+    };
+    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > 1000000 ||
+        !Number.isSafeInteger(limitNumber) || limitNumber < 1 || limitNumber > 100 ||
+        (status !== undefined && (typeof status !== 'string' || status.length > 30)) ||
+        (deliveryStatus !== undefined && (typeof deliveryStatus !== 'string' || deliveryStatus.length > 50)) ||
+        (search !== undefined && (typeof search !== 'string' || search.length > 100)) ||
+        !validDate(from) || !validDate(to) || (from && to && from > to)) {
+      return res.status(400).json({ success: false, message: 'Filter atau paginasi pesanan tidak valid.' });
+    }
+    const offset = (pageNumber - 1) * limitNumber;
     let where = 'WHERE 1=1';
     const params = [];
     if (status) { where += ' AND t.status=?'; params.push(status); }
-    if (search) { where += ' AND (t.order_id LIKE ? OR t.product_name LIKE ? OR u.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (deliveryStatus) { where += ' AND t.delivery_status=?'; params.push(deliveryStatus); }
+    if (from) { where += ' AND t.created_at >= ?'; params.push(`${from} 00:00:00`); }
+    if (to) { where += ' AND t.created_at <= ?'; params.push(`${to} 23:59:59`); }
+    if (search) {
+      where += ' AND (t.order_id LIKE ? OR t.product_name LIKE ? OR COALESCE(t.shipping_name, u.name) LIKE ? OR COALESCE(t.shipping_phone, u.phone) LIKE ? OR t.guest_ip_address LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
     const [[count]] = await db.execute(`SELECT COUNT(*) as total FROM transactions t LEFT JOIN user_northline u ON t.user_id=u.id ${where}`, params);
     const [orders] = await db.execute(`
-      SELECT t.*, u.name as user_name, u.username, u.phone as user_phone
+      SELECT t.*, COALESCE(t.shipping_name, u.name) as user_name, u.username,
+             COALESCE(t.shipping_phone, u.phone) as user_phone
       FROM transactions t LEFT JOIN user_northline u ON t.user_id=u.id
       ${where} ORDER BY t.id DESC LIMIT ? OFFSET ?
-    `, [...params, parseInt(limit), offset]);
-    res.json({ success: true, orders, total: count.total, page: parseInt(page), limit: parseInt(limit) });
+    `, [...params, limitNumber, offset]);
+    res.json({ success: true, orders, total: count.total, page: pageNumber, limit: limitNumber });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/operations/queue', async (req, res) => {
+  try {
+    const type = typeof req.query.type === 'string' ? req.query.type : '';
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const limitValue = req.query.limit === undefined ? '50' : req.query.limit;
+    const limit = typeof limitValue === 'string' && /^\d+$/.test(limitValue) ? Number(limitValue) : NaN;
+    if (!['', 'order', 'report', 'chat'].includes(type) ||
+        (req.query.search !== undefined && (typeof req.query.search !== 'string' || search.length > 100)) ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      return res.status(400).json({ success: false, message: 'Filter antrean operasional tidak valid.' });
+    }
+
+    const needle = `%${search}%`;
+    const include = (itemType) => !type || type === itemType;
+    const [orders, reports, chats] = await Promise.all([
+      include('order')
+        ? db.execute(
+          `SELECT t.order_id, t.product_name, t.status, t.delivery_status, t.total_price,
+                  t.shipping_name, t.shipping_phone, t.guest_ip_address, t.created_at,
+                  COALESCE(t.shipping_name, u.name) AS customer_name,
+                  COALESCE(t.shipping_phone, u.phone) AS customer_phone
+           FROM transactions t LEFT JOIN user_northline u ON t.user_id = u.id
+           WHERE t.status = 'pending' AND t.created_at <= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+             AND (? = '' OR t.order_id LIKE ? OR t.product_name LIKE ?
+                  OR COALESCE(t.shipping_name, u.name) LIKE ?
+                  OR COALESCE(t.shipping_phone, u.phone) LIKE ?
+                  OR t.guest_ip_address LIKE ?)
+           ORDER BY t.created_at ASC LIMIT ?`,
+          [search, needle, needle, needle, needle, needle, limit],
+        ).then(([rows]) => rows)
+        : Promise.resolve([]),
+      include('report')
+        ? db.execute(
+          `SELECT id, product_id, product_name, reason, details, status, created_at
+           FROM product_reports
+           WHERE status = 'pending' AND (? = '' OR product_id LIKE ? OR product_name LIKE ? OR details LIKE ?)
+           ORDER BY created_at ASC LIMIT ?`,
+          [search, needle, needle, needle, limit],
+        ).then(([rows]) => rows)
+        : Promise.resolve([]),
+      include('chat')
+        ? db.execute(
+          `SELECT u.id AS user_id, u.username, u.name, u.phone,
+                  COUNT(cm.id) AS unread_count, MAX(cm.created_at) AS created_at,
+                    (SELECT latest.message FROM chat_messages latest
+                     WHERE latest.user_id = u.id ORDER BY latest.id DESC LIMIT 1) AS last_message
+           FROM chat_messages cm
+           JOIN user_northline u ON u.id = cm.user_id
+           WHERE cm.sender = 'user' AND cm.is_read = 0
+             AND (? = '' OR u.username LIKE ? OR u.name LIKE ? OR u.phone LIKE ?)
+           GROUP BY u.id, u.username, u.name, u.phone
+           ORDER BY created_at ASC LIMIT ?`,
+          [search, needle, needle, needle, limit],
+        ).then(([rows]) => rows)
+        : Promise.resolve([]),
+    ]);
+
+    const items = [
+      ...orders.map((order) => ({ type: 'order', id: order.order_id, createdAt: order.created_at, order })),
+      ...reports.map((report) => ({ type: 'report', id: report.id, createdAt: report.created_at, report })),
+      ...chats.map((chat) => ({ type: 'chat', id: chat.user_id, createdAt: chat.created_at, chat })),
+    ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).slice(0, limit);
+
+    return res.json({
+      success: true,
+      items,
+      counts: { orders: orders.length, reports: reports.length, chats: chats.length },
+      limit,
+    });
+  } catch (err) {
+    console.error('Gagal memuat antrean operasional:', err);
+    return res.status(500).json({ success: false, message: 'Gagal memuat antrean operasional.' });
+  }
+});
+
+router.get('/operations/export', async (req, res) => {
+  try {
+    const type = typeof req.query.type === 'string' ? req.query.type : '';
+    const { from, to, search } = req.query;
+    const validDate = (value) => {
+      if (value === undefined || value === '') return true;
+      if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const date = new Date(`${value}T00:00:00Z`);
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+    };
+    if (!['orders', 'reports'].includes(type) ||
+        !validDate(from) || !validDate(to) || (from && to && from > to) ||
+        (search !== undefined && (typeof search !== 'string' || search.length > 100))) {
+      return res.status(400).json({ success: false, message: 'Filter ekspor tidak valid.' });
+    }
+
+    const params = [];
+    let rows;
+    let columns;
+    if (type === 'orders') {
+      let where = 'WHERE 1=1';
+      if (from) { where += ' AND t.created_at >= ?'; params.push(`${from} 00:00:00`); }
+      if (to) { where += ' AND t.created_at <= ?'; params.push(`${to} 23:59:59`); }
+      if (search) {
+        where += ` AND (t.order_id LIKE ? OR t.product_name LIKE ?
+          OR COALESCE(t.shipping_name, u.name) LIKE ?
+          OR COALESCE(t.shipping_phone, u.phone) LIKE ? OR t.guest_ip_address LIKE ?)`;
+        params.push(...Array(5).fill(`%${search}%`));
+      }
+      [rows] = await db.execute(
+        `SELECT t.order_id, t.product_name, t.status, t.delivery_status, t.total_price,
+                COALESCE(t.shipping_name, u.name) AS customer_name,
+                COALESCE(t.shipping_phone, u.phone) AS customer_phone,
+                t.guest_ip_address, t.created_at
+         FROM transactions t LEFT JOIN user_northline u ON t.user_id = u.id
+         ${where} ORDER BY t.created_at DESC LIMIT 10000`,
+        params,
+      );
+      columns = ['Order ID', 'Produk', 'Pembayaran', 'Pengiriman', 'Total', 'Penerima', 'Telepon', 'IP Guest', 'Dibuat'];
+    } else {
+      let where = 'WHERE 1=1';
+      if (from) { where += ' AND created_at >= ?'; params.push(`${from} 00:00:00`); }
+      if (to) { where += ' AND created_at <= ?'; params.push(`${to} 23:59:59`); }
+      if (search) {
+        where += ' AND (product_id LIKE ? OR product_name LIKE ? OR details LIKE ?)';
+        params.push(...Array(3).fill(`%${search}%`));
+      }
+      [rows] = await db.execute(
+        `SELECT id, product_id, product_name, reason, details, status, admin_note, created_at
+         FROM product_reports ${where} ORDER BY created_at DESC LIMIT 10000`,
+        params,
+      );
+      columns = ['ID', 'Product ID', 'Produk', 'Alasan', 'Detail', 'Status', 'Catatan Admin', 'Dibuat'];
+    }
+
+    const csvCell = (value) => {
+      let text = String(value ?? '');
+      if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csvRows = [
+      columns,
+      ...rows.map((row) => Object.values(row)),
+    ].map((row) => row.map(csvCell).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=northline-${type}-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    return res.send(`\uFEFF${csvRows.join('\r\n')}\r\n`);
+  } catch (err) {
+    console.error('Gagal mengekspor data operasional:', err);
+    return res.status(500).json({ success: false, message: 'Gagal mengekspor data operasional.' });
   }
 });
 
 router.post('/orders/confirm', async (req, res) => {
+  let conn;
   try {
-    const { orderId } = req.body;
-    const [orderCheck] = await db.execute("SELECT status FROM transactions WHERE order_id=?", [orderId]);
-    if (orderCheck.length === 0) return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
-    if (orderCheck[0].status === 'success') return res.json({ success: true, message: 'Sudah dikonfirmasi' });
-    await db.execute("UPDATE transactions SET status='success' WHERE order_id=?", [orderId]);
+    const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId.trim() : '';
+    if (!orderId || orderId.length > 100) {
+      return res.status(400).json({ success: false, message: 'ID pesanan tidak valid.' });
+    }
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [[order]] = await conn.execute(
+      `SELECT t.user_id, t.status, t.product_name, t.chosen_size, t.chosen_color,
+              t.chosen_model, t.quantity, t.total_price,
+              COALESCE(t.shipping_name, u.name) AS customer_name,
+              COALESCE(t.shipping_phone, u.phone) AS customer_phone
+       FROM transactions t LEFT JOIN user_northline u ON t.user_id=u.id
+       WHERE t.order_id=? LIMIT 1 FOR UPDATE`,
+      [orderId],
+    );
+    if (!order) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Order tidak ditemukan' });
+    }
+    if (order.status === 'success') {
+      await conn.commit();
+      return res.json({ success: true, message: 'Sudah dikonfirmasi' });
+    }
+    if (order.status !== 'pending') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Pesanan yang dibatalkan tidak dapat dikonfirmasi.' });
+    }
+    await conn.execute("UPDATE transactions SET status='success' WHERE order_id=? AND status='pending'", [orderId]);
+    await conn.execute(
+      `INSERT INTO tracking_events (order_id, status, description, location, lat, lng)
+       VALUES (?, 'Pembayaran Dikonfirmasi', 'Pembayaran pesanan telah dikonfirmasi', NULL, NULL, NULL)`,
+      [orderId],
+    );
+    await conn.execute(
+      `INSERT INTO admin_order_audit
+       (order_id, admin_user_id, action, from_status, to_status, details)
+       VALUES (?, ?, 'payment_confirmed', 'pending', 'success', NULL)`,
+      [orderId, req.user.id],
+    );
+    if (order.user_id !== null) {
+      await conn.execute(
+        'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
+        [order.user_id, 'Pembayaran Berhasil', `Pembayaran pesanan ${orderId} telah dikonfirmasi.`],
+      );
+    }
+    await conn.commit();
+    conn.release();
+    conn = null;
+
     await grantCommission(orderId).catch(e => console.error('grantCommission:', e.message));
     const { ensureSellerFinance } = require('../utils/payout');
     ensureSellerFinance(orderId).catch(e => console.error('ensureSellerFinance:', e.message));
-    const [rows] = await db.execute(`
-      SELECT t.product_name, t.chosen_size, t.chosen_color, t.chosen_model, t.quantity, t.total_price,
-             u.name as customer_name, u.phone as customer_phone
-      FROM transactions t JOIN user_northline u ON t.user_id=u.id WHERE t.order_id=?
-    `, [orderId]);
-    if (rows.length > 0 && req.whatsappClient) {
-      const d = rows[0];
-      let phone = d.customer_phone;
+    let whatsappSent = false;
+    if (req.whatsappClient && order.customer_phone) {
+      const d = order;
+      let phone = String(d.customer_phone || '').replace(/\D/g, '');
       if (phone.startsWith('0')) phone = '62' + phone.slice(1);
       const msg = `*NORTHLINE ORDER CONFIRMED*\n\nHalo kak *${d.customer_name}*,\nPembayaran untuk Order *${orderId}* telah kami verifikasi!\n\n📦 Produk: ${d.product_name}\n🎨 Warna: ${d.chosen_color || '-'}\n👕 Ukuran: ${d.chosen_size || '-'}\n🔢 Qty: ${d.quantity}\n💰 Total: Rp ${parseInt(d.total_price).toLocaleString('id-ID')}\n\nStatus: *LUNAS* ✅\n\nMakasih! - Northline Team`;
-      try { await req.whatsappClient.sendMessage(`${phone}@c.us`, msg); } catch (e) { console.error('WA send error:', e); }
+      if (phone.length >= 7) {
+        if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+        try {
+          await req.whatsappClient.sendMessage(`${phone}@c.us`, msg);
+          whatsappSent = true;
+        } catch (e) {
+          console.error('WA send error:', e);
+        }
+      }
     }
-    res.json({ success: true, message: 'Pembayaran dikonfirmasi & WA terkirim' });
+    res.json({ success: true, message: 'Pembayaran dikonfirmasi.', whatsappSent });
   } catch (err) {
+    if (conn) {
+      try { await conn.rollback(); } catch (rollbackError) {
+        console.error('Gagal rollback konfirmasi pembayaran:', rollbackError);
+      }
+    }
+    console.error('Gagal mengonfirmasi pembayaran:', err);
     res.status(500).json({ success: false, message: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
 router.post('/orders/delivery', async (req, res) => {
+  let conn;
   try {
-    const { orderId, deliveryStatus, estimatedArrival, courier, trackingNumber } = req.body;
-    if (estimatedArrival) {
-      await db.execute("UPDATE transactions SET delivery_status=?, estimated_arrival=?, tracking_number=?, tracking_courier=?, shipped_at=? WHERE order_id=?", [deliveryStatus, estimatedArrival, trackingNumber || null, courier || null, deliveryStatus === 'Pesanan Dikirim' && trackingNumber ? new Date() : null, orderId]);
-    } else {
-      await db.execute("UPDATE transactions SET delivery_status=?, tracking_number=?, tracking_courier=?, shipped_at=? WHERE order_id=?", [deliveryStatus, trackingNumber || null, courier || null, deliveryStatus === 'Pesanan Dikirim' && trackingNumber ? new Date() : null, orderId]);
+    const body = req.body || {};
+    const orderId = typeof body.orderId === 'string' ? body.orderId.trim() : '';
+    const deliveryStatus = typeof body.deliveryStatus === 'string' ? body.deliveryStatus.trim() : '';
+    const estimatedArrival = typeof body.estimatedArrival === 'string' ? body.estimatedArrival.trim() : '';
+    const courier = typeof body.courier === 'string' ? body.courier.trim() : '';
+    const trackingNumber = typeof body.trackingNumber === 'string' ? body.trackingNumber.trim() : '';
+    const allowedStatuses = new Set(['Pesanan Diproses', 'Pesanan Dikirim', 'Pesanan Selesai']);
+
+    if (!orderId || orderId.length > 100 || !allowedStatuses.has(deliveryStatus)) {
+      return res.status(400).json({ success: false, message: 'Pesanan atau status pengiriman tidak valid.' });
     }
-    if (trackingNumber && courier) {
-      const origin = await getStoreOrigin();
-      await db.execute(
+    if (estimatedArrival) {
+      const parsedArrival = new Date(`${estimatedArrival}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedArrival) ||
+          Number.isNaN(parsedArrival.getTime()) ||
+          parsedArrival.toISOString().slice(0, 10) !== estimatedArrival) {
+        return res.status(400).json({ success: false, message: 'Tanggal estimasi tiba tidak valid.' });
+      }
+    }
+    if (courier.length > 80 || trackingNumber.length > 100) {
+      return res.status(400).json({ success: false, message: 'Nama kurir atau nomor resi terlalu panjang.' });
+    }
+
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [[order]] = await conn.execute(
+      'SELECT user_id, status, delivery_status, tracking_number, tracking_courier FROM transactions WHERE order_id=? LIMIT 1 FOR UPDATE',
+      [orderId]
+    );
+    if (!order) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    }
+    if (order.status !== 'success') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Pengiriman hanya dapat diatur untuk pesanan yang sudah dibayar.' });
+    }
+
+    const finalCourier = courier || order.tracking_courier || '';
+    const finalTrackingNumber = trackingNumber || order.tracking_number || '';
+    if (deliveryStatus === 'Pesanan Dikirim' && (!finalCourier || !finalTrackingNumber)) {
+      await conn.rollback();
+      return res.status(400).json({ success: false, message: 'Kurir dan nomor resi wajib diisi sebelum pesanan ditandai dikirim.' });
+    }
+    const transitionIssue = getDeliveryTransitionIssue(order.delivery_status, deliveryStatus);
+    if (transitionIssue === 'shipped_to_processing') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Pesanan yang sudah dikirim tidak dapat dikembalikan ke status diproses.' });
+    }
+    if (transitionIssue === 'completed_to_previous') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Pesanan yang sudah selesai tidak dapat dikembalikan ke status sebelumnya.' });
+    }
+    if (transitionIssue === 'complete_before_shipping') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Pesanan harus ditandai dikirim sebelum dapat diselesaikan.' });
+    }
+
+    const trackingChanged = finalTrackingNumber !== (order.tracking_number || '') ||
+      finalCourier !== (order.tracking_courier || '') ||
+      deliveryStatus !== order.delivery_status;
+    const deliveryStatusChanged = deliveryStatus !== order.delivery_status;
+    const origin = deliveryStatus === 'Pesanan Dikirim' && trackingChanged
+      ? await getStoreOrigin()
+      : null;
+
+    await conn.execute(
+      `UPDATE transactions
+       SET delivery_status=?,
+           estimated_arrival=COALESCE(?, estimated_arrival),
+           tracking_number=?,
+           tracking_courier=?,
+           shipped_at=CASE WHEN ?='Pesanan Dikirim' THEN COALESCE(shipped_at, NOW()) ELSE shipped_at END
+       WHERE order_id=? AND status='success'`,
+      [
+        deliveryStatus,
+        estimatedArrival || null,
+        finalTrackingNumber || null,
+        finalCourier || null,
+        deliveryStatus,
+        orderId
+      ]
+    );
+    if (deliveryStatusChanged || (deliveryStatus === 'Pesanan Dikirim' && trackingChanged)) {
+      await conn.execute(
         `INSERT INTO tracking_events (order_id, status, description, location, lat, lng)
-         VALUES (?, 'Pesanan Dikirim', ?, '', ?, ?)`,
-        [orderId, `Pesanan dikirim dengan ${courier}. No. Resi: ${trackingNumber}`, origin ? origin.lat : null, origin ? origin.lng : null],
+         VALUES (?, ?, ?, '', ?, ?)`,
+        [
+          orderId,
+          deliveryStatus,
+          deliveryStatus === 'Pesanan Dikirim'
+            ? `Pesanan dikirim dengan ${finalCourier}. No. Resi: ${finalTrackingNumber}`
+            : deliveryStatus,
+          origin ? origin.lat : null,
+          origin ? origin.lng : null,
+        ],
       );
     }
-    res.json({ success: true });
+    if (deliveryStatusChanged && order.user_id !== null && order.user_id !== undefined) {
+      await conn.execute(
+        'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
+        [order.user_id, deliveryStatus, `Status pesanan ${orderId} berubah menjadi ${deliveryStatus}.`],
+      );
+    }
+    if (deliveryStatusChanged || trackingChanged) {
+      await conn.execute(
+        `INSERT INTO admin_order_audit
+         (order_id, admin_user_id, action, from_status, to_status, details)
+         VALUES (?, ?, 'delivery_updated', ?, ?, ?)`,
+        [
+          orderId,
+          req.user.id,
+          order.delivery_status || null,
+          deliveryStatus,
+          `Kurir: ${finalCourier || '-'}; resi: ${finalTrackingNumber || '-'}`,
+        ],
+      );
+    }
+    await conn.commit();
+    return res.json({ success: true, message: 'Status pengiriman berhasil diperbarui.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    if (conn) {
+      try {
+        await conn.rollback();
+      } catch (rollbackError) {
+        console.error('Gagal rollback status pengiriman:', rollbackError);
+      }
+    }
+    console.error('Gagal memperbarui status pengiriman:', err);
+    return res.status(500).json({ success: false, message: 'Gagal memperbarui status pengiriman.' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.post('/orders/:orderId/notes', async (req, res) => {
+  try {
+    const orderId = String(req.params.orderId || '').trim();
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+    if (!orderId || orderId.length > 100 || !note || note.length > 2000) {
+      return res.status(400).json({ success: false, message: 'ID pesanan atau catatan tidak valid.' });
+    }
+    const [[order]] = await db.execute(
+      'SELECT order_id FROM transactions WHERE order_id = ? LIMIT 1',
+      [orderId],
+    );
+    if (!order) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    const [result] = await db.execute(
+      'INSERT INTO admin_order_notes (order_id, admin_user_id, note) VALUES (?, ?, ?)',
+      [orderId, req.user.id, note],
+    );
+    return res.status(201).json({ success: true, noteId: result.insertId });
+  } catch (err) {
+    console.error('Gagal menyimpan catatan internal pesanan:', err);
+    return res.status(500).json({ success: false, message: 'Gagal menyimpan catatan internal.' });
   }
 });
 
 router.get('/orders/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
+    if (typeof orderId !== 'string' || !orderId.trim() || orderId.length > 100) {
+      return res.status(400).json({ success: false, message: 'ID pesanan tidak valid.' });
+    }
     const [orders] = await db.execute(`
-      SELECT t.*, u.name as user_name, u.username, u.phone as user_phone
+      SELECT t.*, COALESCE(t.shipping_name, u.name) as user_name, u.username,
+             COALESCE(t.shipping_phone, u.phone) as user_phone
       FROM transactions t LEFT JOIN user_northline u ON t.user_id=u.id
       WHERE t.order_id=? LIMIT 1
     `, [orderId]);
@@ -242,38 +701,97 @@ router.get('/orders/:orderId', async (req, res) => {
        WHERE t.order_id=? LIMIT 1`,
       [orderId],
     );
-    res.json({ success: true, order: orders[0], events, seller: sellerRow[0] || null });
+    const [notes] = await db.execute(
+      `SELECT id, order_id, admin_user_id, note, created_at
+       FROM admin_order_notes WHERE order_id=? ORDER BY id DESC LIMIT 100`,
+      [orderId],
+    );
+    const [audit] = await db.execute(
+      `SELECT id, order_id, admin_user_id, action, from_status, to_status, details, created_at
+       FROM admin_order_audit WHERE order_id=? ORDER BY id DESC LIMIT 200`,
+      [orderId],
+    );
+    res.json({ success: true, order: orders[0], events, seller: sellerRow[0] || null, notes, audit });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.post('/orders/:orderId/tracking', async (req, res) => {
+  let conn;
   try {
-    const { orderId } = req.params;
-    const { status, description, location, lat, lng } = req.body;
-    if (!status) return res.status(400).json({ success: false, message: 'Status wajib diisi' });
+    const orderId = String(req.params.orderId || '').trim();
+    const body = req.body || {};
+    const status = typeof body.status === 'string' ? body.status.trim() : '';
+    const description = typeof body.description === 'string' ? body.description.trim() : '';
+    const location = typeof body.location === 'string' ? body.location.trim() : '';
+    const lat = body.lat;
+    const lng = body.lng;
+    if (!orderId || orderId.length > 50 || !status || status.length > 50) {
+      return res.status(400).json({ success: false, message: 'ID pesanan atau status tracking tidak valid.' });
+    }
+    if (description.length > 2000 || location.length > 255) {
+      return res.status(400).json({ success: false, message: 'Keterangan atau lokasi tracking terlalu panjang.' });
+    }
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [[order]] = await conn.execute(
+      'SELECT status FROM transactions WHERE order_id=? LIMIT 1 FOR UPDATE',
+      [orderId],
+    );
+    if (!order) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    }
+    if (order.status !== 'success') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Update tracking hanya dapat ditambahkan ke pesanan yang sudah dibayar.' });
+    }
+
+    const hasLat = lat !== undefined && lat !== null && lat !== '';
+    const hasLng = lng !== undefined && lng !== null && lng !== '';
+    if (hasLat !== hasLng) {
+      await conn.rollback();
+      return res.status(400).json({ success: false, message: 'Latitude dan longitude harus diisi berpasangan.' });
+    }
     let latVal = null;
     let lngVal = null;
-    if (lat !== undefined && lat !== null && lat !== '') {
-      latVal = parseFloat(lat);
-      if (isNaN(latVal) || latVal < -90 || latVal > 90) {
+    if (hasLat) {
+      latVal = Number(lat);
+      if (!Number.isFinite(latVal) || latVal < -90 || latVal > 90) {
+        await conn.rollback();
         return res.status(400).json({ success: false, message: 'Latitude tidak valid' });
       }
     }
-    if (lng !== undefined && lng !== null && lng !== '') {
-      lngVal = parseFloat(lng);
-      if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
+    if (hasLng) {
+      lngVal = Number(lng);
+      if (!Number.isFinite(lngVal) || lngVal < -180 || lngVal > 180) {
+        await conn.rollback();
         return res.status(400).json({ success: false, message: 'Longitude tidak valid' });
       }
     }
-    await db.execute(
+    await conn.execute(
       'INSERT INTO tracking_events (order_id, status, description, location, lat, lng) VALUES (?, ?, ?, ?, ?, ?)',
       [orderId, status, description || null, location || null, latVal, lngVal],
     );
-    res.json({ success: true });
+    await conn.execute(
+      `INSERT INTO admin_order_audit
+       (order_id, admin_user_id, action, from_status, to_status, details)
+       VALUES (?, ?, 'tracking_event_added', NULL, ?, ?)`,
+      [orderId, req.user.id, status, description || location || null],
+    );
+    await conn.commit();
+    return res.json({ success: true, message: 'Update tracking berhasil ditambahkan.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    if (conn) {
+      try { await conn.rollback(); } catch (rollbackError) {
+        console.error('Gagal rollback update tracking manual:', rollbackError);
+      }
+    }
+    console.error('Gagal menambahkan update tracking:', err);
+    return res.status(500).json({ success: false, message: 'Gagal menambahkan update tracking.' });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -282,8 +800,9 @@ router.post('/orders/wa-remind', async (req, res) => {
     const { orderId } = req.body;
     const [rows] = await db.execute(`
       SELECT t.order_id, t.product_name, t.chosen_color, t.chosen_size, t.chosen_model, t.quantity, t.total_price,
-             u.name as customer_name, u.phone as customer_phone
-      FROM transactions t JOIN user_northline u ON t.user_id=u.id WHERE t.order_id=? AND t.wa_reminded=0
+             COALESCE(t.shipping_name, u.name) as customer_name,
+             COALESCE(t.shipping_phone, u.phone) as customer_phone
+      FROM transactions t LEFT JOIN user_northline u ON t.user_id=u.id WHERE t.order_id=? AND t.wa_reminded=0
     `, [orderId]);
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Tidak ditemukan atau sudah diingatkan' });
     const d = rows[0];
@@ -301,12 +820,59 @@ router.post('/orders/wa-remind', async (req, res) => {
 });
 
 router.post('/orders/cancel', async (req, res) => {
+  let conn;
   try {
-    const { orderId } = req.body;
-    await db.execute("UPDATE transactions SET status='cancelled' WHERE order_id=?", [orderId]);
-    res.json({ success: true });
+    const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId.trim() : '';
+    if (!orderId || orderId.length > 100) {
+      return res.status(400).json({ success: false, message: 'ID pesanan tidak valid.' });
+    }
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [[order]] = await conn.execute(
+      'SELECT user_id, status FROM transactions WHERE order_id=? LIMIT 1 FOR UPDATE',
+      [orderId],
+    );
+    if (!order) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan.' });
+    }
+    if (order.status !== 'pending') {
+      await conn.rollback();
+      return res.status(409).json({ success: false, message: 'Hanya pesanan yang belum dibayar yang dapat dibatalkan.' });
+    }
+    await conn.execute(
+      "UPDATE transactions SET status='cancelled' WHERE order_id=? AND status='pending'",
+      [orderId],
+    );
+    await conn.execute(
+      `INSERT INTO tracking_events (order_id, status, description, location, lat, lng)
+       VALUES (?, 'Pesanan Dibatalkan', 'Pesanan dibatalkan sebelum pembayaran', NULL, NULL, NULL)`,
+      [orderId],
+    );
+    await conn.execute(
+      `INSERT INTO admin_order_audit
+       (order_id, admin_user_id, action, from_status, to_status, details)
+       VALUES (?, ?, 'order_cancelled', 'pending', 'cancelled', NULL)`,
+      [orderId, req.user.id],
+    );
+    if (order.user_id !== null) {
+      await conn.execute(
+        'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
+        [order.user_id, 'Pesanan Dibatalkan', `Pesanan ${orderId} telah dibatalkan oleh admin.`],
+      );
+    }
+    await conn.commit();
+    return res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    if (conn) {
+      try { await conn.rollback(); } catch (rollbackError) {
+        console.error('Gagal rollback pembatalan pesanan:', rollbackError);
+      }
+    }
+    console.error('Gagal membatalkan pesanan:', err);
+    return res.status(500).json({ success: false, message: 'Gagal membatalkan pesanan.' });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -316,7 +882,10 @@ router.get('/users', async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let where = 'WHERE 1=1';
     const params = [];
-    if (search) { where += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) {
+      where += ' AND (name LIKE ? OR username LIKE ? OR email LIKE ? OR phone LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
     const [[count]] = await db.execute(`SELECT COUNT(*) as total FROM user_northline ${where}`, params);
     const [users] = await db.execute(`
       SELECT u.*,
@@ -343,11 +912,24 @@ router.get('/users/:id/orders', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const [dbProducts] = await db.execute("SELECT * FROM products WHERE status='active'");
-    const [productSales] = await db.execute(`
-      SELECT product_name, COUNT(*) as total_sold, COALESCE(SUM(total_price),0) as total_revenue
-      FROM transactions WHERE status='success' GROUP BY product_name ORDER BY total_sold DESC
-    `);
+    const search = req.query.search === undefined ? '' : req.query.search;
+    if (typeof search !== 'string' || search.trim().length > 100) {
+      return res.status(400).json({ success: false, message: 'Pencarian produk tidak valid.' });
+    }
+    const term = search.trim();
+    const [dbProducts] = term
+      ? await db.execute(
+        "SELECT * FROM products WHERE status='active' AND (name LIKE ? OR CAST(id AS CHAR) LIKE ?) ORDER BY id DESC LIMIT 20",
+        [`%${term}%`, `%${term}%`],
+      )
+      : await db.execute("SELECT * FROM products WHERE status='active'");
+    let productSales = [];
+    if (!term) {
+      [productSales] = await db.execute(`
+        SELECT product_name, COUNT(*) as total_sold, COALESCE(SUM(total_price),0) as total_revenue
+        FROM transactions WHERE status='success' GROUP BY product_name ORDER BY total_sold DESC
+      `);
+    }
     res.json({ success: true, products: dbProducts, productSales });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -480,16 +1062,59 @@ router.get('/notifications', async (req, res) => {
 
 router.get('/whatsapp/status', async (req, res) => {
   try {
-    const client = req.whatsappClient;
-    const connected = client && client.info && client.info.wid ? true : false;
+    const wa = require('../config/whatsapp');
+    const client = (wa && wa.getClient()) || null;
+    const s = (wa && wa.getState && wa.getState()) || {};
+    const connected = Boolean(client && client.info && client.info.wid);
     res.json({
       success: true,
       connected,
-      number: connected ? client.info.wid.user : null,
-      platform: connected ? client.info.platform : null
+      connectedSince: connected ? s.connectedSince || null : null,
+      number: connected ? client.info.wid.user : s.number || null,
+      platform: connected ? client.info.platform : s.platform || null,
+      qr: (wa && wa.getQr()) || null,
+      phase: s.phase || (connected ? 'ready' : 'idle'),
+      error: s.error || null,
+      errorDetail: s.errorDetail || null,
+      restartCount: s.restartCount || 0,
+      qrUpdatedAt: s.qrUpdatedAt || null,
+      nextRetryAt: s.nextRetryAt || null,
+      serverTime: Date.now()
     });
   } catch (err) {
-    res.json({ success: true, connected: false });
+    res.json({ success: true, connected: false, qr: null, phase: 'error', error: err.message });
+  }
+});
+
+/**
+ * Generate QR baru.
+ * body: { resetSession?: boolean, logout?: boolean }
+ *  - default          : restart client, session LocalAuth dipertahankan
+ *  - resetSession:true : hapus session, WA minta pairing dari nol
+ */
+router.post('/whatsapp/rescan', async (req, res) => {
+  try {
+    const wa = require('../config/whatsapp');
+    if (!wa || typeof wa.restart !== 'function') {
+      return res.status(400).json({ success: false, message: 'WA manager tidak tersedia' });
+    }
+    const resetSession = Boolean(
+      (req.body && (req.body.resetSession || req.body.logout)) || false
+    );
+    const result = await wa.restart({ resetSession });
+    const warning = result && result.warning ? result.warning : null;
+    res.json({
+      success: true,
+      resetSession,
+      warning,
+      message: warning
+        ? warning
+        : resetSession
+        ? 'Session direset, QR pairing baru akan muncul. Scan dari WhatsApp ponsel kamu.'
+        : 'Client WA di-restart, QR baru akan muncul. Scan dari WhatsApp ponsel kamu.'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -757,6 +1382,58 @@ router.post('/northpay/user/:id/disable', async (req, res) => {
   }
 });
 
+router.get('/product-reports', async (req, res) => {
+  try {
+    const status = String(req.query.status || '').trim();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+    const offset = (page - 1) * limit;
+    const where = status ? 'WHERE status = ?' : '';
+    const params = status ? [status] : [];
+    const [[count]] = await db.execute(`SELECT COUNT(*) AS total FROM product_reports ${where}`, params);
+    const [reports] = await db.execute(
+      `SELECT id, product_id, product_code, product_name, product_image, reporter_user_id,
+              reason, details, status, admin_note, reviewed_by, reviewed_at, created_at
+       FROM product_reports ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    res.json({ success: true, reports, total: count.total, page, limit });
+  } catch (err) {
+    console.error('Gagal memuat laporan produk:', err);
+    res.status(500).json({ success: false, message: 'Gagal memuat laporan produk.' });
+  }
+});
+
+router.put('/product-reports/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const status = String(req.body.status || '').trim();
+    const adminNote = String(req.body.adminNote || '').trim();
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.status(400).json({ success: false, message: 'ID laporan tidak valid.' });
+    }
+    if (!['reviewed', 'dismissed'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status laporan tidak valid.' });
+    }
+    if (adminNote.length > 1000) {
+      return res.status(400).json({ success: false, message: 'Catatan admin maksimal 1000 karakter.' });
+    }
+    const [result] = await db.execute(
+      `UPDATE product_reports
+       SET status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = NOW()
+       WHERE id = ?`,
+      [status, adminNote || null, req.user.id, id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan.' });
+    }
+    res.json({ success: true, message: 'Status laporan berhasil diperbarui.' });
+  } catch (err) {
+    console.error('Gagal memperbarui laporan produk:', err);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui laporan produk.' });
+  }
+});
+
 router.get('/reports/sales', async (req, res) => {
   try {
     const { start, end } = req.query;
@@ -789,6 +1466,14 @@ router.put('/settings', async (req, res) => {
   try {
     const { key, value } = req.body;
     await db.execute('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value=?', [key, value, value]);
+    const flashDiscount = require('../utils/flashDiscount');
+    if (String(key).startsWith('flash_')) {
+      flashDiscount.invalidateCache();
+      const { broadcast } = require('../config/io');
+      try {
+        broadcast('flash-updated', { key, at: new Date().toISOString() });
+      } catch (e) {}
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -806,6 +1491,481 @@ router.get('/settings', async (req, res) => {
   }
 });
 
+// ---------- Database Management (phpMyAdmin-style) ----------
+const DEFAULT_DB = process.env.DB_NAME || 'northline';
+const NAME_RE = /^[a-zA-Z0-9_$]+$/;
+const TYPE_RE = /^[a-zA-Z0-9_(), ]+$/;
+
+function validDb(db) { return !db || db === DEFAULT_DB || NAME_RE.test(db); }
+
+// get a dedicated connection, optionally switched to target database
+async function getConn(targetDb) {
+  const conn = await db.getConnection();
+  try {
+    if (targetDb && targetDb !== DEFAULT_DB && NAME_RE.test(targetDb)) {
+      await conn.query('USE ??', [targetDb]);
+    }
+  } catch (e) { conn.release(); throw e; }
+  return conn;
+}
+
+router.get('/database', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.query.db || DEFAULT_DB;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    conn = await getConn(targetDb);
+    const [tables] = await conn.query('SHOW TABLES');
+    var keyName = 'Tables_in_' + targetDb;
+    if (targetDb !== DEFAULT_DB) {
+      // SHOW TABLES FROM returns Tables_in_<db>
+      keyName = 'Tables_in_' + targetDb;
+    }
+    var tableNames = tables.map(function (t) { return t[keyName]; });
+    var rowCounts = {};
+    for (var i = 0; i < tableNames.length; i++) {
+      try {
+        const [rows] = await conn.query('SELECT COUNT(*) as count FROM ??', [tableNames[i]]);
+        rowCounts[tableNames[i]] = rows[0].count;
+      } catch (e) { rowCounts[tableNames[i]] = 0; }
+    }
+    res.json({ success: true, db: targetDb, tables: tableNames, rowCounts: rowCounts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+router.get('/database/count', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.query.db || DEFAULT_DB;
+    var table = req.query.table;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!table || !NAME_RE.test(table)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+    conn = await getConn(targetDb);
+    const [rows] = await conn.query('SELECT COUNT(*) as count FROM ??', [table]);
+    res.json({ success: true, count: rows[0].count });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// List all databases (phpMyAdmin-style: show everything)
+router.get('/database/databases', async (req, res) => {
+  let conn;
+  try {
+    conn = await getConn();
+    const [rows] = await conn.query("SHOW DATABASES");
+    var dbs = rows.map(function (r) { return r.Database; });
+    res.json({ success: true, databases: dbs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+const SQL_ALLOW = ['SELECT','SHOW','DESCRIBE','DESC','EXPLAIN','INSERT','UPDATE','DELETE','REPLACE','CREATE','ALTER','DROP','TRUNCATE','RENAME','USE','SET','CALL','BEGIN','COMMIT','ROLLBACK','GRANT','REVOKE','ANALYZE','OPTIMIZE','REPAIR','CHECK','FLUSH','DO','WITH','VALUES'];
+
+router.get('/database/query', async (req, res) => {
+  let conn;
+  try {
+    var query = req.query.query;
+    var targetDb = req.query.db || DEFAULT_DB;
+    if (!query) return res.status(400).json({ success: false, message: 'Query required' });
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    var firstWord = query.trim().split(/\s+/)[0].toUpperCase().replace(/;$/, '');
+    if (SQL_ALLOW.indexOf(firstWord) === -1) {
+      return res.status(403).json({ success: false, message: 'Perintah tidak diizinkan. Diizinkan: ' + SQL_ALLOW.join(', ') });
+    }
+    conn = await getConn(targetDb);
+    const [result] = await conn.query(query);
+    var isRows = Array.isArray(result);
+    res.json({ success: true, result: isRows ? result : [], affectedRows: isRows ? result.length : (result.affectedRows || 0), info: isRows ? null : { affectedRows: result.affectedRows, insertId: result.insertId, message: result.message, warningCount: result.warningCount } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// Column + primary key info for a table
+router.get('/database/columns', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.query.db || DEFAULT_DB;
+    var table = req.query.table;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!table || !NAME_RE.test(table)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+    conn = await getConn(targetDb);
+    const [cols] = await conn.query('SHOW FULL COLUMNS FROM ??', [table]);
+    let pk = [];
+    try {
+      const [keys] = await conn.query("SHOW KEYS FROM ?? WHERE Key_name = 'PRIMARY'", [table]);
+      pk = keys.map(function (k) { return k.Column_name; });
+    } catch (e) { pk = []; }
+    let indexes = [];
+    try {
+      const [idx] = await conn.query('SHOW INDEX FROM ??', [table]);
+      indexes = idx;
+    } catch (e) { indexes = []; }
+    const [create] = await conn.query('SHOW CREATE TABLE ??', [table]).catch(function () { return [[]]; });
+    let status = {};
+    try {
+      const [st] = await conn.query('SHOW TABLE STATUS FROM ?? LIKE ?', [targetDb, table]);
+      status = st[0] || {};
+    } catch (e) { status = {}; }
+    res.json({ success: true, columns: cols, pk: pk, indexes: indexes, create: create[0] || null, status: status });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// Generic row CRUD (insert / update / delete) using parameterized queries
+router.post('/database/row', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.body.db || DEFAULT_DB;
+    var table = req.body.table;
+    var action = req.body.action; // insert | update | delete
+    var values = req.body.values || {};
+    var original = req.body.original || {};
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!table || !NAME_RE.test(table)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+    if (!['insert', 'update', 'delete'].includes(action)) return res.status(400).json({ success: false, message: 'Aksi tidak valid' });
+
+    conn = await getConn(targetDb);
+    const [cols] = await conn.query('SHOW FULL COLUMNS FROM ??', [table]);
+    let pk = [];
+    try {
+      const [keys] = await conn.query("SHOW KEYS FROM ?? WHERE Key_name = 'PRIMARY'", [table]);
+      pk = keys.map(function (k) { return k.Column_name; });
+    } catch (e) { pk = []; }
+    var colInfo = {};
+    cols.forEach(function (c) { colInfo[c.Field] = c; });
+
+    function norm(colName, raw) {
+      var info = colInfo[colName] || {};
+      if (raw === '' || raw === null || raw === undefined) {
+        if (info.Extra && info.Extra.indexOf('auto_increment') !== -1) return undefined;
+        if (info.Null === 'YES') return null;
+        if (info.Type && /^(int|bigint|smallint|tinyint|mediumint|decimal|float|double|numeric)/i.test(info.Type)) return 0;
+        return '';
+      }
+      if (info.Type && /^(int|bigint|smallint|tinyint|mediumint|decimal|float|double|numeric)/i.test(info.Type)) {
+        var n = Number(raw);
+        return isNaN(n) ? raw : n;
+      }
+      return raw;
+    }
+
+    if (action === 'insert') {
+      var insCols = [], insPh = [], insVals = [];
+      Object.keys(values).forEach(function (col) {
+        if (!(col in colInfo)) return;
+        var v = norm(col, values[col]);
+        if (v === undefined) return;
+        insCols.push(col);
+        insPh.push('?');
+        insVals.push(v);
+      });
+      if (!insCols.length) return res.status(400).json({ success: false, message: 'Tidak ada kolom untuk diisi' });
+      var sql = 'INSERT INTO ?? (' + insCols.map(function () { return '??'; }).join(',') + ') VALUES (' + insPh.join(',') + ')';
+      var params = [table].concat(insCols).concat(insVals);
+      const [r] = await conn.query(sql, params);
+      res.json({ success: true, id: r.insertId, message: 'Data berhasil ditambahkan' });
+    } else if (action === 'update') {
+      if (!pk.length) return res.status(400).json({ success: false, message: 'Tabel tidak punya primary key, update dibatalkan untuk keamanan' });
+      var setCols = [], setVals = [];
+      Object.keys(values).forEach(function (col) {
+        if (pk.indexOf(col) !== -1) return;
+        if (!(col in colInfo)) return;
+        var v = norm(col, values[col]);
+        if (v === undefined) return;
+        setCols.push(col);
+        setVals.push(v);
+      });
+      var whereCols = [], whereVals = [];
+      pk.forEach(function (col) {
+        whereCols.push(col);
+        whereVals.push(norm(col, original[col]));
+      });
+      if (!setCols.length) return res.status(400).json({ success: false, message: 'Tidak ada kolom yang diubah' });
+      var usql = 'UPDATE ?? SET ' + setCols.map(function (c) { return '?? = ?'; }).join(', ') + ' WHERE ' + whereCols.map(function (c) { return '?? = ?'; }).join(' AND ');
+      var uparams = [table].concat(setCols).concat(setVals).concat(whereCols).concat(whereVals);
+      const [r] = await conn.query(usql, uparams);
+      res.json({ success: true, affected: r.affectedRows, message: 'Data berhasil diperbarui' });
+    } else if (action === 'delete') {
+      if (!pk.length) return res.status(400).json({ success: false, message: 'Tabel tidak punya primary key, delete dibatalkan untuk keamanan' });
+      var dCols = [], dVals = [];
+      pk.forEach(function (col) {
+        dCols.push(col);
+        dVals.push(norm(col, original[col]));
+      });
+      var dsql = 'DELETE FROM ?? WHERE ' + dCols.map(function (c) { return '?? = ?'; }).join(' AND ');
+      var dparams = [table].concat(dCols).concat(dVals);
+      const [r] = await conn.query(dsql, dparams);
+      res.json({ success: true, affected: r.affectedRows, message: 'Data berhasil dihapus' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// DDL operations (database + table + column + index management)
+const SYSTEM_DBS = ['mysql', 'information_schema', 'performance_schema', 'sys'];
+router.post('/database/ddl', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.body.db || DEFAULT_DB;
+    var op = req.body.op;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!op) return res.status(400).json({ success: false, message: 'Operasi tidak valid' });
+    // Protect server-critical / system databases from destructive ops
+    var opDb = (op === 'create_db' || op === 'drop_db') ? req.body.name : targetDb;
+    if (SYSTEM_DBS.indexOf(opDb) !== -1 && op !== 'create_db') {
+      return res.status(403).json({ success: false, message: 'Database sistem (' + opDb + ') dilindungi dan tidak dapat diubah/hapus dari panel.' });
+    }
+    if (op === 'drop_db' && req.body.name === DEFAULT_DB) {
+      return res.status(403).json({ success: false, message: 'Database utama (' + DEFAULT_DB + ') tidak dapat dihapus.' });
+    }
+    if ((op === 'drop_table' || op === 'truncate_table' || op === 'rename_table') && SYSTEM_DBS.indexOf(targetDb) !== -1) {
+      return res.status(403).json({ success: false, message: 'Tabel di database sistem tidak dapat diubah dari panel.' });
+    }
+    if ((op === 'add_column' || op === 'drop_column' || op === 'create_index' || op === 'drop_index') && SYSTEM_DBS.indexOf(targetDb) !== -1) {
+      return res.status(403).json({ success: false, message: 'Struktur database sistem tidak dapat diubah dari panel.' });
+    }
+    conn = await getConn(targetDb);
+
+    if (op === 'create_db') {
+      var ndb = req.body.name;
+      if (!NAME_RE.test(ndb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+      await conn.query('CREATE DATABASE IF NOT EXISTS ??', [ndb]);
+      return res.json({ success: true, message: 'Database ' + ndb + ' dibuat' });
+    }
+    if (op === 'drop_db') {
+      var ddb = req.body.name;
+      if (!NAME_RE.test(ddb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+      if (ddb === DEFAULT_DB) return res.status(400).json({ success: false, message: 'Tidak bisa menghapus database utama' });
+      await conn.query('DROP DATABASE ??', [ddb]);
+      return res.json({ success: true, message: 'Database ' + ddb + ' dihapus' });
+    }
+    if (op === 'create_table') {
+      var tname = req.body.name;
+      var columns = req.body.columns || [];
+      if (!NAME_RE.test(tname)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+      if (!columns.length) return res.status(400).json({ success: false, message: 'Minimal satu kolom' });
+      var defs = [], pkCols = [];
+      for (var i = 0; i < columns.length; i++) {
+        var c = columns[i];
+        if (!NAME_RE.test(c.name)) return res.status(400).json({ success: false, message: 'Nama kolom tidak valid: ' + (c.name || '') });
+        if (!TYPE_RE.test(c.type)) return res.status(400).json({ success: false, message: 'Tipe kolom tidak valid: ' + (c.type || '') });
+        var def = '?? ' + c.type;
+        def = def.replace('??', '`' + c.name + '`');
+        if (c.unsigned) def += ' UNSIGNED';
+        def += (c.nullable ? ' NULL' : ' NOT NULL');
+        if (c.default !== undefined && c.default !== '' && c.default !== null) def += ' DEFAULT ' + conn.escape(c.default);
+        else if (c.nullable && (c.default === null || c.default === '')) def += ' DEFAULT NULL';
+        if (c.ai) def += ' AUTO_INCREMENT';
+        if (c.comment) def += " COMMENT " + conn.escape(c.comment);
+        if (c.pk) pkCols.push('`' + c.name + '`');
+        defs.push(def);
+      }
+      if (pkCols.length) defs.push('PRIMARY KEY (' + pkCols.join(', ') + ')');
+      var csql = 'CREATE TABLE ?? (' + defs.join(', ') + ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
+      await conn.query(csql, [tname]);
+      return res.json({ success: true, message: 'Tabel ' + tname + ' dibuat' });
+    }
+    if (op === 'drop_table') {
+      var dt = req.body.name;
+      if (!NAME_RE.test(dt)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+      await conn.query('DROP TABLE ??', [dt]);
+      return res.json({ success: true, message: 'Tabel ' + dt + ' dihapus' });
+    }
+    if (op === 'truncate_table') {
+      var tt = req.body.name;
+      if (!NAME_RE.test(tt)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+      await conn.query('TRUNCATE TABLE ??', [tt]);
+      return res.json({ success: true, message: 'Tabel ' + tt + ' dikosongkan' });
+    }
+    if (op === 'rename_table') {
+      var from = req.body.from, to = req.body.to;
+      if (!NAME_RE.test(from) || !NAME_RE.test(to)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+      await conn.query('RENAME TABLE ?? TO ??', [from, to]);
+      return res.json({ success: true, message: 'Tabel ' + from + ' diubah menjadi ' + to });
+    }
+    if (op === 'add_column') {
+      var at = req.body.table, ac = req.body.column;
+      if (!NAME_RE.test(at) || !NAME_RE.test(ac.name) || !TYPE_RE.test(ac.type)) return res.status(400).json({ success: false, message: 'Nama/kolom tidak valid' });
+      var acdef = '`' + ac.name + '` ' + ac.type;
+      if (ac.unsigned) acdef += ' UNSIGNED';
+      acdef += (ac.nullable ? ' NULL' : ' NOT NULL');
+      if (ac.default !== undefined && ac.default !== '' && ac.default !== null) acdef += ' DEFAULT ' + conn.escape(ac.default);
+      else if (ac.nullable) acdef += ' DEFAULT NULL';
+      if (ac.ai) acdef += ' AUTO_INCREMENT';
+      var acparams = [at];
+      var acsql = 'ALTER TABLE ?? ADD COLUMN ' + acdef;
+      if (ac.after) { acsql += ' AFTER ??'; acparams.push(ac.after); }
+      await conn.query(acsql, acparams);
+      return res.json({ success: true, message: 'Kolom ' + ac.name + ' ditambahkan' });
+    }
+    if (op === 'drop_column') {
+      var dct = req.body.table, dcc = req.body.column;
+      if (!NAME_RE.test(dct) || !NAME_RE.test(dcc)) return res.status(400).json({ success: false, message: 'Nama tidak valid' });
+      await conn.query('ALTER TABLE ?? DROP COLUMN ??', [dct, dcc]);
+      return res.json({ success: true, message: 'Kolom ' + dcc + ' dihapus' });
+    }
+    if (op === 'create_index') {
+      var it = req.body.table, iname = req.body.name, icols = req.body.columns || [], iuniq = req.body.unique;
+      if (!NAME_RE.test(it) || !NAME_RE.test(iname) || !icols.every(function (x) { return NAME_RE.test(x); })) return res.status(400).json({ success: false, message: 'Nama tidak valid' });
+      await conn.query('CREATE ' + (iuniq ? 'UNIQUE ' : '') + 'INDEX ?? ON ?? (' + icols.map(function () { return '??'; }).join(', ') + ')', [iname, it].concat(icols));
+      return res.json({ success: true, message: 'Index ' + iname + ' dibuat' });
+    }
+    if (op === 'drop_index') {
+      var dit = req.body.table, diname = req.body.name;
+      if (!NAME_RE.test(dit) || !NAME_RE.test(diname)) return res.status(400).json({ success: false, message: 'Nama tidak valid' });
+      await conn.query('DROP INDEX ?? ON ??', [diname, dit]);
+      return res.json({ success: true, message: 'Index ' + diname + ' dihapus' });
+    }
+    if (op === 'modify_column') {
+      var mt = req.body.table, mcc = req.body.column;
+      if (!NAME_RE.test(mt) || !NAME_RE.test(mcc.name) || !TYPE_RE.test(mcc.type)) return res.status(400).json({ success: false, message: 'Nama/kolom tidak valid' });
+      var mcdef = '`' + mcc.name + '` ' + mcc.type;
+      if (mcc.unsigned) mcdef += ' UNSIGNED';
+      mcdef += (mcc.nullable ? ' NULL' : ' NOT NULL');
+      if (mcc.default !== undefined && mcc.default !== '' && mcc.default !== null) mcdef += ' DEFAULT ' + conn.escape(mcc.default);
+      else if (mcc.nullable) mcdef += ' DEFAULT NULL';
+      if (mcc.ai) mcdef += ' AUTO_INCREMENT';
+      if (mcc.comment) mcdef += " COMMENT " + conn.escape(mcc.comment);
+      if (mcc.after) { mcdef += ' AFTER ??'; }
+      var mcparams = [mt, mcdef];
+      if (mcc.after) mcparams.push(mcc.after);
+      await conn.query('ALTER TABLE ?? MODIFY COLUMN ' + mcdef, mcparams);
+      return res.json({ success: true, message: 'Kolom ' + mcc.name + ' diperbarui' });
+    }
+    if (op === 'table_options') {
+      var ot = req.body.table;
+      if (!NAME_RE.test(ot)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+      var opts = [];
+      if (req.body.engine) { if (!/^[A-Za-z0-9_]+$/.test(req.body.engine)) return res.status(400).json({ success: false, message: 'Engine tidak valid' }); opts.push('ENGINE=' + req.body.engine); }
+      if (req.body.collation) { if (!/^[a-zA-Z0-9_]+$/.test(req.body.collation)) return res.status(400).json({ success: false, message: 'Collation tidak valid' }); opts.push('DEFAULT COLLATE ' + req.body.collation); }
+      if (req.body.comment !== undefined && req.body.comment !== null && req.body.comment !== '') opts.push('COMMENT=' + conn.escape(req.body.comment));
+      if (req.body.auto_increment) { var aiVal = Number(req.body.auto_increment); if (!isNaN(aiVal)) opts.push('AUTO_INCREMENT=' + aiVal); }
+      if (!opts.length) return res.status(400).json({ success: false, message: 'Tidak ada opsi diubah' });
+      await conn.query('ALTER TABLE ?? ' + opts.join(' , '), [ot]);
+      return res.json({ success: true, message: 'Opsi tabel ' + ot + ' diperbarui' });
+    }
+    return res.status(400).json({ success: false, message: 'Operasi tidak dikenal: ' + op });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// Split SQL text into individual statements (supports DELIMITER + comments)
+function splitSql(sql) {
+  var out = [];
+  var buf = '';
+  var delim = ';';
+  var lines = String(sql).split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var dm = line.match(/^\s*DELIMITER\s+(\S+)/i);
+    if (dm) {
+      if (buf.trim()) { out.push(buf.trim()); buf = ''; }
+      delim = dm[1];
+      continue;
+    }
+    var trimmed = line.trim();
+    if (trimmed === '' || trimmed.indexOf('--') === 0 || trimmed.indexOf('#') === 0 || trimmed.indexOf('/*') === 0) continue;
+    buf += line + '\n';
+    var bt = buf.trim();
+    if (bt.length >= delim.length && bt.slice(bt.length - delim.length) === delim) {
+      var stmt = bt.slice(0, bt.length - delim.length).trim();
+      if (stmt) out.push(stmt);
+      buf = '';
+    }
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+// Export SQL dump (table or whole database)
+router.get('/database/export', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.query.db || DEFAULT_DB;
+    var table = req.query.table;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (table && !NAME_RE.test(table)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+    conn = await getConn(targetDb);
+    var tables = [];
+    if (table) tables = [table];
+    else { const [ts] = await conn.query('SHOW TABLES'); tables = ts.map(function (t) { return t['Tables_in_' + targetDb]; }); }
+    var dump = '-- Northline SQL Database Manager Export\n-- Database: ' + targetDb + '\n-- Tanggal: ' + new Date().toISOString() + '\n\n';
+    for (var ti = 0; ti < tables.length; ti++) {
+      var t = tables[ti];
+      const [c] = await conn.query('SHOW CREATE TABLE ??', [t]);
+      dump += 'DROP TABLE IF EXISTS `' + t + '`;\n' + c[0]['Create Table'] + ';\n\n';
+      const [cols] = await conn.query('SHOW COLUMNS FROM ??', [t]);
+      var colNames = cols.map(function (x) { return x.Field; });
+      var off = 0; var LIMIT = 500;
+      while (true) {
+        const [rows] = await conn.query('SELECT * FROM ?? LIMIT ? OFFSET ?', [t, LIMIT, off]);
+        if (!rows.length) break;
+        for (var ri = 0; ri < rows.length; ri++) {
+          var vals = colNames.map(function (cn) { return conn.escape(rows[ri][cn]); });
+          dump += 'INSERT INTO `' + t + '` (`' + colNames.join('`,`') + '`) VALUES (' + vals.join(', ') + ');\n';
+        }
+        if (rows.length < LIMIT) break;
+        off += LIMIT;
+      }
+      dump += '\n';
+    }
+    res.setHeader('Content-Type', 'application/sql; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + targetDb + (table ? '_' + table : '') + '_export.sql"');
+    res.send(dump);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// Import SQL (runs multiple statements)
+router.post('/database/import', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.body.db || DEFAULT_DB;
+    var sql = req.body.sql;
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!sql || !String(sql).trim()) return res.status(400).json({ success: false, message: 'SQL kosong' });
+    conn = await getConn(targetDb);
+    var stmts = splitSql(sql);
+    var executed = 0;
+    var errors = [];
+    for (var i = 0; i < stmts.length; i++) {
+      try { await conn.query(stmts[i]); executed++; }
+      catch (e) { errors.push(stmts[i].slice(0, 90).replace(/\n/g, ' ') + ' — ' + e.message); }
+    }
+    res.json({ success: true, executed: executed, errors: errors, message: executed + ' statement dijalankan' + (errors.length ? ', ' + errors.length + ' gagal' : '') });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
+// Table maintenance (OPTIMIZE / ANALYZE / CHECK / REPAIR)
+router.post('/database/maintenance', async (req, res) => {
+  let conn;
+  try {
+    var targetDb = req.body.db || DEFAULT_DB;
+    var table = req.body.table;
+    var mop = (req.body.op || '').toLowerCase();
+    var allowed = { optimize: 1, analyze: 1, check: 1, repair: 1 };
+    if (!validDb(targetDb)) return res.status(400).json({ success: false, message: 'Nama database tidak valid' });
+    if (!NAME_RE.test(table)) return res.status(400).json({ success: false, message: 'Nama tabel tidak valid' });
+    if (!allowed[mop]) return res.status(400).json({ success: false, message: 'Operasi maintenance tidak valid' });
+    conn = await getConn(targetDb);
+    const [r] = await conn.query(mop.toUpperCase() + ' TABLE ??', [table]);
+    res.json({ success: true, result: r, message: mop.toUpperCase() + ' selesai' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally { if (conn) conn.release(); }
+});
+
 // ---------- AI Models (chat) ----------
 router.get('/ai-models', async (req, res) => {
   try {
@@ -816,7 +1976,7 @@ router.get('/ai-models', async (req, res) => {
       SELECT 
         COALESCE(SUM(total_messages),0) AS total_messages,
         COALESCE(SUM(total_tokens),0) AS total_tokens,
-        COALESCE(SUM(CASE WHEN provider<>'opencode' THEN total_tokens * 0.000003 ELSE 0 END),0) AS est_cost,
+        COALESCE(SUM(CASE WHEN provider NOT IN ('opencode', 'copilot') THEN total_tokens * 0.000003 ELSE 0 END),0) AS est_cost,
         COUNT(CASE WHEN enabled=1 THEN 1 END) AS total_enabled,
         COUNT(CASE WHEN is_active=1 AND enabled=1 THEN 1 END) AS total_active,
         MAX(last_used_at) AS last_used_at
@@ -846,35 +2006,103 @@ router.post('/ai-models/select', async (req, res) => {
   try {
     const { provider, model_id } = req.body;
     if (!provider || !model_id) return res.status(400).json({ success: false, message: 'provider dan model_id wajib diisi' });
+    if (provider !== 'copilot') return res.status(400).json({ success: false, message: 'Pilih model GitHub Copilot.' });
     const [rows] = await db.execute('SELECT id FROM ai_models WHERE provider=? AND model_id=?', [provider, model_id]);
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Model tidak ditemukan' });
     await db.execute('UPDATE ai_models SET is_active=0 WHERE is_active=1');
     await db.execute('UPDATE ai_models SET is_active=1, enabled=1 WHERE provider=? AND model_id=?', [provider, model_id]);
+    aiRoutes.invalidateAiModelsCache();
     res.json({ success: true, message: `Model AI diganti ke ${provider}/${model_id}` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-router.post('/ai-models/check', async (req, res) => {
+router.post('/ai-models/sync', async (req, res) => {
+  let connection;
+  let transactionStarted = false;
   try {
-    const { provider, model_id } = req.body;
-    if (!provider || !model_id) return res.status(400).json({ success: false, message: 'provider dan model_id wajib diisi' });
-    const axios = require('axios');
-    const OPENCODE_SERVER = 'http://127.0.0.1:11436';
-    const { data: sessionData } = await axios.post(`${OPENCODE_SERVER}/session`, {}, { timeout: 5000 });
-    const { data } = await axios.post(`${OPENCODE_SERVER}/session/${sessionData.id}/message`, {
-      model: { providerID: provider, modelID: model_id },
-      parts: [{ type: 'text', text: 'Balas dengan satu kata: OK' }],
-      system: 'Kamu adalah bot uji. Balas HANYA dengan satu kata: OK'
-    }, { timeout: 30000 });
-    const reply = data.parts?.find(p => p.type === 'text')?.text || '';
+    const availableModels = await listCopilotModels();
+    const models = Array.from(new Map(
+      availableModels
+        .filter(model => model.id)
+        .map(model => [model.id, { id: model.id, name: model.name || model.id }])
+    ).values());
+    if (models.length === 0) {
+      return res.status(502).json({ success: false, message: 'GitHub Copilot tidak mengembalikan daftar model.' });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [activeRows] = await connection.execute(
+      "SELECT model_id FROM ai_models WHERE provider='copilot' AND is_active=1 AND enabled=1 LIMIT 1",
+    );
+    const activeModelId = activeRows[0]?.model_id;
+    const selectedModelId = models.some(model => model.id === activeModelId)
+      ? activeModelId
+      : models[0].id;
+
+    await connection.execute('UPDATE ai_models SET is_active=0, enabled=0');
+    for (const model of models) {
+      const [existingRows] = await connection.execute(
+        'SELECT id FROM ai_models WHERE provider=? AND model_id=? LIMIT 1',
+        ['copilot', model.id],
+      );
+      if (existingRows.length) {
+        await connection.execute(
+          'UPDATE ai_models SET display_name=?, is_active=?, enabled=1, last_error=NULL WHERE provider=? AND model_id=?',
+          [model.name, model.id === selectedModelId ? 1 : 0, 'copilot', model.id],
+        );
+      } else {
+        await connection.execute(
+          'INSERT INTO ai_models (provider, model_id, display_name, is_active, enabled) VALUES (?, ?, ?, ?, 1)',
+          ['copilot', model.id, model.name, model.id === selectedModelId ? 1 : 0],
+        );
+      }
+    }
+    await connection.commit();
+    transactionStarted = false;
+    aiRoutes.invalidateAiModelsCache();
+    res.json({
+      success: true,
+      message: `${models.length} model GitHub Copilot disinkronkan.`,
+      activeModel: selectedModelId,
+    });
+  } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Copilot model sync rollback error:', rollbackError.message);
+      }
+    }
+    console.error('Copilot model sync error:', err.message);
+    res.status(503).json({ success: false, message: err.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+router.post('/ai-models/check', async (req, res) => {
+  const { provider, model_id } = req.body;
+  if (!provider || !model_id) return res.status(400).json({ success: false, message: 'provider dan model_id wajib diisi' });
+  if (provider !== 'copilot') {
+    return res.status(400).json({ success: false, message: 'Hanya model GitHub Copilot yang dapat diuji.' });
+  }
+  try {
+    const reply = await sendCopilotPrompt({
+      model: model_id,
+      prompt: 'Balas dengan satu kata: OK',
+      systemPrompt: 'Kamu adalah bot uji. Balas HANYA dengan satu kata: OK',
+      timeout: 30000,
+    });
     await db.execute('UPDATE ai_models SET last_error=NULL, last_checked_at=NOW() WHERE provider=? AND model_id=?', [provider, model_id]);
     res.json({ success: true, reply, message: `Model ${provider}/${model_id} aktif & merespons` });
   } catch (err) {
-    const msg = (err.response?.data?.error?.message) || err.message || 'Model tidak merespons (mungkin kena limit)';
+    const msg = err.message || 'Model tidak merespons (mungkin kena limit)';
     await db.execute('UPDATE ai_models SET last_error=?, last_checked_at=NOW() WHERE provider=? AND model_id=?', [String(msg).substring(0, 290), req.body.provider, req.body.model_id]);
-    res.json({ success: false, message: `Model ${req.body.provider}/${req.body.model_id} gagal: ${msg}`, error: String(msg) });
+    res.status(503).json({ success: false, message: `Model ${provider}/${model_id} gagal: ${msg}`, error: String(msg) });
   }
 });
 
@@ -984,7 +2212,19 @@ router.post('/npinjam/applications/:id/approve', async (req, res) => {
         case "monthly_tx_count": value = 20; break;
         case "account_age_days": value = Math.min(100, (Date.now() - new Date(appData.created_at).getTime()) / (1000 * 60 * 60 * 24) / 30 * 10); break;
         case "income_stability": value = 75; break;
-        case "ktp_verified": value = parseFloat(appData.face_match_score || appData.face_verify_score || 0); break;
+        case "ktp_verified": {
+          // Fail-closed. Kolom ini dulu diisi dari face_match_score yang
+          // dikirim browser, jadi nilainya bisa dipalsukan dan tidak boleh
+          // lagi dipakai. face_verify_score + facial_verification_status
+          // keduanya berasal dari verifyFaces() di routes/npinjam.js.
+          // Kalau statusnya bukan 'verified' (mesin mati, atau pengajuan
+          // manual/legacy) kontribusinya 0 - bukan nilai default yang
+          // optimistic.
+          const faceVerified = appData.facial_verification_status === "verified";
+          const similarity = faceVerified ? parseFloat(appData.face_verify_score) : NaN;
+          value = Number.isFinite(similarity) ? Math.max(0, Math.min(1, similarity)) : 0;
+          break;
+        }
       }
       const normalized = Math.max(0, Math.min(1, (value - rule.min_value) / (rule.max_value - rule.min_value)));
       score += Math.round(rule.score_min + normalized * (rule.score_max - rule.score_min));
@@ -1241,3 +2481,5 @@ router.get('/seller-earnings', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.adminAuth = adminAuth;
+module.exports.ensureAdminOperationsTables = ensureAdminOperationsTables;

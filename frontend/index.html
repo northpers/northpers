@@ -7,7 +7,7 @@
     <meta name="robots" content="index, follow, max-image-preview:large">
     <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
     <link rel="canonical" href="https://nl.hostinesia.my.id/">
-    <title>Northline Indonesia - Brand Fashion Lokal</title>
+    <title>Northline Perspective Clothing</title>
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Northline Indonesia">
     <meta property="og:title" content="Northline Indonesia - Brand Fashion Lokal UMKM">
@@ -16,8 +16,8 @@
     <meta property="og:image" content="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png">
     <meta property="og:locale" content="id_ID">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Northline Indonesia - Brand Fashion Lokal UMKM">
-    <meta name="twitter:description" content="Northline Indonesia - Brand fashion lokal UMKM Indonesia terbaik. Bangga pakai produk dalam negeri.">
+    <meta name="twitter:title" content="North Perspective Clothing - Brand Fashion Lokal UMKM">
+    <meta name="twitter:description" content="North Perspective Clothing - Brand fashion lokal UMKM Indonesia terbaik. Bangga pakai produk dalam negeri.">
     <meta name="twitter:image" content="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png">
     <style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style>
     <script type="application/ld+json">
@@ -25,9 +25,9 @@
       "@context": "https://schema.org",
       "@type": "OnlineStore",
       "name": "Northline Indonesia",
-      "alternateName": "Northline Indonesia Brand",
+      "alternateName": "North Perspective Clothing",
       "url": "https://nl.hostinesia.my.id/",
-      "description": "Northline Indonesia - Brand fashion lokal UMKM Indonesia terbaik. Bangga pakai produk dalam negeri bersama Northline.",
+      "description": "North Perspective Clothing - Brand fashion lokal UMKM Indonesia terbaik. Bangga pakai produk dalam negeri bersama Northline.",
       "logo": "https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png",
       "image": "https://nl.hostinesia.my.id/public/icons/nrtFaviconWhite.png",
       "priceRange": "Rp",
@@ -114,6 +114,93 @@
         .hover-bottom:hover::after {
             opacity: 1;
         }
+        .badge-name-blink {
+        position: relative;
+        overflow: hidden;
+        }
+        .badge-name-blink::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.65),
+                transparent
+            );
+            transform: skewX(-20deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% {
+                left: -100%;
+            }
+            50% {
+                left: 150%;
+            }
+            100% {
+                left: 150%;
+            }
+        }
+        @keyframes containerSpin {
+  0%, 40% { transform: rotate(0deg); }
+  50%, 90% { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Posisi & Animasi masing-masing dot */
+@keyframes dot1Motion {
+  0%   { transform: translate(-8px, 0) scale(1); }    /* Posisi awal: dot kiri */
+  20%  { transform: translate(0, 0) scale(1); }       /* Memusat */
+  35%  { transform: rotate(0deg) translate(8px, 0) scale(0.9); }   /* Membentuk ring */
+  85%  { transform: rotate(360deg) translate(8px, 0) scale(0.9); } /* Berputar sebagai spinner */
+  90%  { transform: rotate(360deg) translate(0, 0) scale(1); }     /* Kembali ke tengah */
+  100% { transform: translate(-8px, 0) scale(1); }    /* Kembali kepoisi awal */
+}
+
+@keyframes dot2Motion {
+  0%   { transform: translate(0, 0) scale(1); animation-timing-function: ease-in-out; }    /* Posisi awal: dot tengah */
+  20%  { transform: translate(0, 0) scale(1); }
+  35%  { transform: rotate(0deg) translate(0, -8px) scale(0.9); }  /* Membentuk ring atas */
+  85%  { transform: rotate(360deg) translate(0, -8px) scale(0.9); }
+  90%  { transform: rotate(360deg) translate(0, 0) scale(1); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes dot3Motion {
+  0%   { transform: translate(8px, 0) scale(1); }     /* Posisi awal: dot kanan */
+  20%  { transform: translate(0, 0) scale(1); }
+  35%  { transform: rotate(0deg) translate(-8px, 0) scale(0.9); }  /* Membentuk ring kanan/bawah */
+  85%  { transform: rotate(360deg) translate(-8px, 0) scale(0.9); }
+  90%  { transform: rotate(360deg) translate(0, 0) scale(1); }
+  100% { transform: translate(8px, 0) scale(1); }
+}
+
+.morph-loader {
+  animation: containerSpin 4s infinite linear;
+}
+
+.dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+}
+
+.dot-1 {
+  animation: dot1Motion 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dot-2 {
+  animation: dot2Motion 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dot-3 {
+  animation: dot3Motion 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
     </style>
 </head>
 <body class="bg-gray-100 text-black">
@@ -178,36 +265,6 @@
                             <img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">
                             Bahasa Indonesia
                         </span>
-                        <div id="lang-dropdown"
-                            class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
-                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
-                            <div class="py-2">
-                                <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Indonesia
-                                </button>
-                                <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Malaysia
-                                </button>
-                                <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full object-cover">
-                                    English (Singapore)
-                                </button>
-                                <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full object-cover">
-                                    ไทย
-                                </button>
-                                <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full object-cover">
-                                    Tiếng Việt
-                                </button>
-                                <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full object-cover">
-                                    English
-                                </button>
-                            </div>
-                        </div>
                     </div>
                     <div class="relative group cursor-pointer">
                         <a href="/AppNorthAuth" id="auth-menu-btn" class="font-bold hover:opacity-90">
@@ -240,7 +297,7 @@
                     </div>
                     <img src="https://img.icons8.com/?size=100&id=56577&format=png&color=000000"
                         class="w-8 h-8 cursor-pointer mr-2 opacity-50 desktop-search-camera">
-                    <input type="file" accept="image/*" class="hidden" id="desktop-search-camera-input">
+                    <input type="file" accept="image/*,.jpg,.jpeg,.png,.webp" class="hidden" id="desktop-search-camera-input">
                     <button class="bg-[#DF414F] px-8 py-2 relative z-10">
                         <img src="https://img.icons8.com/ios-filled/50/ffffff/search.png" class="w-5 h-5">
                     </button>
@@ -318,7 +375,7 @@
                                     </span>
                                 </div>
                             </div>
-                            <input type="file" accept="image/*" capture="environment" class="hidden" id="mobile-search-camera-input">
+                            <input type="file" accept="image/*,.jpg,.jpeg,.png,.webp" class="hidden" id="mobile-search-camera-input">
                             <img
                                 src="https://img.icons8.com/?size=100&id=56577&format=png&color=000000"
                                 class="w-5 h-5 opacity-50 mobile-search-camera" loading="lazy">
@@ -529,7 +586,7 @@
                                     class="h-6 w-auto" loading="lazy">
                             </div>
                             <span class="text-[10px] text-white leading-tight">
-                                FitCheck Diskon 5%
+                                FitCheck Panduan Ukuran
                             </span>
                         </span>
 
@@ -618,7 +675,7 @@
                         <img src="https://img.icons8.com/?size=100&id=6vBtg4uL0skm&format=png&color=DF414F" class="h-8 w-auto" loading="lazy">
                     </div>
                     <span class="text-[14px] text-gray-700 leading-tight">
-                        FitCheck Diskon 5%
+                        FitCheck Panduan Ukuran
                     </span>
                 </span>
 
@@ -653,10 +710,61 @@
         </div>
     </div>
 
-    <section class="md:max-w-7xl md:bg-white md:mt-4 mt-5 mx-auto md:px-6 py-10">
+    <!-- Section Produk Stok -->
+    <section class="relative md:max-w-7xl md:mt-4 mt-10 mx-auto pb-5">
 
-        <div class="bg-white px-2 py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+        <aside class="ready-filter-aside absolute w-44 h-full bg-white border border-gray-200 p-3" style="right: 100%; margin-right: 16px;">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2">Filter Kategori</p>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="tshirt" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                T-Shirt
+            </label>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="shortsleeve" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                ShortSleeve
+            </label>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="longsleeve" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                LongSleeve
+            </label>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="sweatpants" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                Sweatpants
+            </label>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="hoodie" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                Hoodie
+            </label>
+            <label class="flex items-center gap-2 py-0.5 text-[12px] text-gray-700 hover:text-[#DF414F] cursor-pointer select-none">
+                <input type="checkbox" class="ready-cat-checkbox" value="kidstshirt" style="accent-color:#DF414F;width:14px;height:14px;cursor:pointer;">
+                T-Shirt Kids
+            </label>
+        </aside>
 
+        <div class="px-2 py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+
+            <h3 class="md:text-xl text-sm flex flex-row items-center gap-1.5 bg-gradient-to-r from-[#DF414F] via-[#F5A0A8] to-white text-white p-2 badge-name-blink"
+                style="font-family: 'Bruno Ace', sans-serif;">Perspective <img src="https://img.icons8.com/?size=100&id=14903&format=png&color=ffffff" class="w-5 h-5">
+            </h3>
+
+            <div id="product-grid-ready" class="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-1 md:p-0 justify-center md:justify-start">
+                <div style="display:flex;align-items:center;justify-content:center;padding:48px 0;width:100%;grid-column:1/-1">
+                    <div class="loader-dots"><span></span><span></span><span></span></div>
+                </div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (typeof window.renderNorthlineReadyGrid === 'function') window.renderNorthlineReadyGrid();
+                    });
+                </script>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="md:max-w-7xl md:mt-4 mt-5 mx-auto py-10">
+
+        <div class="-mt-[60px] md:mt-0 md:px-0 md:py-0">
+            
             <div id="product-grid" class="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-1 md:p-0 justify-center md:justify-start">
                 <div style="display:flex;align-items:center;justify-content:center;padding:48px 0;width:100%;grid-column:1/-1">
                     <div class="loader-dots"><span></span><span></span><span></span></div>
@@ -669,9 +777,9 @@
         </div>
     </section>
 
-    <section class="md:max-w-7xl md:bg-white mt-1 md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
+    <section class="md:max-w-7xl mt-1 md:mt-5 mx-auto py-10 md:mb-4">
 
-        <div class="bg-white px-2 py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+        <div class="-mt-[60px] md:mt-0 md:px-0 md:py-0">
 
             <div id="product-grid-recom" class="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-1 md:p-0 justify-center md:justify-start">
                 <div style="display:flex;align-items:center;justify-content:center;padding:48px 0;width:100%;grid-column:1/-1">
@@ -688,15 +796,26 @@
         </div>
     </section>
 
-    <section class="md:max-w-7xl md:bg-white -mt-5 md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
+    <!-- <section class="md:max-w-7xl md:bg-white -mt-5 md:mt-5 mx-auto md:px-6 py-10 md:mb-4">
 
         <div class="bg-white px-2 py-10 -mt-[60px] md:mt-0 md:px-0 md:py-0">
+            <h3 class="md:text-xl text-sm flex flex-row items-center gap-1.5 bg-gradient-to-r from-[#DF414F] via-[#F5A0A8] to-white text-white p-2 badge-name-blink"
+                style="font-family: 'Bruno Ace', sans-serif;">Northline Pilih Lokal <img src="https://img.icons8.com/?size=100&id=26087&format=png&color=ffffff" class="w-5 h-5">
+            </h3>
             <div
                 id="seller-product-container"
                 class="grid grid-cols-2 md:flex md:flex-wrap gap-1 md:gap-1 md:p-0 justify-center md:justify-start">
+                <div style="display:flex;align-items:center;justify-content:center;padding:48px 0;width:100%;grid-column:1/-1">
+                    <div class="loader-dots"><span></span><span></span><span></span></div>
+                </div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (typeof window.renderNorthlineGrids === 'function') window.renderNorthlineGrids();
+                    });
+                </script>
             </div>
         </div>
-    </section>
+    </section> -->
 
     <footer class="bg-gray-100 border-t border-gray-300">
         <div class="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
@@ -747,6 +866,8 @@
                         Pengiriman
                     </h3>
                     <div class="grid grid-cols-3 gap-1">
+                        <img src="https://nl.hostinesia.my.id/public/image/kiriminaja-logo-png_seeklogo-482458.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
                         <img src="https://nl.hostinesia.my.id/public/image/20260608_170722.png"
                             class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
                         <img src="https://nl.hostinesia.my.id/public/image/20260608_170607.png"
@@ -931,7 +1052,7 @@
                     </div>
                     <div>
                         <div class="font-medium text-sm">
-                            Northline Support
+                            MiNorth
                         </div>
                         <div id="chat-header-status" class="text-[11px] text-white/80 flex items-center gap-1">
                             24/7 Support Center
@@ -979,7 +1100,7 @@
             class="flex-1 overflow-y-auto bg-[#f6f6f6] px-4 py-3 space-y-3">
             <div class="flex items-start gap-1.5 md:gap-2">
                 <div class="max-w-[85%] md:max-w-[80%]">
-                    <div class="overflow-hidden h-[35px] md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+                    <div class="overflow-hidden h-[35px] minorth md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
                         <div id="welcome-text-page">
                             Hi 👋 Selamat datang di Northline!
                         </div>
@@ -991,25 +1112,25 @@
             </div>
         </div>
 
-        <div class="border-t bg-white p-2">
+        <div id="keyboard-target" class="border-t bg-white p-2 transition-all duration-200">
             <div id="quick-questions" class="flex gap-2 overflow-x-auto mb-2">
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Produk apa aja?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Harga berapa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ada size apa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Cara order gimana?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ready stock?
                 </button>
             </div>
@@ -1018,10 +1139,10 @@
                     id="chat-input"
                     type="text"
                     placeholder="Type a message..."
-                    class="flex-1 h-8 md:h-10 border border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
+                    class="flex-1 h-8 border md:rounded-none rounded-full border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
                 <button
                     id="send-message"
-                    class="px-3 md:px-5 h-8 md:h-10 bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
+                    class="px-3 md:px-5 h-8 md:rounded-none rounded-full bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
                     <img src="https://img.icons8.com/?size=100&id=bmqaSU1DN4QP&format=png&color=ffffff" class="h-6 w-6">
                 </button>
             </div>
@@ -1047,17 +1168,18 @@
     </div>
 
     <script async src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
     <script defer src="/java/AppNorthScript.js?v=0000v12sec"></script>
     <script defer src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
-    <script defer src="/java/AppNorthPayment.js?v=0000v14pay"></script>
+    <script defer src="/java/AppNorthPayment.js?v=0000v18guestorders"></script>
     <script defer src="/java/AppNorthSlide.js?v=0000v12sec"></script>
-    <script defer src="/java/AppNorthCatalog.js?v=0000v40cat"></script>
+    <script defer src="/java/AppNorthCatalog.js?v=0000v58productreport"></script>
     <script defer src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
     <script defer src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
-    <script defer src="/src/services/AppNorthSearch.js?v=0000v15cat"></script>
-    <script defer src="/src/services/AppNorthOrders.js?v=0000v14sec"></script>
-    <script defer src="/src/services/AppNorthWishlist.js?v=0000v19wl"></script>
+    <script defer src="/src/services/AppNorthSearch.js?v=0000v21visualsearchbounce"></script>
+    <script defer src="/src/services/AppNorthOrders.js?v=0000v24guestorders"></script>
+    <script defer src="/src/services/AppNorthWishlist.js?v=0000v20wl"></script>
     <script defer src="/seller-products/AppNorthSellerCard.js?v=0000v11sec"></script>
     <script defer src="/seller-products/AppNorthSellerProductDetail.js?v=0000v11sec"></script>
     <script defer src="/src/services/AppNorthAiService.js?v=0000v11ai"></script>

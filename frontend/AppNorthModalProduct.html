@@ -1,12 +1,8 @@
-<div id="product-modal" class="fixed inset-0 z-[9999] hidden bg-gray-50 backdrop-blur-sm items-center justify-center md:p-0 md:items-stretch">
-    <div class="bg-white w-full h-full md:h-[90%] md:max-h-none md:w-[60%] md:border md:mt-10 md:rounded-none flex flex-col md:flex-row relative overflow-y-hidden md:shadow-none animate-fade-in md:items-start">
-        
-        <button onclick="closeModal()" class="absolute hidden md:block top-4 right-4 z-[110] bg-white/80 shadow-sm text-gray-500 hover:text-black transition cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
+<div id="product-modal" class="fixed inset-0 z-[9999] hidden bg-white backdrop-blur-sm items-center justify-center md:p-0 md:items-stretch">
+    <div class="bg-white w-full h-full md:h-[90%] md:max-h-none md:w-[60%] md:mt-10 md:rounded-none flex flex-col md:flex-row relative overflow-y-hidden md:shadow-none animate-fade-in md:items-start">
 
-        <nav class="absolute md:hidden left-0 right-0 top-4 z-[110] text-gray-500 cursor-pointer">
-            <div class="flex items-center w-full px-4 gap-3">
+        <nav class="absolute left-0 right-0 top-4 z-[110] text-gray-500 cursor-pointer">
+            <div class="flex items-center w-full md:px-0 px-4 gap-3">
 
                 <!-- CLOSE KIRI -->
                 <button onclick="closeModal()" class="shrink-0">
@@ -27,11 +23,18 @@
                             type="text"
                             placeholder=""
                             class="w-full flex-1 bg-transparent outline-none px-2 text-[13px] text-gray-700">
+                        <input id="modal-product-search-camera-input" type="file" accept="image/*" capture="environment" class="hidden">
+                        <button type="button" class="modal-product-search-camera shrink-0" aria-label="Cari produk dengan gambar">
+                            <img
+                                src="https://img.icons8.com/?size=100&id=56577&format=png&color=000000"
+                                class="w-5 h-5 opacity-50"
+                                alt="">
+                        </button>
                     </div>
 
                     <div
                         id="modal-search-result"
-                        class="hidden absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-[99999] max-h-64 overflow-y-auto">
+                        class="hidden absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-[999999] max-h-64 overflow-y-auto">
                     </div>
                 </div>
 
@@ -63,7 +66,7 @@
                                 </span>
                             </button>
 
-                            <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                            <button type="button" onclick="openProductReport()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
                                 <img src="https://img.icons8.com/?size=100&id=5342&format=png&color=000000"
                                     class="w-5 h-5 opacity-50">
                                 <span class="text-xs text-gray-700">
@@ -71,7 +74,7 @@
                                 </span>
                             </button>
 
-                            <button class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
+                            <button type="button" onclick="openProductInformation()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-md transition">
                                 <img src="https://img.icons8.com/?size=100&id=14093&format=png&color=000000"
                                     class="w-5 h-5 opacity-50">
                                 <span class="text-xs text-gray-700">
@@ -85,12 +88,12 @@
             </div>
         </nav>
         
-        <div class="w-full md:w-[42%] flex flex-col bg-white shrink-0 pt-14 md:pt-6">
+        <div class="w-full md:w-[42%] flex flex-col bg-white shrink-0 pt-14 md:pt-10">
             <div id="thumb-container"
                 class="order-2 md:flex flex flex-row justify-center items-center gap-2 overflow-x-auto pt-3 w-full max-w-[500px] mx-auto">
             </div>
-            <div class="order-1 sm:order-2 md:order-1 pl-4 pr-4 flex-1 flex items-center justify-center">
-                <div class="relative aspect-square w-full max-w-[500px] max-h-[250px] md:max-h-[500px] bg-white border border-gray-200 shadow-sm overflow-hidden">
+            <div class="order-1 sm:order-2 md:order-1 pl-4 pr-4 flex-1 flex flex-col items-center justify-center">
+                <div id="preview-box" onclick="toggleImageZoom()" class="relative aspect-square w-full max-w-[500px] max-h-[250px] md:max-h-[500px] bg-white border border-gray-200 shadow-sm overflow-hidden">
                     <div id="dynamic-bg"
                         class="absolute inset-0 transition-all duration-700 scale-150 blur-[40px] opacity-15">
                     </div>
@@ -98,15 +101,19 @@
                         class="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-2 py-0.5 select-none tracking-wider">
                         1 / 1
                     </div>
+                    <button onclick="event.stopPropagation(); closeImageZoom()"
+                        class="zoom-close-btn absolute top-3 right-3 z-30 items-center justify-center w-8 h-8 bg-white/90 text-gray-800 hover:bg-white shadow-md transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                     <img id="main-preview"
                         src="..."
-                        class="absolute inset-0 w-full h-full object-contain z-10 transition-all duration-200"
+                        class="absolute inset-0 w-full h-full object-contain z-10 transition-all duration-200 cursor-zoom-in"
                         alt="Product Preview">
                 </div>
             </div>
         </div>
 
-        <div class="w-full h-screen md:h-full md:w-[58%] p-5 md:p-8 flex flex-col gap-4 md:gap-5 overflow-y-auto pb-28 md:pb-8">
+        <div class="w-full h-screen md:h-full md:w-[58%] p-5 md:p-12 flex flex-col gap-4 md:gap-5 overflow-y-auto pb-28 md:pb-8">
             
             <div class="space-y-3">
 
@@ -270,16 +277,22 @@
                               md:relative md:bottom-auto md:left-auto md:right-auto md:p-0 md:bg-transparent md:backdrop-blur-none md:border-t-0 md:shadow-none md:z-auto
                               flex flex-col gap-2 pt-1">
                       
-                      <!-- Voucher Bar -->
-                      <div class="flex items-center justify-between bg-gray-50 border border-gray-200 md:p-3">
-                          <div class="flex ml-2 flex-col">
+                      <!-- Voucher & Shipping Bar -->
+                      <div class="flex items-center justify-between bg-gray-50 border border-gray-200 p-1">
+                          <div class="flex ml-2 flex-col min-w-0">
                               <span id="voucher-checkout-price" class="text-sm text-[#DF414F]"></span>
-                              <span id="voucher-checkout-note" class="text-[9px] md:text-[10px] text-green-600 font-medium hidden">Voucher aktif</span>
+                              <span id="voucher-checkout-note" class="text-[8px] uppercase text-gray-600 font-medium hidden">Voucher aktif</span>
                           </div>
-                          <button onclick="openVoucherPopup()" 
-                              class="bg-[#DF414F] text-white px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase transition-all hover:bg-red-700 border-none outline-none cursor-pointer">
-                              Pilih Voucher
-                          </button>
+                          <div class="flex items-center gap-2 shrink-0">
+                              <div class="flex flex-col items-end">
+                                  <span class="text-[8px] font-bold uppercase text-gray-400 tracking-widest select-none">Ongkos Kirim</span>
+                                  <span id="shipping-fee-value" class="text-[8px] text-[#DF414F]">—</span>
+                              </div>
+                              <button onclick="openVoucherPopup()"
+                                  class="bg-[#DF414F] text-white px-3 py-1.5 text-[8px] font-bold uppercase transition-all hover:bg-red-700 border-none outline-none cursor-pointer">
+                                  Pilih Voucher
+                              </button>
+                          </div>
                       </div>
 
                       <!-- Checkout Bar -->
@@ -309,6 +322,65 @@
         </div>
     </div>
 
+    </div>
+
+    <div id="product-information-overlay" class="hidden fixed inset-0 z-[99999] bg-black/50 items-end md:items-center justify-center p-0 md:p-4" onclick="if(event.target===this) closeProductInformation()">
+      <section class="bg-white w-full max-w-md p-5 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeProductInformation()" class="text-gray-400 hover:text-gray-700 p-1 flex items-center" aria-label="Kembali">
+                <img src="https://img.icons8.com/ios-filled/50/left.png" alt="Arrow Left" class="w-5 h-5 object-contain" />
+                </button>
+                <div>
+                <h2 id="product-information-name" class="mt-1 md:text-lg font-bold text-gray-900"></h2>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 border border-gray-100 bg-gray-50 p-4">
+          <p class="font-semibold text-gray-800">Produk original dari Northpers</p>
+          <p class="mt-1 md:text-sm text-xs leading-relaxed text-gray-700">Produk Northline resmi merupakan produk original dari Northpers. Produk dibuat untuk lini Northline dan informasi nama, foto, deskripsi, varian, serta harga ditampilkan melalui katalog resmi.</p>
+        </div>
+        <ul class="mt-4 space-y-2 text-xs text-gray-700">
+          <li class="flex gap-2"><span class="text-gray-600">✓</span><span>Keaslian produk mengacu pada produk Northline resmi dari Northpers.</span></li>
+          <li class="flex gap-2"><span class="text-gray-600">✓</span><span>Periksa pilihan warna, model, dan ukuran sebelum checkout; ketersediaan mengikuti stok yang ditampilkan.</span></li>
+          <li class="flex gap-2"><span class="text-gray-600">✓</span><span>Foto dapat terlihat sedikit berbeda karena pencahayaan atau pengaturan layar.</span></li>
+        </ul>
+        <p class="mt-3 text-xs leading-relaxed text-gray-500">Harga dan stok dapat berubah mengikuti pembaruan katalog. Jika menemukan informasi yang tidak sesuai, gunakan menu “Laporkan Produk” agar dapat ditinjau oleh admin.</p>
+        <button type="button" onclick="closeProductInformation()" class="mt-5 w-full bg-[#DF414F] py-2 text-sm font-bold text-white hover:bg-red-700">Mengerti</button>
+      </section>
+    </div>
+
+    <div id="product-report-overlay" class="hidden fixed inset-0 z-[99999] bg-black/50 items-end md:items-center justify-center p-0 md:p-4" onclick="if(event.target===this) closeProductReport()">
+      <section class="bg-white w-full max-w-md p-5 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeProductReport()" class="text-gray-400 hover:text-gray-700 p-1 flex items-center" aria-label="Kembali">
+                <img src="https://img.icons8.com/ios-filled/50/left.png" alt="Arrow Left" class="w-5 h-5 object-contain" />
+                </button>
+                <div>
+                <h2 class="mt-1 text-lg font-bold text-gray-900">Laporkan Produk</h2>
+                <p id="product-report-name" class="text-xs text-gray-500"></p>
+                </div>
+            </div>
+        </div>
+        <form id="product-report-form" class="mt-4 space-y-3" onsubmit="submitProductReport(event)">
+          <label class="block text-sm font-medium text-gray-700" for="product-report-reason">Alasan laporan</label>
+          <select id="product-report-reason" required class="w-full border border-gray-300 bg-white px-3 py-2 text-sm outline-none">
+            <option value="">Pilih alasan</option>
+            <option value="misleading">Informasi atau foto produk tidak sesuai</option>
+            <option value="counterfeit">Diduga produk palsu atau bukan original</option>
+            <option value="prohibited">Produk melanggar ketentuan</option>
+            <option value="other">Lainnya</option>
+          </select>
+          <label class="block text-sm font-medium text-gray-700" for="product-report-details">Keterangan</label>
+          <textarea id="product-report-details" required maxlength="2000" rows="4" class="w-full resize-y border border-gray-300 px-3 py-2 text-sm outline-none" placeholder="Jelaskan masalah yang ditemukan (maksimal 2000 karakter)"></textarea>
+          <p id="product-report-feedback" class="hidden text-sm" role="status"></p>
+          <div class="flex gap-2 pt-1">
+            <button type="button" onclick="closeProductReport()" class="flex-1 border border-gray-300 py-2 text-sm font-semibold text-gray-700">Batal</button>
+            <button id="product-report-submit" type="submit" class="flex-1 bg-[#DF414F] py-2 text-sm font-bold text-white hover:bg-red-700">Kirim Laporan</button>
+          </div>
+        </form>
+      </section>
     </div>
 
     <!-- Voucher Bottom Sheet Popup -->
@@ -373,5 +445,33 @@
     .voucher-item.selected {
     border-color: #DF414F !important;
     background-color: #fef2f2;
+    }
+    #preview-box {
+    cursor: zoom-in;
+    }
+    #preview-box.zoomed {
+    position: fixed;
+    inset: 0;
+    z-index: 200000;
+    width: 100vw;
+    height: 100vh;
+    max-width: none !important;
+    max-height: none !important;
+    aspect-ratio: auto;
+    border: none;
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0.93);
+    }
+    #preview-box.zoomed #main-preview {
+    cursor: zoom-out;
+    }
+    .zoom-close-btn {
+    display: none;
+    }
+    #preview-box.zoomed .zoom-close-btn {
+    display: flex;
+    }
+    #preview-box.zoomed {
+    cursor: zoom-out;
     }
 </style>

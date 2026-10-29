@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
-    <title>Northline Official Chat Store</title>
+    <title>North Perspective Clothing Official Chat Store</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
@@ -171,7 +171,7 @@
             </div>
             <div class="flex-1 min-w-0">
                 <h2 class="text-[15px] truncate flex items-center">
-                    <span class="bg-red-600 py-[1px] px-2 rounded text-white bage-name text-[9px] mr-1">Mall | Ori</span>Northline Official
+                    <span class="bg-red-600 py-[1px] px-2 rounded text-white bage-name text-[9px] mr-1">Mall | Ori</span>NorthPers Official
                 </h2>
                 <div class="flex items-center gap-1 text-[11px] text-neutral-500">
                     <span id="online-dot" class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
@@ -455,13 +455,24 @@
 
             </div>
         </div>
+        <div id="chat-image-preview" class="hidden bg-white border-t px-3 pt-2">
+            <div class="flex items-start gap-3 rounded-xl bg-neutral-100 p-2">
+                <img id="chat-image-preview-img" alt="Preview gambar" class="w-16 h-16 rounded-lg object-cover">
+                <div class="flex-1 min-w-0 pt-1">
+                    <p class="text-xs font-medium text-neutral-700">Foto siap dikirim</p>
+                    <p id="chat-image-preview-name" class="text-[11px] text-neutral-500 truncate"></p>
+                    <p class="text-[11px] text-neutral-400 mt-1">Tulis keterangan di kolom pesan di bawah.</p>
+                </div>
+                <button id="chat-image-remove" type="button" aria-label="Hapus gambar" class="text-neutral-500 text-xl leading-none px-1">&times;</button>
+            </div>
+        </div>
         <div class="bg-white border-t p-3 flex items-center gap-2">
             <input
                 type="file"
                 id="image-upload"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp"
                 class="hidden">
-            <button onclick="document.getElementById('image-upload').click()">
+            <button type="button" aria-label="Kirim gambar untuk dianalisis" title="Kirim gambar untuk dianalisis" onclick="document.getElementById('image-upload').click()">
                 <img
                     src="https://img.icons8.com/?size=100&id=1501&format=png&color=737373"
                     class="w-6 h-6" loading="lazy">
@@ -473,9 +484,10 @@
             <input
                 id="chat-input"
                 type="text"
+                maxlength="1000"
                 placeholder="Tulis Pesan..."
                 class="flex-1 h-8 border rounded-full px-4 text-sm outline-none">
-            <button onclick="sendMessage()" class="border rounded-full p-1">
+            <button id="chat-send-button" onclick="sendMessage()" class="border rounded-full p-1">
                 <img
                     src="https://img.icons8.com/?size=100&id=bmqaSU1DN4QP&format=png&color=737373"
                     class="w-6 h-6" loading="lazy">
@@ -553,12 +565,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthChatStore.js"></script>
-    <script src="/src/services/AppNorthWishlist.js?v=0000v19wl"></script>
+    <script src="/java/AppNorthChatStore.js?v=0000v13shippingcards"></script>
+    <script src="/src/services/AppNorthWishlist.js?v=0000v20wl"></script>
     <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
     <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
     <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthCatalog.js?v=0000v40cat"></script>
+    <script src="/java/AppNorthCatalog.js?v=0000v58productreport"></script>
 
     <script>
         function toggleChatMenu(e) {

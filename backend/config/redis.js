@@ -1,7 +1,12 @@
 const { createClient } = require('redis');
 
 const client = createClient({
-    url: process.env.REDIS_URL || 'redis://:Ue7f5kQz2TbN9mXw4RvY8HsC3LgP6JdA@127.0.0.1:6379'
+    socket: {
+        host: process.env.REDIS_HOST || '::1',
+        port: Number(process.env.REDIS_PORT) || 6379,
+        reconnectStrategy: (retries) => Math.min(1000 + retries * 2000, 60000),
+    },
+    password: process.env.REDIS_PASSWORD || 'Ue7f5kQz2TbN9mXw4RvY8HsC3LgP6JdA',
 });
 
 client.on('error', (err) => {

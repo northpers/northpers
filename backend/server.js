@@ -15,12 +15,24 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const net = require("net");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
 const db = require("./config/db");
+const { stopCopilotClient } = require("./services/copilotAiClient");
 const { safeExtensionFromMime, detectImageExtFromFile } = require("./utils/uploadValidation");
+const {
+  parseOrderQuantity,
+  validateShippingCustomer,
+  validateCatalogOptions,
+} = require("./utils/orderValidation");
+
+function getGuestOrderIp(req) {
+  const ip = req.ip || req.connection?.remoteAddress || "";
+  const normalizedIp = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  return net.isIP(normalizedIp) ? normalizedIp : null;
+}
 
 function csrfProtection(req, res, next) {
   const headerToken = req.headers['x-csrf-token'];
@@ -37,20 +49,123 @@ function csrfProtection(req, res, next) {
   });
 }
 
+function verifyTokenIfPresent(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader ? authHeader.split(" ")[1] : getCookie(req, "nl_jwt");
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+  try {
+    const authData = jwt.verify(token, JWT_SECRET);
+    db.execute('SELECT auth_version FROM user_northline WHERE id = ?', [authData.id])
+      .then(([[user]]) => {
+        if (!user || (authData.authVersion || 0) !== user.auth_version) {
+          return res.status(401).json({ success: false, message: "Sesi berakhir, silakan login ulang" });
+        }
+        req.user = authData;
+        next();
+      })
+      .catch((err) => {
+        console.error("Gagal memvalidasi sesi order:", err);
+        res.status(500).json({ success: false, message: "Gagal memvalidasi sesi" });
+      });
+  } catch (err) {
+    return res.status(401).json({ success: false, message: "Invalid token" });
+  }
+}
+
+function orderCsrfIfAuthenticated(req, res, next) {
+  if (!req.user) return next();
+  return csrfProtection(req, res, next);
+}
+
+async function resolveOrderCustomer(req) {
+  let profile = {};
+  if (req.user) {
+    try {
+      const [rows] = await db.execute(
+        'SELECT name, phone, address FROM user_northline WHERE id = ?',
+        [req.user.id],
+      );
+      profile = rows[0] || {};
+    } catch (err) {
+      console.error("Gagal memuat profil penerima order:", err);
+      return { serverError: true };
+    }
+  }
+
+  const body = req.body || {};
+  const chooseValue = (key, profileValue) => (
+    Object.prototype.hasOwnProperty.call(body, key) && typeof body[key] === "string"
+      ? body[key].trim()
+      : String(profileValue || "").trim()
+  );
+  const name = chooseValue("shippingName", profile.name);
+  const phone = chooseValue("shippingPhone", profile.phone);
+  const address = chooseValue("shippingAddress", profile.address);
+  const validationError = validateShippingCustomer({ name, phone, address });
+  if (validationError) return { error: validationError };
+  return { name, phone, address };
+}
+
 const bcrypt = require("bcrypt");
 const sellerRoutes = require("./routes/seller");
 const productRoutes = require("./routes/productRoutes");
+const productReportRoutes = require("./routes/productReports");
 const catalogRoutes = require("./routes/catalog");
 const studentsRoutes = require("./routes/students");
 const adminRoutes = require("./routes/admin");
 const npinjamRoutes = require("./routes/npinjam");
+const mysqlManagerRoutes = require("./routes/mysqlManager");
+const adminLogsRoutes = require("./routes/adminLogs");
+const adminDomainRoutes = require("./routes/adminDomain");
+const adminFileManagerRoutes = require("./routes/adminFileManager");
+const adminTechStackRoutes = require("./routes/adminTechStack");
+const adminSecurityRoutes = require("./routes/adminSecurity");
+const adminDomainManagerRoutes = require("./routes/adminDomainManager");
+const adminNpinjamScannerRoutes = require("./routes/adminNpinjamScanner");
+const requestLogger = require("./middleware/requestLogger");
+const { startLogCleanupCron } = require("./cron/logCleanup");
 const voucherHelpers = require("./voucher");
+const shippingModule = { exports: {} };
+const shippingSource = fs.readFileSync(path.join(__dirname, "../frontend/java/AppNorthShipping.js"), "utf8");
+new Function("module", "exports", "self", shippingSource)(shippingModule, shippingModule.exports, undefined);
+const shippingHelper = shippingModule.exports;
 const http = require('http');
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+require("./config/io").setIO(io);
+
+const redisReconnectStrategy = (retries) => Math.min(1000 + retries * 2000, 60000);
+const redisConnectOptions = {
+  socket: {
+    host: process.env.REDIS_HOST || '::1',
+    port: Number(process.env.REDIS_PORT) || 6379,
+    reconnectStrategy: redisReconnectStrategy,
+  },
+  password: process.env.REDIS_PASSWORD || 'Ue7f5kQz2TbN9mXw4RvY8HsC3LgP6JdA',
+};
+try {
+  const pubClient = createClient(redisConnectOptions);
+  const subClient = pubClient.duplicate();
+  const redisErrorHandler = (label) => (err) => console.warn(`[Socket.IO Redis ${label}] ${err.message}`);
+  pubClient.on('error', redisErrorHandler('pub'));
+  pubClient.on('end', () => console.warn('[Socket.IO Redis pub] Koneksi terputus, mencoba reconnect otomatis'));
+  subClient.on('error', redisErrorHandler('sub'));
+  subClient.on('end', () => console.warn('[Socket.IO Redis sub] Koneksi terputus, mencoba reconnect otomatis'));
+  pubClient.connect().catch((e) => console.warn('[Socket.IO Redis pub] Connect failed:', e.message));
+  subClient.connect().catch((e) => console.warn('[Socket.IO Redis sub] Connect failed:', e.message));
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log('[Socket.IO] Redis adapter aktif (load-balanced broadcast)');
+} catch (e) {
+  console.warn('[Socket.IO] Redis adapter gagal diinisialisasi:', e.message);
+}
 
 // Restore original IPs when behind Cloudflare proxy
 app.set("trust proxy", 1);
@@ -123,7 +238,25 @@ app.use(cors({
         'https://localhost:9000',
         'http://127.0.0.1:9000'
       ];
+      if (process.env.APP_ORIGIN) {
+        allowedOrigins.push(...String(process.env.APP_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean));
+      }
       if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Loopback dengan port apa pun tetap boleh. Server ini listens di IPv6
+      // loopback (log startup Cetak "[::1]"), sementara Allowlist di atas hanya
+      // memuat localhost/127.0.0.1 port 9000. Akibatnya POST dari
+      // http://[::1]:9000 - yang sah untuk dev lokal - ditolak CORS dan
+      // menjadi 500 untuk semua request yang mengubah state. Hanya host
+      // loopback yang diloloskan, jadi ini tidak memperluas akses dari
+      // jaringan.
+      let loopback = false;
+      try {
+        const h = new URL(origin).hostname;
+        loopback = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1';
+      } catch (e) { /* origin tidak valid -> tolak di bawah */ }
+      if (loopback && /^https?:$/.test(new URL(origin).protocol)) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
@@ -136,10 +269,13 @@ app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.tailwindcss.com", "unpkg.com", "cdn.jsdelivr.net", "img.icons8.com", "https://www.gstatic.com", "https://apis.google.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.tailwindcss.com", "unpkg.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "img.icons8.com", "https://www.gstatic.com", "https://apis.google.com"],
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", "fonts.googleapis.com", "cdn.jsdelivr.net", "unpkg.com"],
-        imgSrc: ["'self'", "data:", "https:", "http:"],
+        // blob: wajib untuk pratinjau upload. Tanpa ini CSP memblokir
+        // <img src="blob:..."> sehingga preview KTP/KK tidak pernah tampil
+        // (error "Loading the image 'blob:...' violates ... img-src").
+        imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
         mediaSrc: ["'self'"],
         fontSrc: ["'self'", "fonts.gstatic.com", "cdn.jsdelivr.net"],
         connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
@@ -153,6 +289,40 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ limit: "500kb", extended: true }));
 
 app.use(compression());
+app.use(requestLogger);
+
+function forbiddenPage(code, title, desc) {
+  return `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${code} | Northline</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff;font-family:'DM Sans',-apple-system,sans-serif}.wrap{text-align:center;padding:40px}.code{font-size:96px;font-weight:700;color:#DF414F;line-height:1}.title{font-size:18px;font-weight:600;color:#111;margin:16px 0 8px}.desc{font-size:13px;color:#6b7280;line-height:1.6}</style></head><body><div class="wrap"><div class="code">${code}</div><div class="title">${title}</div><div class="desc">${desc}</div></div></body></html>`;
+}
+
+// Block admin panel, auth admin, DB manager, and domain manager from public access
+app.use((req, res, next) => {
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  const normalizedIp = ip.replace('::ffff:', '');
+  const isLocalhost = normalizedIp === '127.0.0.1' || normalizedIp === '::1' || normalizedIp === '';
+
+  const adminPages = ['/AppNorthAdmin', '/AppNorthAuthAdmin', '/AppNorthDbManager'];
+  const adminApiPaths = ['/api/admin/login', '/api/admin/dashboard', '/api/admin/orders',
+    '/api/admin/users', '/api/admin/products', '/api/admin/reviews', '/api/admin/sellers',
+    '/api/admin/settings', '/api/admin/database', '/api/admin/notifications', '/api/admin/whatsapp',
+    '/api/admin/reports', '/api/admin/northpay', '/api/admin/affiliate', '/api/admin/npinjam',
+    '/api/admin/seller-earnings', '/api/admin/flash-discount', '/api/admin/ai-models',
+    '/api/admin/domain', '/api/admin/filemanager', '/api/admin/techstack', '/api/admin/security',
+    '/api/admin/domain-manager', '/api/admin/product-reports'];
+
+  const isPage = adminPages.some(p => req.path === p || req.path === p + '.html');
+  const isApi = adminApiPaths.some(p => req.path.startsWith(p));
+  const isStaticAdmin = req.path.startsWith('/java/AppNorthAdmin') || req.path.startsWith('/java/AppNorthAuth');
+
+  if ((isPage || isApi || isStaticAdmin) && !isLocalhost) {
+    if (isApi) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    res.status(403).setHeader('Cache-Control', 'no-store');
+    return res.send(forbiddenPage(403, 'Forbidden', 'Anda tidak memiliki akses ke halaman ini.'));
+  }
+  next();
+});
 
 const BLOCKED_BOT_UA = [
   'gptbot', 'chatgpt-user', 'oai-searchbot', 'claude-', 'anthropic', 'claudebot',
@@ -166,8 +336,8 @@ const BLOCKED_BOT_UA = [
 app.use((req, res, next) => {
   const ua = String(req.headers['user-agent'] || '').toLowerCase();
   if (BLOCKED_BOT_UA.some((b) => ua.includes(b))) {
-    res.status(403).type('text/plain').send('403 Forbidden');
-    return;
+    res.status(403).setHeader('Cache-Control', 'no-store');
+    return res.send(forbiddenPage(403, 'Forbidden', 'Akses ditolak.'));
   }
   const isApi = req.path.startsWith('/api/');
   res.setHeader('X-Robots-Tag', isApi ? 'noai, noarchive, noindex, nofollow' : 'noai, noarchive, notranslate');
@@ -177,6 +347,25 @@ app.use((req, res, next) => {
 const isLocalDev = process.env.NODE_ENV !== 'production';
 const STATIC_CACHE_MAX_AGE = isLocalDev ? 0 : 7 * 24 * 60 * 60;
 const STATIC_CACHE_MAX_AGE_IMMUTABLE = isLocalDev ? 0 : 365 * 24 * 60 * 60;
+
+app.get("/health/live", (req, res) => {
+  res.json({ status: "ok", uptimeSeconds: Math.floor(process.uptime()) });
+});
+
+app.get("/health/ready", async (req, res) => {
+  try {
+    await db.execute("SELECT 1");
+    return res.json({ status: "ready", checks: { database: "ok" } });
+  } catch (err) {
+    console.error("[Health] Database readiness check failed:", err.message);
+    return res.status(503).json({ status: "not_ready", checks: { database: "unavailable" } });
+  }
+});
+
+// Diskon pembeli pertama di checkout biasa (bukan affiliate).
+// Hanya 10 pembeli pertama yang mendapatkan, Afterwards 0.
+const FIRST_BUYER_DISCOUNT_RATE = 0.005; // 0,5%
+const FIRST_BUYER_QUOTA = 10;
 
 const generalLimiter = isLocalDev ? (req, res, next) => next() : rateLimit({
     windowMs: 60 * 1000,
@@ -227,6 +416,23 @@ app.use((req, res, next) => {
     const bare = req.path.slice(0, -5);
     const legacy = LEGACY_PAGE_MAP[bare];
     return res.redirect(301, (legacy || bare) + query);
+  }
+  next();
+});
+
+const PUBLIC_DOMAINS = ['nl.hostinesia.my.id'];
+const ADMIN_PATHS = ['/AppNorthAdmin', '/AppNorthAuthAdmin', '/nrtAdminPanel', '/AppNorthAdmin.html', '/AppNorthAuthAdmin.html', '/AppNorthDbManager', '/AppNorthDbManager.html'];
+
+function isPublicDomain(host) {
+  if (!host) return false;
+  const h = host.split(':')[0].toLowerCase().replace(/^www\./, '');
+  return PUBLIC_DOMAINS.some((d) => h === d || h.endsWith('.' + d));
+}
+
+app.use((req, res, next) => {
+  if (isPublicDomain(req.headers.host) && ADMIN_PATHS.includes(req.path)) {
+    res.status(403).setHeader('Cache-Control', 'no-store');
+    return res.send(forbiddenPage(403, 'Forbidden', 'Anda tidak memiliki akses ke halaman ini.'));
   }
   next();
 });
@@ -474,73 +680,38 @@ function getBrowserExecutable() {
   }
 }
 
-let client = null;
-const executablePath = getBrowserExecutable();
-
-if (process.env.WHATSAPP_WORKER === '0') {
-  console.log("[WhatsApp] Worker ini tidak menjalankan WhatsApp client (WHATSAPP_WORKER=0).");
-} else if (!executablePath) {
-  console.warn("[WARNING] No browser executable found. WhatsApp client disabled.");
-} else {
-  console.log(`[WhatsApp] Selected browser executable: ${executablePath}`);
-  try {
-    client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: "./.wwebjs_auth",
-      }),
-
-      webVersionCache: {
-        type: "local",
-        path: "./.wwebjs_cache",
-      },
-
-      puppeteer: {
-        headless: true,
-        executablePath: executablePath,
-        pipe: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-          "--no-first-run",
-          "--no-zygote",
-          "--single-process",
-        ],
-      },
-    });
-
-    client.on("qr", (qr) => {
-      qrcode.generate(qr, { small: true });
-    });
-
-    client.on("ready", () => {
-      console.log("WhatsApp Bot Northline SIAP DIGUNAKAN!");
-    });
-
-    client.on("auth_failure", (msg) => {
-      console.error("[WARNING] WhatsApp authentication failed:", msg);
-    });
-
-    client.initialize().catch((err) => {
-      console.error("[WARNING] WhatsApp client initialization error:", err.message || err);
-    });
-  } catch (err) {
-    console.error("[WARNING] Failed to instantiate WhatsApp client:", err.message || err);
-    client = null;
-  }
-}
+process.env.WHATSAPP_WORKER !== '0'
+    ? (() => {
+        const wa = require("./config/whatsapp");
+        const executablePath = getBrowserExecutable();
+        if (!executablePath) {
+          console.warn("[WARNING] No browser executable found. WhatsApp client disabled.");
+          return;
+        }
+        console.log(`[WhatsApp] Selected browser executable: ${executablePath}`);
+        try {
+          wa.makeClient({ executablePath });
+        } catch (err) {
+          console.error("[WARNING] Failed to instantiate WhatsApp client:", err.message || err);
+        }
+      })()
+    : console.log("[WhatsApp] Worker ini tidak menjalankan WhatsApp client (WHATSAPP_WORKER=0).");
 
 app.use((req, res, next) => {
-  req.whatsappClient = client;
+  const wa = require("./config/whatsapp");
+  req.whatsappClient = (wa && wa.getClient()) || null;
+  // req.whatsappClient itu snapshot per-request, jadi bisa null padahal client
+  // sedang restart. Route yang kirim pesan ke user harus pakai ini supaya
+  // menunggu sampai WA benar-benar siap.
+  req.waitWaClient = (ms) =>
+    wa && typeof wa.waitForReady === "function" ? wa.waitForReady(ms) : Promise.resolve(req.whatsappClient);
   next();
 });
 
-app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (req, res) => {
+app.post("/api/save-order", verifyTokenIfPresent, orderCsrfIfAuthenticated, strictLimiter, async (req, res) => {
+  const body = req.body || {};
   const {
     productId,
-    productName,
-    productImage = '',
     totalPrice: clientTotalPrice,
     quantity,
     chosenColor = '',
@@ -548,20 +719,23 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
     chosenModel = '',
     chosenSizeGroup = '',
     orderId,
-    status = "pending",
     paymentMethod,
-  } = req.body;
+  } = body;
 
-  const userId = req.user.id;
+  const userId = req.user ? req.user.id : null;
 
-  if (!orderId || !productId) {
+  if (typeof orderId !== "string" || !orderId.trim() || orderId !== orderId.trim() || orderId.length > 50 || !productId) {
     return res.status(400).json({
       success: false,
       message: "Data pesanan tidak lengkap!",
     });
   }
+  const sanitizedOrderId = orderId.replace(/[<>\"'&]/g, '');
+  if (sanitizedOrderId !== orderId) {
+    return res.status(400).json({ success: false, message: "ID pesanan tidak valid" });
+  }
 
-  const productCode = typeof req.body.code === "string" ? req.body.code.trim() : "";
+  const productCode = typeof body.code === "string" ? body.code.trim() : "";
   const catalogProduct = catalogRoutes.findCatalogProduct(productCode || productId);
 
   if (!catalogProduct) {
@@ -572,19 +746,54 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
   }
 
   const productIdNum = catalogProduct.id;
+  const customer = await resolveOrderCustomer(req);
+  if (customer.serverError) {
+    return res.status(500).json({ success: false, message: "Gagal memuat data penerima" });
+  }
+  if (customer.error) {
+    return res.status(400).json({ success: false, message: customer.error });
+  }
+  if (paymentMethod && !["qris", "northpay"].includes(paymentMethod)) {
+    return res.status(400).json({ success: false, message: "Metode pembayaran tidak valid" });
+  }
+  if (paymentMethod === "northpay" && !userId) {
+    return res.status(401).json({ success: false, message: "Login diperlukan untuk menggunakan NorthPay" });
+  }
+  const orderStatus = paymentMethod === "northpay" ? "success" : "pending";
+  const guestIpAddress = userId ? null : getGuestOrderIp(req);
+  const guestOrderToken = userId ? null : crypto.randomBytes(32).toString("hex");
+  const guestOrderTokenHash = guestOrderToken
+    ? crypto.createHash("sha256").update(guestOrderToken).digest("hex")
+    : null;
 
-  const quantityNum = Math.max(1, parseInt(quantity) || 1);
-  const unitPrice = catalogRoutes.computeUnitPrice(catalogProduct, chosenModel, chosenSize, chosenSizeGroup);
+  const quantityNum = parseOrderQuantity(quantity);
+  if (quantityNum === null) {
+    return res.status(400).json({ success: false, message: "Jumlah produk harus antara 1 dan 99" });
+  }
+  const optionError = validateCatalogOptions(catalogProduct, {
+    color: chosenColor,
+    size: chosenSize,
+    model: chosenModel,
+    sizeGroup: chosenSizeGroup,
+  });
+  if (optionError) return res.status(400).json({ success: false, message: optionError });
+  const unitPrice = await catalogRoutes.computeUnitPriceWithFlash(catalogProduct, chosenModel, chosenSize, chosenSizeGroup);
   const computedSubtotal = unitPrice * quantityNum;
 
-  const voucherId = typeof req.body.voucherId === "string" ? req.body.voucherId.trim() : "";
+  const requestedVoucherId = typeof req.body.voucherId === "string" ? req.body.voucherId.trim() : "";
+  if (!userId && requestedVoucherId && requestedVoucherId !== "free_shipping") {
+    return res.status(401).json({ success: false, message: "Login diperlukan untuk menggunakan voucher akun" });
+  }
+  const voucherId = (userId || requestedVoucherId === "free_shipping") ? requestedVoucherId : "";
   const voucherMeta = voucherId ? voucherHelpers.findVoucher(voucherId) : null;
-  const voucherDiscount = await computeServerDiscount(userId, voucherId, computedSubtotal, quantityNum, catalogRoutes.getCategories(catalogProduct));
+  const voucherDiscount = userId
+    ? await computeServerDiscount(userId, voucherId, computedSubtotal, quantityNum, catalogRoutes.getCategories(catalogProduct))
+    : { discountAmount: 0, voucherLabel: '' };
 
   let isDiscounted = voucherDiscount.discountAmount > 0;
   let discountAmount = voucherDiscount.discountAmount;
 
-  if (!isDiscounted && !(voucherMeta && voucherMeta.claimRequired)) {
+  if (userId && !isDiscounted && !(voucherMeta && voucherMeta.claimRequired)) {
     try {
       const [userPromo] = await db.execute(
         'SELECT id FROM transactions WHERE user_id = ? AND is_discounted = 1 AND status != \'cancelled\' LIMIT 1',
@@ -594,9 +803,9 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
         const [quota] = await db.execute(
           'SELECT COUNT(DISTINCT user_id) AS total FROM transactions WHERE is_discounted = 1 AND status != \'cancelled\''
         );
-        if (quota[0].total < 10) {
+        if (quota[0].total < FIRST_BUYER_QUOTA) {
           isDiscounted = true;
-          discountAmount = Math.round(computedSubtotal * 0.05);
+          discountAmount = Math.round(computedSubtotal * FIRST_BUYER_DISCOUNT_RATE);
         }
       }
     } catch (e) {
@@ -615,16 +824,14 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
   }
 
   const subtotal = computedSubtotal;
-  const totalPrice = computedTotalPrice;
-
+  let totalPrice = computedTotalPrice;
   const sanitize = (str) => String(str || '').replace(/[<>\"'&]/g, '').trim().slice(0, 255);
   
-  const sanitizedProductName = sanitize(productName);
-  const sanitizedProductImage = sanitize(productImage);
+  const sanitizedProductName = sanitize(catalogProduct.name);
+  const sanitizedProductImage = sanitize(catalogProduct.images?.[0] || '');
   const sanitizedChosenColor = sanitize(chosenColor);
   const sanitizedChosenSize = sanitize(chosenSize);
   const sanitizedChosenModel = sanitize(chosenModel);
-  const sanitizedOrderId = sanitize(orderId);
 
   let affiliateUserId = null;
   try {
@@ -641,13 +848,20 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
     console.log('[affiliate] atribusi skip:', e.message);
   }
 
-  let shippingAddress = '';
-  try {
-    const [addrRows] = await db.execute('SELECT address FROM user_northline WHERE id=?', [userId]);
-    if (addrRows.length > 0 && addrRows[0].address) {
-      shippingAddress = addrRows[0].address;
-    }
-  } catch (e) {}
+  const shippingAddress = customer.address;
+
+  const shippingQuote = shippingHelper.getQuote(shippingAddress);
+  if (!shippingQuote.canShip) {
+    return res.status(400).json({
+      success: false,
+      message: shippingQuote.reason || "Pengiriman ke luar Indonesia belum tersedia",
+    });
+  }
+  let shippingFee = shippingQuote.fee;
+  if (voucherId === 'free_shipping' && shippingQuote.zone === 'karawang') {
+    shippingFee = 0;
+  }
+  totalPrice = computedTotalPrice + shippingFee;
 
   try {
     if (paymentMethod === 'northpay') {
@@ -689,21 +903,22 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
               order_id, user_id, product_id, product_name, product_image,
               chosen_color, chosen_size, chosen_model, quantity, subtotal,
               discount_amount, total_price, status, is_discounted,
-              payment_method, shipping_address, affiliate_user_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                payment_method, shipping_address, shipping_name, shipping_phone, shipping_cost, affiliate_user_id,
+                guest_access_token_hash, guest_ip_address
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const values = [
-          sanitizedOrderId, userId, productIdNum, sanitizedProductName, sanitizedProductImage,
-          sanitizedChosenColor, sanitizedChosenSize, sanitizedChosenModel, quantity, subtotal,
-          discountAmount, totalPrice, 'success', isDiscounted ? 1 : 0,
-          'northpay', shippingAddress, affiliateUserId,
+            sanitizedOrderId, userId, productIdNum, sanitizedProductName, sanitizedProductImage,
+            sanitizedChosenColor, sanitizedChosenSize, sanitizedChosenModel, quantityNum, subtotal,
+            discountAmount, totalPrice, 'success', isDiscounted ? 1 : 0,
+            'northpay', shippingAddress, customer.name, customer.phone, shippingFee, affiliateUserId, guestOrderTokenHash, guestIpAddress,
         ];
         await conn.execute(sql, values);
 
         await conn.execute(
           'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
           [userId, 'Pembayaran Berhasil',
-           'Pembayaran ' + (productName || 'produk') + ' sebesar Rp ' + parseInt(totalPrice).toLocaleString('id-ID') + ' berhasil via NorthPay.']
+           'Pembayaran ' + catalogProduct.name + ' sebesar Rp ' + parseInt(totalPrice).toLocaleString('id-ID') + ' berhasil via NorthPay.']
         );
 
         await conn.commit();
@@ -721,7 +936,9 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
           totalPrice,
           subtotal,
           discountAmount,
+          shippingFee,
           isDiscounted,
+          guestOrderToken,
         });
       } catch (txErr) {
         await conn.rollback();
@@ -735,15 +952,16 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
             order_id, user_id, product_id, product_name, product_image,
             chosen_color, chosen_size, chosen_model, quantity, subtotal,
             discount_amount, total_price, status, is_discounted,
-            payment_method, shipping_address, affiliate_user_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            payment_method, shipping_address, shipping_name, shipping_phone, shipping_cost, affiliate_user_id,
+            guest_access_token_hash, guest_ip_address
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
     const values = [
       sanitizedOrderId, userId, productIdNum, sanitizedProductName, sanitizedProductImage,
-      sanitizedChosenColor, sanitizedChosenSize, sanitizedChosenModel, quantity, subtotal,
-      discountAmount, totalPrice, status, isDiscounted ? 1 : 0,
-      paymentMethod || 'qris', shippingAddress, affiliateUserId,
+      sanitizedChosenColor, sanitizedChosenSize, sanitizedChosenModel, quantityNum, subtotal,
+      discountAmount, totalPrice, orderStatus, isDiscounted ? 1 : 0,
+      paymentMethod || 'qris', shippingAddress, customer.name, customer.phone, shippingFee, affiliateUserId, guestOrderTokenHash, guestIpAddress,
     ];
 
     await db.query(sql, values);
@@ -756,21 +974,27 @@ app.post("/api/save-order", verifyToken, csrfProtection, strictLimiter, async (r
       totalPrice,
       subtotal,
       discountAmount,
+      shippingFee,
       isDiscounted,
+      guestOrderToken,
     });
   } catch (err) {
     console.error("Gagal save ke DB:", err);
 
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: "ID pesanan sudah digunakan. Muat ulang checkout dan coba lagi." });
+    }
     res.status(500).json({
       success: false,
-      error: err.message,
+      message: "Pesanan gagal disimpan. Silakan coba lagi.",
     });
   }
 });
 
-app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, async (req, res) => {
-  const { items, totalPrice: clientTotalPrice, status = "pending", paymentMethod } = req.body;
-  const userId = req.user.id;
+app.post("/api/save-order/bulk", verifyTokenIfPresent, orderCsrfIfAuthenticated, strictLimiter, async (req, res) => {
+  const body = req.body || {};
+  const { items, totalPrice: clientTotalPrice, paymentMethod } = body;
+  const userId = req.user ? req.user.id : null;
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ success: false, message: "Data pesanan tidak lengkap!" });
@@ -778,9 +1002,34 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
   if (items.length > 20) {
     return res.status(400).json({ success: false, message: "Terlalu banyak item dalam satu checkout" });
   }
-
+  if (!items.every(item => item && typeof item === 'object' && !Array.isArray(item))) {
+    return res.status(400).json({ success: false, message: "Data produk dalam checkout tidak valid" });
+  }
+  const customer = await resolveOrderCustomer(req);
+  if (customer.serverError) {
+    return res.status(500).json({ success: false, message: "Gagal memuat data penerima" });
+  }
+  if (customer.error) {
+    return res.status(400).json({ success: false, message: customer.error });
+  }
+  if (paymentMethod && !["qris", "northpay"].includes(paymentMethod)) {
+    return res.status(400).json({ success: false, message: "Metode pembayaran tidak valid" });
+  }
+  if (paymentMethod === "northpay" && !userId) {
+    return res.status(401).json({ success: false, message: "Login diperlukan untuk menggunakan NorthPay" });
+  }
+  const orderStatus = paymentMethod === "northpay" ? "success" : "pending";
+  const guestIpAddress = userId ? null : getGuestOrderIp(req);
+  const guestOrderToken = userId ? null : crypto.randomBytes(32).toString("hex");
+  const guestOrderTokenHash = guestOrderToken
+    ? crypto.createHash("sha256").update(guestOrderToken).digest("hex")
+    : null;
   const sanitize = (str) => String(str || '').replace(/[<>\"'&]/g, '').trim().slice(0, 255);
-  const voucherId = typeof req.body.voucherId === "string" ? req.body.voucherId.trim() : "";
+  const requestedVoucherId = typeof req.body.voucherId === "string" ? req.body.voucherId.trim() : "";
+  if (!userId && requestedVoucherId && requestedVoucherId !== "free_shipping") {
+    return res.status(401).json({ success: false, message: "Login diperlukan untuk menggunakan voucher akun" });
+  }
+  const voucherId = (userId || requestedVoucherId === "free_shipping") ? requestedVoucherId : "";
   const voucherMeta = voucherId ? voucherHelpers.findVoucher(voucherId) : null;
   let fixedVoucherApplied = false;
 
@@ -799,36 +1048,68 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
     console.log('[affiliate] atribusi skip:', e.message);
   }
 
-  let shippingAddress = '';
-  try {
-    const [addrRows] = await db.execute('SELECT address FROM user_northline WHERE id=?', [userId]);
-    if (addrRows.length > 0 && addrRows[0].address) {
-      shippingAddress = addrRows[0].address;
-    }
-  } catch (e) {}
+  const shippingAddress = customer.address;
+
+  const shippingQuote = shippingHelper.getQuote(shippingAddress);
+  if (!shippingQuote.canShip) {
+    return res.status(400).json({
+      success: false,
+      message: shippingQuote.reason || "Pengiriman ke luar Indonesia belum tersedia",
+    });
+  }
+  let shippingFee = shippingQuote.fee;
+  const bulkVoucherId = typeof voucherId === 'string' ? voucherId : '';
 
   const prepared = [];
+  const seenOrderIds = new Set();
   let computedTotal = 0;
   let totalDiscount = 0;
   let userUsedPromo = false;
 
+  const preCheckProductIds = items.map(it => {
+    const cp = catalogRoutes.findCatalogProduct(typeof it.code === 'string' ? it.code.trim() : '' || it.productId);
+    return cp ? cp.id : null;
+  }).filter(Boolean);
+  const willBeCombo = preCheckProductIds.length === 2 && preCheckProductIds.includes(13) && preCheckProductIds.includes(37);
+
+  if (!willBeCombo && bulkVoucherId === 'free_shipping' && shippingQuote.zone === 'karawang') {
+    shippingFee = 0;
+  }
+
   for (const item of items) {
-    const orderId = typeof item.orderId === 'string' ? item.orderId.trim() : '';
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return res.status(400).json({ success: false, message: "Data produk dalam checkout tidak valid" });
+    }
+    const orderId = typeof item?.orderId === 'string' ? item.orderId.trim() : '';
     const productCode = typeof item.code === 'string' ? item.code.trim() : "";
     const catalogProduct = catalogRoutes.findCatalogProduct(productCode || item.productId);
 
-    if (!catalogProduct || !orderId) {
+    if (!catalogProduct || !orderId || orderId.length > 50 || sanitize(orderId) !== orderId || seenOrderIds.has(orderId)) {
       return res.status(400).json({
         success: false,
-        message: "Produk tidak ditemukan atau data pesanan tidak lengkap",
+        message: "Produk tidak ditemukan atau ID pesanan tidak valid/duplikat",
       });
     }
+    seenOrderIds.add(orderId);
 
-    const quantityNum = Math.max(1, parseInt(item.quantity) || 1);
-    const unitPrice = catalogRoutes.computeUnitPrice(catalogProduct, item.chosenModel || '', item.chosenSize || '', item.chosenSizeGroup || '');
+    const quantityNum = parseOrderQuantity(item.quantity);
+    if (quantityNum === null) {
+      return res.status(400).json({ success: false, message: "Jumlah setiap produk harus antara 1 dan 99" });
+    }
+    const optionError = validateCatalogOptions(catalogProduct, {
+      color: item.chosenColor,
+      size: item.chosenSize,
+      model: item.chosenModel,
+      sizeGroup: item.chosenSizeGroup,
+    });
+    if (optionError) return res.status(400).json({ success: false, message: optionError });
+    const unitPrice = await catalogRoutes.computeUnitPriceWithFlash(catalogProduct, item.chosenModel || '', item.chosenSize || '', item.chosenSizeGroup || '');
     const computedSubtotal = unitPrice * quantityNum;
 
-    const voucherDiscount = await computeServerDiscount(userId, voucherId, computedSubtotal, quantityNum, catalogRoutes.getCategories(catalogProduct));
+    let voucherDiscount = { discountAmount: 0, voucherLabel: '' };
+    if (userId && !willBeCombo) {
+      voucherDiscount = await computeServerDiscount(userId, voucherId, computedSubtotal, quantityNum, catalogRoutes.getCategories(catalogProduct));
+    }
     let isDiscounted = voucherDiscount.discountAmount > 0;
     let discountAmount = voucherDiscount.discountAmount;
 
@@ -841,7 +1122,7 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
       }
     }
 
-    if (!isDiscounted && !userUsedPromo && !(voucherMeta && voucherMeta.claimRequired)) {
+    if (userId && !isDiscounted && !userUsedPromo && !(voucherMeta && voucherMeta.claimRequired)) {
       try {
         const [userPromo] = await db.execute(
           'SELECT id FROM transactions WHERE user_id = ? AND is_discounted = 1 AND status != \'cancelled\' LIMIT 1',
@@ -851,9 +1132,9 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
           const [quota] = await db.execute(
             'SELECT COUNT(DISTINCT user_id) AS total FROM transactions WHERE is_discounted = 1 AND status != \'cancelled\''
           );
-          if (quota[0].total < 10) {
+          if (quota[0].total < FIRST_BUYER_QUOTA) {
             isDiscounted = true;
-            discountAmount = Math.round(computedSubtotal * 0.05);
+            discountAmount = Math.round(computedSubtotal * FIRST_BUYER_DISCOUNT_RATE);
           }
         }
       } catch (e) {
@@ -872,8 +1153,8 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
     prepared.push({
       orderId: sanitize(orderId),
       productIdNum: catalogProduct.id,
-      productName: sanitize(item.productName || catalogProduct.name),
-      productImage: sanitize(item.productImage || ''),
+      productName: sanitize(catalogProduct.name),
+      productImage: sanitize(catalogProduct.images?.[0] || ''),
       chosenColor: sanitize(item.chosenColor),
       chosenSize: sanitize(item.chosenSize),
       chosenModel: sanitize(item.chosenModel),
@@ -885,12 +1166,48 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
     });
   }
 
+  const checkedProductIds = prepared.map(p => p.productIdNum);
+  const isComboPromo = userId ? await isComboPromoEligible(userId, checkedProductIds) : false;
+
+  let comboDiscount = 0;
+  if (isComboPromo) {
+    comboDiscount = computedTotal - COMBO_PROMO_PRICE;
+    if (comboDiscount < 0) comboDiscount = 0;
+  }
+
   const clientTotal = parseInt(clientTotalPrice);
-  if (Number.isFinite(clientTotal) && clientTotal < computedTotal) {
+  const finalComputedTotal = isComboPromo ? COMBO_PROMO_PRICE : computedTotal;
+  if (Number.isFinite(clientTotal) && clientTotal < finalComputedTotal) {
     return res.status(400).json({
       success: false,
       message: "Total harga tidak valid",
     });
+  }
+
+  const totalPaid = finalComputedTotal + shippingFee;
+  if (prepared.length > 0) {
+    prepared[0].totalPrice += shippingFee;
+    prepared[0].shipping_cost = shippingFee;
+  }
+  for (const p of prepared) {
+    if (p.shipping_cost === undefined) p.shipping_cost = 0;
+  }
+
+  if (isComboPromo) {
+    const totalSubAll = prepared.reduce((a, p) => a + p.subtotal, 0);
+    const ratio = totalSubAll > 0 ? COMBO_PROMO_PRICE / totalSubAll : 0.5;
+    let allocated = 0;
+    for (let i = 0; i < prepared.length; i++) {
+      const p = prepared[i];
+      const share = i === prepared.length - 1
+        ? COMBO_PROMO_PRICE - allocated
+        : Math.round(p.subtotal * ratio);
+      p.discountAmount = p.subtotal - share;
+      p.totalPrice = share;
+      p.isDiscounted = 1;
+      allocated += share;
+    }
+    totalDiscount = comboDiscount;
   }
 
   const insertQris = async () => {
@@ -899,16 +1216,31 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
           order_id, user_id, product_id, product_name, product_image,
           chosen_color, chosen_size, chosen_model, quantity, subtotal,
           discount_amount, total_price, status, is_discounted,
-          payment_method, shipping_address, affiliate_user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          payment_method, shipping_address, shipping_name, shipping_phone, shipping_cost, affiliate_user_id,
+          guest_access_token_hash, guest_ip_address
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    for (const p of prepared) {
-      await db.query(sql, [
-        p.orderId, userId, p.productIdNum, p.productName, p.productImage,
-        p.chosenColor, p.chosenSize, p.chosenModel, p.quantity, p.subtotal,
-        p.discountAmount, p.totalPrice, status, p.isDiscounted,
-        paymentMethod || 'qris', shippingAddress, affiliateUserId,
-      ]);
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (const p of prepared) {
+        await conn.execute(sql, [
+          p.orderId, userId, p.productIdNum, p.productName, p.productImage,
+          p.chosenColor, p.chosenSize, p.chosenModel, p.quantity, p.subtotal,
+          p.discountAmount, p.totalPrice, orderStatus, p.isDiscounted,
+          paymentMethod || 'qris', shippingAddress, customer.name, customer.phone, p.shipping_cost, affiliateUserId, guestOrderTokenHash, guestIpAddress,
+        ]);
+      }
+      await conn.commit();
+    } catch (error) {
+      try {
+        await conn.rollback();
+      } catch (rollbackError) {
+        console.error("Gagal rollback checkout bulk:", rollbackError);
+      }
+      throw error;
+    } finally {
+      conn.release();
     }
   };
 
@@ -933,7 +1265,7 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
           });
         }
 
-        if (balance < computedTotal) {
+        if (balance < totalPaid) {
           await conn.rollback();
           conn.release();
           return res.status(400).json({
@@ -944,7 +1276,7 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
 
         await conn.execute(
           'UPDATE user_northline SET northpay_balance = northpay_balance - ? WHERE id=?',
-          [computedTotal, userId]
+          [totalPaid, userId]
         );
 
         const sql = `
@@ -952,22 +1284,23 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
               order_id, user_id, product_id, product_name, product_image,
               chosen_color, chosen_size, chosen_model, quantity, subtotal,
               discount_amount, total_price, status, is_discounted,
-              payment_method, shipping_address, affiliate_user_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              payment_method, shipping_address, shipping_name, shipping_phone, shipping_cost, affiliate_user_id,
+              guest_access_token_hash, guest_ip_address
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         for (const p of prepared) {
           await conn.execute(sql, [
             p.orderId, userId, p.productIdNum, p.productName, p.productImage,
             p.chosenColor, p.chosenSize, p.chosenModel, p.quantity, p.subtotal,
             p.discountAmount, p.totalPrice, 'success', p.isDiscounted,
-            'northpay', shippingAddress, affiliateUserId,
+            'northpay', shippingAddress, customer.name, customer.phone, p.shipping_cost, affiliateUserId, guestOrderTokenHash, guestIpAddress,
           ]);
         }
 
         await conn.execute(
           'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
           [userId, 'Pembayaran Berhasil',
-           'Pembayaran ' + prepared.length + ' produk sebesar Rp ' + parseInt(computedTotal).toLocaleString('id-ID') + ' berhasil via NorthPay.']
+           'Pembayaran ' + prepared.length + ' produk sebesar Rp ' + parseInt(totalPaid).toLocaleString('id-ID') + ' berhasil via NorthPay.']
         );
 
         await conn.commit();
@@ -983,14 +1316,18 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
 
         return res.json({
           success: true,
-          totalPrice: computedTotal,
+          totalPrice: totalPaid,
           subtotal: computedTotal + totalDiscount,
           discountAmount: totalDiscount,
+          shippingFee,
+          guestOrderToken,
+          isComboPromo,
           orders: prepared.map((p) => ({
             orderId: p.orderId,
             subtotal: p.subtotal,
             discountAmount: p.discountAmount,
             totalPrice: p.totalPrice,
+            shipping_cost: p.shipping_cost,
             isDiscounted: p.isDiscounted,
           })),
         });
@@ -1007,22 +1344,28 @@ app.post("/api/save-order/bulk", verifyToken, csrfProtection, strictLimiter, asy
 
     res.json({
       success: true,
-      totalPrice: computedTotal,
+      totalPrice: totalPaid,
       subtotal: computedTotal + totalDiscount,
       discountAmount: totalDiscount,
+      shippingFee,
+      isComboPromo,
       orders: prepared.map((p) => ({
         orderId: p.orderId,
         subtotal: p.subtotal,
         discountAmount: p.discountAmount,
         totalPrice: p.totalPrice,
+        shipping_cost: p.shipping_cost,
         isDiscounted: p.isDiscounted,
       })),
     });
   } catch (err) {
     console.error("Gagal save bulk ke DB:", err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: "Salah satu ID pesanan sudah digunakan. Muat ulang checkout dan coba lagi." });
+    }
     res.status(500).json({
       success: false,
-      error: err.message,
+      message: "Pesanan gagal disimpan. Silakan coba lagi.",
     });
   }
 });
@@ -1117,20 +1460,10 @@ app.post("/api/google-login", async (req, res) => {
     const [[authUser]] = await db.query('SELECT auth_version FROM user_northline WHERE id = ?', [userId]);
     const token = jwt.sign({ id: userId, email, authVersion: authUser?.auth_version || 0 }, JWT_SECRET, { expiresIn: "1d" });
 
-    res.cookie("nl_jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-    res.cookie("logged_in", "1", {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    const isSecure = process.env.NODE_ENV === "production";
+    const cookieBase = { httpOnly: true, secure: isSecure, sameSite: "lax", path: "/", maxAge: 24 * 60 * 60 * 1000 };
+    res.cookie("nl_jwt", token, cookieBase);
+    res.cookie("logged_in", "1", { ...cookieBase, httpOnly: false });
 
     const [userData] = await db.query(
       "SELECT id, username, name, email, phone, avatar FROM user_northline WHERE id = ?",
@@ -1144,14 +1477,27 @@ app.post("/api/google-login", async (req, res) => {
   }
 });
 
-app.delete("/api/cancel-order/:orderId", verifyToken, async (req, res) => {
+app.delete("/api/cancel-order/:orderId", verifyTokenIfPresent, async (req, res) => {
   const { orderId } = req.params;
 
   try {
-    const [result] = await db.execute(
-      "UPDATE transactions SET status = 'cancelled' WHERE order_id = ? AND user_id = ? AND status = 'pending'",
-      [orderId, req.user.id],
-    );
+    let result;
+    if (req.user) {
+      [result] = await db.execute(
+        "UPDATE transactions SET status = 'cancelled' WHERE order_id = ? AND user_id = ? AND status = 'pending'",
+        [orderId, req.user.id],
+      );
+    } else {
+      const guestToken = req.headers['x-guest-order-token'];
+      if (typeof guestToken !== 'string' || !/^[a-f0-9]{64}$/i.test(guestToken)) {
+        return res.status(401).json({ success: false, message: "Token pesanan guest tidak valid" });
+      }
+      const guestTokenHash = crypto.createHash("sha256").update(guestToken).digest("hex");
+      [result] = await db.execute(
+        "UPDATE transactions SET status = 'cancelled' WHERE order_id = ? AND user_id IS NULL AND guest_access_token_hash = ? AND status = 'pending'",
+        [orderId, guestTokenHash],
+      );
+    }
 
     if (result.affectedRows > 0) {
       res.json({
@@ -1174,12 +1520,25 @@ app.delete("/api/cancel-order/:orderId", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/api/check-order/:orderId", verifyToken, async (req, res) => {
+app.get("/api/check-order/:orderId", verifyTokenIfPresent, async (req, res) => {
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM transactions WHERE order_id = ? AND user_id = ?",
-      [req.params.orderId, req.user.id],
-    );
+    let rows;
+    if (req.user) {
+      [rows] = await db.query(
+        "SELECT * FROM transactions WHERE order_id = ? AND user_id = ?",
+        [req.params.orderId, req.user.id],
+      );
+    } else {
+      const guestToken = req.headers['x-guest-order-token'];
+      if (typeof guestToken !== 'string' || !/^[a-f0-9]{64}$/i.test(guestToken)) {
+        return res.status(401).json({ success: false, status: "unauthorized", isPaid: false });
+      }
+      const guestTokenHash = crypto.createHash("sha256").update(guestToken).digest("hex");
+      [rows] = await db.query(
+        "SELECT * FROM transactions WHERE order_id = ? AND user_id IS NULL AND guest_access_token_hash = ?",
+        [req.params.orderId, guestTokenHash],
+      );
+    }
     if (rows.length === 0) {
       return res.json({
         success: false,
@@ -1187,6 +1546,8 @@ app.get("/api/check-order/:orderId", verifyToken, async (req, res) => {
         isPaid: false,
       });
     }
+    delete rows[0].guest_access_token_hash;
+    delete rows[0].guest_ip_address;
     res.json({
       success: true,
       status: rows[0].status,
@@ -1212,6 +1573,30 @@ app.get("/api/user-profile/:id", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ address: null });
+  }
+});
+
+app.get("/api/shipping/quote", verifyTokenIfPresent, async (req, res) => {
+  try {
+    let address = typeof req.query.address === "string" ? req.query.address.trim() : "";
+    if (address.length > 2000) {
+      return res.status(400).json({ success: false, canShip: false, reason: "Alamat pengiriman terlalu panjang", fee: 0, label: "", zone: null });
+    }
+    if (!address && req.user) {
+      const [rows] = await db.query(
+        "SELECT address FROM user_northline WHERE id = ?",
+        [req.user.id],
+      );
+      address = rows[0]?.address || "";
+    }
+    if (!address) {
+      return res.status(400).json({ success: false, canShip: false, reason: "Alamat pengiriman wajib diisi", fee: 0, label: "", zone: null });
+    }
+    const quote = shippingHelper.getQuote(address);
+    res.json({ success: quote.success, ...quote, address });
+  } catch (err) {
+    console.error("Shipping quote error:", err.message);
+    res.status(500).json({ success: false, canShip: false, reason: "Gagal menghitung ongkir", fee: 0, label: "", zone: null });
   }
 });
 
@@ -1264,6 +1649,25 @@ async function markVoucherUsed(userId, voucherId, orderId) {
     );
   } catch (e) {
     console.log('markVoucherUsed skip:', e.message);
+  }
+}
+
+const COMBO_PROMO_PRODUCT_IDS = [13, 37];
+const COMBO_PROMO_PRICE = 200000;
+
+async function isComboPromoEligible(userId, productIds) {
+  if (productIds.length !== 2) return false;
+  if (!productIds.includes(13) || !productIds.includes(37)) return false;
+
+  try {
+    const [rows] = await db.execute(
+      "SELECT DISTINCT product_id FROM transactions WHERE user_id = ? AND product_id IN (?, ?) AND status != 'cancelled'",
+      [userId, 13, 37]
+    );
+    return rows.length < 2;
+  } catch (e) {
+    console.log('isComboPromoEligible error:', e.message);
+    return false;
   }
 }
 
@@ -1421,19 +1825,26 @@ app.get("/api/following-count/:userId", async (req, res) => {
 // Api Admin & Chat User
 app.post("/api/chat/send", verifyToken, async (req, res) => {
     const { userId, message, type, sender = 'user' } = req.body;
+    const targetUserId = Number(userId);
+    if (!Number.isSafeInteger(targetUserId) || targetUserId <= 0) {
+        return res.status(400).json({ success: false, message: "ID pengguna tidak valid." });
+    }
+    if (Number(req.user.id) !== targetUserId && req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: "Anda tidak memiliki akses ke chat ini." });
+    }
 
     const finalMessage =
         typeof message === "object"
             ? JSON.stringify(message)
             : message;
 
-    await db.query(
+    const [insertResult] = await db.query(
         `
         INSERT INTO chat_messages (user_id, sender, type, message)
         VALUES (?, ?, ?, ?)
         `,
         [
-            userId,
+            targetUserId,
             sender,
             type || "text",
             finalMessage
@@ -1441,7 +1852,7 @@ app.post("/api/chat/send", verifyToken, async (req, res) => {
     );
 
     const msgData = {
-        userId,
+        userId: targetUserId,
         sender,
         type: type || "text",
         message: typeof message === "object"
@@ -1458,7 +1869,7 @@ app.post("/api/chat/send", verifyToken, async (req, res) => {
         io.to("admin_room").emit("new_message", msgData);
     }
 
-    res.json({ success: true });
+    res.json({ success: true, id: insertResult.insertId });
 });
 
 app.get("/api/chat/:userId", verifyToken, async (req, res) => {
@@ -1477,6 +1888,7 @@ app.get("/api/chat/:userId", verifyToken, async (req, res) => {
                 sender,
                 type,
                 message,
+                caption,
                 DATE_FORMAT(created_at,'%H:%i') as time
             FROM chat_messages
             WHERE user_id = ?
@@ -1489,7 +1901,7 @@ app.get("/api/chat/:userId", verifyToken, async (req, res) => {
             let msg = m.message;
 
             // 🔥 FIX UTAMA DI SINI
-            if (m.type === "product") {
+            if (m.type === "product" || m.type === "shipping") {
                 try {
                     msg = typeof m.message === "string"
                         ? JSON.parse(m.message)
@@ -1636,6 +2048,25 @@ app.delete("/api/chat/message/:messageId", verifyToken, async (req, res) => {
     }
 });
 
+app.delete("/api/chat/clear/:userId", verifyToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const requestedUserId = Number(userId);
+        if (!Number.isSafeInteger(requestedUserId) || requestedUserId <= 0) {
+            return res.status(400).json({ success: false, message: "ID pengguna tidak valid." });
+        }
+        if (Number(req.user.id) !== requestedUserId && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: "Anda tidak memiliki akses untuk menghapus chat ini." });
+        }
+        await db.query("DELETE FROM chat_messages WHERE user_id = ?", [requestedUserId]);
+        io.to(`chat_${requestedUserId}`).emit("chat_deleted");
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Chat gagal dihapus. Silakan coba lagi." });
+    }
+});
+
 app.post("/api/admin/reply", verifyToken, adminRoleCheck, async (req, res) => {
     const { userId, message } = req.body;
     await db.query("INSERT INTO chat_messages (user_id, sender, message) VALUES (?, 'admin', ?)", [userId, message]);
@@ -1664,7 +2095,8 @@ app.post("/api/admin/read/:userId", verifyToken, adminRoleCheck, async (req,res)
         [req.params.userId]
     );
     res.json({
-        success:true
+        success: true,
+        imageUrl
     });
 });
 
@@ -1765,7 +2197,7 @@ app.get("/api/admin/chat-users", verifyToken, async (req, res) => {
 
 const storage = multer.diskStorage({
     destination:(req,file,cb)=>{
-        cb(null,"uploads/chat");
+        cb(null, path.join(__dirname, "uploads", "chat"));
     },
     filename:(req,file,cb)=>{
         const ext = safeExtensionFromMime(file.mimetype) || ".jpg";
@@ -1789,11 +2221,21 @@ const upload = multer({
 app.post(
     "/api/chat/upload",
     verifyToken,
-    upload.single("image"),
+    (req, res, next) => {
+        upload.single("image")(req, res, (err) => {
+            if (err) {
+                const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+                return res.status(status).json({ success: false, message: err.message });
+            }
+            next();
+        });
+    },
     async (req,res)=>{
         try {
             const { userId } = req.body;
-            if (parseInt(userId) !== req.user.id) {
+            const caption = typeof req.body.caption === "string" ? req.body.caption.trim().slice(0, 1000) : "";
+            if (parseInt(userId, 10) !== req.user.id) {
+              if (req.file) fs.unlink(req.file.path, () => {});
               return res.status(403).json({ success: false, message: 'Forbidden' });
             }
             if (!req.file) {
@@ -1802,36 +2244,40 @@ app.post(
 
             const filePath = path.join(__dirname, "uploads", "chat", req.file.filename);
             if (!detectImageExtFromFile(filePath)) {
-              fs.unlink(filePath, () => {});
+              fs.unlink(req.file.path, () => {});
               return res.status(400).json({ success: false, message: 'File bukan gambar yang valid' });
             }
 
             const imageUrl =
                 `/uploads/chat/${req.file.filename}`;
 
-            await db.query(
+            const [imageResult] = await db.query(
                 `
                 INSERT INTO chat_messages
                 (
                     user_id,
                     sender,
                     type,
-                    message
+                    message,
+                    caption
                 )
                 VALUES
-                (?, 'user', 'image', ?)
+                (?, 'user', 'image', ?, ?)
                 `,
                 [
                     userId,
-                    imageUrl
+                    imageUrl,
+                    caption || null
                 ]
             );
 
             const data = {
+                id: imageResult.insertId,
                 userId,
                 sender:"user",
                 type:"image",
                 message:imageUrl,
+                caption,
                 time:new Date()
             };
 
@@ -1850,7 +2296,10 @@ app.post(
             );
 
             res.json({
-                success:true
+                success: true,
+                imageUrl,
+                caption,
+                imageId: imageResult.insertId,
             });
         } catch (err) {
             console.error(err);
@@ -1910,12 +2359,23 @@ app.use("/api", authRoutes);
 app.use("/api", aiRoutes);
 app.use("/api/auth", aiRoutes);
 app.use("/api", sellerRoutes);
+app.use("/api", productReportRoutes);
+// NPinjam Scanner dimount sebelum /api/admin agar tidak tertangkap router
+// admin yang sudah punya banyak rute /npinjam/* lain.
+app.use("/api/admin/npinjam", adminNpinjamScannerRoutes);
+app.use("/api/admin/domain", adminDomainRoutes);
+app.use("/api/admin/filemanager", adminFileManagerRoutes);
+app.use("/api/admin/techstack", adminTechStackRoutes);
+app.use("/api/admin/security", adminSecurityRoutes);
+app.use("/api/admin/domain-manager", adminDomainManagerRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", adminLogsRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/npinjam", npinjamRoutes);
 app.use("/api/affiliate", affiliateRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/mysql-manager", mysqlManagerRoutes);
 
 const { runAutoPayout } = require("./utils/payout");
 runAutoPayout().catch((e) => console.error("Auto payout startup:", e));
@@ -1961,6 +2421,11 @@ app.get("/auth/:code", (req, res) => {
 });
 
 app.get("/", (req, res) => {
+  const aff = typeof req.query.aff === "string" ? req.query.aff.trim() : "";
+  const affValid = /^nrt[a-z0-9]{2,}$/i.test(aff);
+  if (affValid && !req.query.product) {
+    return res.redirect(302, `/affiliate/${encodeURIComponent(aff)}?aff=${encodeURIComponent(aff)}`);
+  }
   res.sendFile(path.join(__dirname, "../frontend", "index.html"));
 });
 
@@ -2020,6 +2485,83 @@ app.get("/seller/AppNorthSellerDashboard/:storeSlug-:code", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/public/seller/AppNorthSellerDashboard.html"));
 });
 
+// Crawler link preview (WhatsApp/Telegram/X/Facebook) tidak menjalankan JS,
+// jadi tag Open Graph harus ada di HTML yang dikirim server.
+function escMeta(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function buildAffiliateOgTags(req, code) {
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const pageUrl = `${origin}/affiliate/${encodeURIComponent(code)}`;
+  const imageUrl = `${origin}/api/affiliate/avatar/${encodeURIComponent(code)}`;
+
+  const SITE_NAME = "Northline";
+  let title = "Affiliate Northline";
+  let desc = `Link affiliate ${SITE_NAME}. Beli lewat link ini agar komisi masuk ke profil.`;
+  let name = SITE_NAME;
+
+  if (/^nrt[a-z0-9]{2,}$/i.test(code)) {
+    try {
+      const [rows] = await db.execute(
+        `SELECT name, affiliate_tagline, affiliate_bio FROM user_northline
+         WHERE affiliate_code = ? AND affiliate_enabled = 1 AND affiliate_profile_visible = 1
+         LIMIT 1`,
+        [code]
+      );
+      if (rows.length > 0) {
+        name = rows[0].name || name;
+        title = `${name} | Affiliate ${SITE_NAME}`;
+        // pakai teks profil yang cukup panjang, kalau tidak generate sendiri
+        const own = [rows[0].affiliate_tagline, rows[0].affiliate_bio]
+          .map((v) => String(v || "").trim())
+          .find((v) => v.length >= 15);
+        desc = own
+          ? own.slice(0, 160)
+          : `Link affiliate ${name} di ${SITE_NAME}. Beli lewat link ini agar komisi masuk ke profil.`;
+      }
+    } catch (e) {
+      // gagal query -> tetap kirim tag generik, jangan gagalkan halaman
+    }
+  }
+
+  return [
+    `<meta property="og:type" content="profile">`,
+    `<meta property="og:site_name" content="Northline">`,
+    `<meta property="og:title" content="${escMeta(title)}">`,
+    `<meta property="og:description" content="${escMeta(desc)}">`,
+    `<meta property="og:url" content="${escMeta(pageUrl)}">`,
+    `<meta property="og:image" content="${escMeta(imageUrl)}">`,
+    `<meta property="og:image:alt" content="${escMeta(name)}">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${escMeta(title)}">`,
+    `<meta name="twitter:description" content="${escMeta(desc)}">`,
+    `<meta name="twitter:image" content="${escMeta(imageUrl)}">`,
+  ].join("\n    ");
+}
+
+async function servePublicAffiliate(req, res) {
+  const file = path.join(__dirname, "../frontend/AppNorthAffiliate.html");
+  const code = String((req.params && req.params.code) || "").trim();
+  try {
+    const raw = await fs.promises.readFile(file, "utf8");
+    const og = await buildAffiliateOgTags(req, code);
+    const html = raw.replace("</head>", `    ${og}\n</head>`);
+    res.set("Cache-Control", "public, max-age=60");
+    return res.type("html").send(html);
+  } catch (e) {
+    return res.sendFile(file);
+  }
+}
+
+app.get("/affiliate/:code", servePublicAffiliate);
+
+app.get("/affiliate/:code/*", servePublicAffiliate);
+
 app.get("/*", (req, res, next) => {
   let reqPath = req.path;
 
@@ -2043,8 +2585,49 @@ app.get("/*", (req, res, next) => {
   });
 });
 
+app.use((req, res) => {
+  res.redirect("/");
+});
+
 const PORT = process.env.PORT || 9000;
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Server jalan di http://127.0.0.1:${PORT}`);
-});
+startLogCleanupCron();
+
+Promise.all([
+  productReportRoutes.ensureProductReportsTable(),
+  adminRoutes.ensureAdminOperationsTables(),
+])
+  .then(() => {
+    server.listen(PORT, "::1", () => {
+      console.log(`Server jalan di port ${PORT} (IPv6 loopback)`);
+    });
+  })
+  .catch((error) => {
+    console.error("Gagal menyiapkan tabel operasional:", error);
+    process.exit(1);
+  });
+
+let shutdownStarted = false;
+function gracefulShutdown(signal) {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+  console.log(`[SHUTDOWN] ${signal} received; closing server and Copilot client.`);
+  const shutdownTimeout = setTimeout(() => {
+    console.error("[SHUTDOWN] Graceful shutdown timed out.");
+    process.exit(1);
+  }, 10000);
+
+  server.close((error) => {
+    if (error) console.error("[SHUTDOWN] HTTP server close error:", error.message);
+    stopCopilotClient()
+      .catch((clientError) => console.error("[SHUTDOWN] Copilot client close error:", clientError.message))
+      .finally(() => {
+        clearTimeout(shutdownTimeout);
+        process.exitCode = error ? 1 : 0;
+        process.exit();
+      });
+  });
+}
+
+process.once("SIGINT", () => gracefulShutdown("SIGINT"));
+process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));

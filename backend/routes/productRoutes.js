@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 const catalogRoutes = require("./catalog");
+const flashDiscount = require("../utils/flashDiscount");
 
 router.get("/search", async (req, res) => {
     try {
@@ -15,7 +16,7 @@ router.get("/search", async (req, res) => {
         const kw = keyword.toLowerCase();
 
         const catalogProducts = catalogRoutes.NORTHLINE_CATALOG
-            .filter(p => p.name && p.name.toLowerCase().includes(kw))
+            .filter(p => p.name && p.name.toLowerCase().includes(kw) && (p.stock || 0) > 0)
             .map(p => ({
                 id: p.id,
                 name: p.name,
@@ -25,6 +26,14 @@ router.get("/search", async (req, res) => {
                 store_name: "Northline Official",
                 source: "catalog"
             }));
+
+        const flash = await flashDiscount.getFlashState();
+        if (flash.active) {
+            catalogProducts.forEach(p => {
+                const promo = flash.prices[String(p.id)];
+                if (promo && promo < p.price) p.price = promo;
+            });
+        }
 
         const [productRows] = await db.query(`
             SELECT
@@ -41,7 +50,7 @@ router.get("/search", async (req, res) => {
                 s.store_name
             FROM products p
             JOIN sellers s ON s.id = p.seller_id
-            WHERE p.status = 'active' AND p.name LIKE ?
+            WHERE p.status = 'active' AND p.stock > 0 AND p.name LIKE ?
             LIMIT 20
         `, [
             `%${keyword}%`

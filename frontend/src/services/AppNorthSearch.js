@@ -25,18 +25,49 @@ const northlineCatalogPromise = window.northlineCatalog
 
 function renderSearchItem(product, ai) {
   const name = product.name || product.product_name || "";
+  const escapedName = escapeSearchHtml(name);
+  const escapedId = escapeSearchHtml(product.id);
+  const escapedCode = escapeSearchHtml(product.code || "");
+  const escapedSource = escapeSearchHtml(product.source || "local");
   const badge = ai
-    ? '<span class="shrink-0"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=000000" class="w-4 h-4"/></span>'
+    ? '<span class="shrink-0"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=000000" class="w-4 h-4" alt="AI"/></span>'
     : "";
+  if (product.image) {
+    const price = typeof product.price === "number"
+      ? `Rp${product.price.toLocaleString("id-ID")}`
+      : (product.price || "");
+    return `
+      <div class="search-result-item flex items-center gap-3 px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700"
+        data-id="${escapedId}"
+        data-code="${escapedCode}"
+        data-source="${escapedSource}">
+        <img src="${escapeSearchHtml(product.image)}" alt="" class="w-12 h-12 rounded-md object-cover bg-gray-100 flex-shrink-0" loading="lazy">
+        <span class="min-w-0 flex-1">
+          <span class="block truncate">${escapedName}</span>
+          ${price ? `<span class="block text-xs text-[#DF414F] mt-0.5">${escapeSearchHtml(price)}</span>` : ""}
+        </span>
+        ${badge}
+      </div>
+    `;
+  }
   return `
     <div class="search-result-item px-3 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 text-sm text-gray-700 ${ai ? "flex items-center gap-1.5" : "truncate"}"
-      data-id="${product.id}"
-      data-code="${product.code || ''}"
-      data-source="${product.source || 'local'}">
+      data-id="${escapedId}"
+      data-code="${escapedCode}"
+      data-source="${escapedSource}">
       ${badge}
-      <span class="${ai ? "truncate" : ""}">${name} ...</span>
+      <span class="${ai ? "truncate" : ""}">${escapedName} ...</span>
     </div>
   `;
+}
+
+function escapeSearchHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function renderStoreItem(store) {
@@ -272,19 +303,56 @@ document.addEventListener("DOMContentLoaded", () => {
 async function handleCameraSearch(e) {
   const file = e.target.files?.[0];
   if (!file) return;
+  const isMobile = e.target.id === "mobile-search-camera-input";
+  const dropdown = document.getElementById(isMobile ? "mobile-search-dropdown" : "search-results-dropdown");
+  const results = document.getElementById(isMobile ? "mobile-search-list" : "search-results-list");
+  if (!dropdown || !results) {
+    e.target.value = "";
+    return;
+  }
+
+  dropdown.classList.remove("hidden");
+  results.innerHTML = `
+    <div class="p-4 text-center text-gray-600 text-sm flex items-center justify-center gap-3">
+      <!-- Container Animasi -->
+      <div class="relative w-6 h-6 flex items-center justify-center">
+        
+        <!-- 3 Dot Typing yang berubah jadi Spinner berputar -->
+        <div class="absolute inset-0 flex items-center justify-center morph-loader">
+          <span class="dot dot-1 bg-[#DF414F]"></span>
+          <span class="dot dot-2 bg-[#DF414F]"></span>
+          <span class="dot dot-3 bg-[#DF414F]"></span>
+        </div>
+
+      </div>
+
+      <span>Sedang mencari produk serupa</span>
+    </div>
+  `;
   try {
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+      throw new Error(file.size > 5 * 1024 * 1024 ? "Ukuran gambar maksimal 5 MB." : "Pilih file gambar yang valid.");
+    }
     const formData = new FormData();
     formData.append("image", file);
-    const res = await fetch("/api/upload-search-image", { method: "POST", body: formData });
+    const res = await fetch("/api/search/image", { method: "POST", body: formData });
     const data = await res.json();
-    if (data.success) {
-      const fullUrl = window.location.origin + data.url;
-      window.open(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(fullUrl)}`, "_blank");
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Pencarian gambar gagal. Silakan coba lagi.");
     }
+    if (!Array.isArray(data.products) || data.products.length === 0) {
+      results.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">${escapeSearchHtml(data.message || "Produk yang cocok tidak ditemukan di katalog.")}</div>`;
+      return;
+    }
+
+    results.innerHTML = '<div class="px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#DF414F] bg-[#fff5f5] flex items-center gap-1.5 border-b border-gray-100"><img src="https://img.icons8.com/?size=100&id=dQ0TcR10zyYB&format=png&color=DF414F" class="w-3 h-3" alt=""> Produk katalog paling mirip</div>';
+    results.insertAdjacentHTML("beforeend", data.products.map(product => renderSearchItem(product, true)).join(""));
   } catch (err) {
     console.error(err);
+    results.innerHTML = `<div class="p-4 text-center text-red-600 text-sm">${escapeSearchHtml(err.message || "Pencarian gambar gagal. Silakan coba lagi.")}</div>`;
+  } finally {
+    e.target.value = "";
   }
-  e.target.value = "";
 }
 
 const placeholders = [

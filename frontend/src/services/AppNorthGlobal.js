@@ -5,7 +5,7 @@ window.updateAuthUI = async () => {
 
     let user = null;
     try {
-        const meRes = await fetch(_d("9kzs9k ~r9wo"), { credentials: 'include' });
+        const meRes = await fetch(_d("9kzs9k ~r9wo"), { credentials: 'same-origin' });
         if (meRes.ok) {
             const meData = await meRes.json();
             user = meData.data || meData.user || meData;

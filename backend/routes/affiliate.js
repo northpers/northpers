@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const path = require("path");
 const db = require("../config/db");
 const catalogRoutes = require("./catalog");
 
@@ -64,11 +65,39 @@ function verifyAffCookie(value) {
   }
 }
 
-function getCommissionRate(totalPrice) {
-  const price = parseInt(totalPrice || 0);
-  if (price < 200000) return 5;
-  if (price < 300000) return 4;
-  return 3;
+// Aturan komisi affiliate Northline:
+// - 10 pembelian pertama  -> komisi 0,5% dari nilai transaksi
+// - pembelian ke-11 dan seterusnya -> tanpa komisi
+//
+// Harga produk tidak lagi memengaruhi tarif.
+//
+// Catatan: penghitung membaca affiliate_commissions. Karena komisi berhenti
+// dibuat setelah 10 pembelian, hitungannya bekU di 10 sehingga aturan
+// "ke-11 dan seterusnya tanpa komisi" otomatis terus berlaku.
+const COMMISSION_STARTER_AFTER = 10;
+const COMMISSION_STARTER_RATE = 0.5;
+const COMMISSION_AFTER_RATE = 0;
+
+function getCommissionRate(totalPrice, purchaseCount) {
+  const done = Number(purchaseCount);
+  const prior = Number.isFinite(done) && done > 0 ? done : 0;
+  return prior < COMMISSION_STARTER_AFTER ? COMMISSION_STARTER_RATE : COMMISSION_AFTER_RATE;
+}
+
+function commissionLabel(rate) {
+  const r = Number(rate) || 0;
+  if (r <= 0) return 'Tanpa komisi';
+  return 'Komisi ' + String(r).replace('.', ',') + '%';
+}
+
+// Jumlah pembelian yang sudah digenerate komisi (dasar hitungan 10 pembelian)
+async function countAffiliatePurchases(affiliateUserId, conn) {
+  const runner = conn || db;
+  const [[row]] = await runner.execute(
+    'SELECT COUNT(*) AS n FROM affiliate_commissions WHERE affiliate_user_id = ?',
+    [affiliateUserId]
+  );
+  return Number(row && row.n ? row.n : 0);
 }
 
 async function generateAffiliateCode() {
@@ -124,13 +153,24 @@ async function grantCommission(orderId) {
     );
     if (affRows.length === 0) return { granted: false, reason: 'affiliate_disabled' };
 
-    const rate = getCommissionRate(tx.total_price);
-    const amount = Math.round((tx.total_price || 0) * rate / 100);
-    if (amount <= 0) return { granted: false, reason: 'zero_amount' };
-
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
+
+      // dihitung DI DALAM transaksi supaya dua order bersamaan tidak salah dapat tarif
+      const priorPurchases = await countAffiliatePurchases(tx.affiliate_user_id, conn);
+      const priceNum = Number(tx.total_price);
+      const basePrice = Number.isFinite(priceNum) && priceNum > 0 ? priceNum : 0;
+      const rate = getCommissionRate(basePrice, priorPurchases);
+      const amount = Math.round(basePrice * rate / 100);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        await conn.rollback();
+        conn.release();
+        return {
+          granted: false,
+          reason: rate <= 0 ? 'no_commission_after_starter' : 'zero_amount'
+        };
+      }
 
       await conn.execute(
         `INSERT INTO affiliate_commissions
@@ -147,12 +187,12 @@ async function grantCommission(orderId) {
       await conn.execute(
         'INSERT INTO user_notifications (user_id, title, message) VALUES (?, ?, ?)',
         [tx.affiliate_user_id, 'Komisi Affiliate Masuk',
-         `Komisi affiliate Rp ${parseInt(amount).toLocaleString('id-ID')} untuk order ${orderId} telah masuk ke saldo NorthPay Anda.`]
+         `Komisi affiliate ${rate}% (Rp ${parseInt(amount).toLocaleString('id-ID')}) untuk order ${orderId} telah masuk ke saldo NorthPay Anda.`]
       );
 
       await conn.commit();
       conn.release();
-      return { granted: true, amount, rate };
+      return { granted: true, amount, rate, priorPurchases };
     } catch (txErr) {
       await conn.rollback();
       conn.release();
@@ -246,15 +286,35 @@ router.get('/dashboard', verifyToken, async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
+    // dipakai agar label komisi di kartu produk sama dengan yang benar-benar dibayar
+    let purchases = 0;
+    try {
+      const qCode = String(req.query.code || '').trim();
+      let affId = null;
+      if (qCode) {
+        const [[byCode]] = await db.execute(
+          'SELECT id FROM user_northline WHERE affiliate_enabled = 1 AND affiliate_code = ? LIMIT 1',
+          [qCode]
+        );
+        if (byCode) affId = byCode.id;
+      } else if (req.user && req.user.id) {
+        affId = req.user.id;
+      }
+      if (affId) purchases = await countAffiliatePurchases(affId);
+    } catch (e) {
+      purchases = 0;
+    }
+
     const [dbProducts] = await db.execute(
-      `SELECT p.id, p.name, p.price,
+      `SELECT p.id, p.name, p.price, p.stock,
               (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY sort_order ASC LIMIT 1) AS image
        FROM products p
-       WHERE p.status = 'active'
+       WHERE p.status = 'active' AND p.stock > 0
        ORDER BY p.name`
     );
 
     const localProducts = catalogRoutes.NORTHLINE_CATALOG
+      .filter(p => (p.stock || 0) > 0)
       .slice()
       .reverse()
       .map((p) => {
@@ -270,8 +330,8 @@ router.get('/products', async (req, res) => {
           models: p.models || null,
           colors: p.colors || [],
           aiPick: catalogRoutes.aiPickIds().has(p.id),
-          commissionRate: getCommissionRate(price),
-          commissionLabel: 'Komisi ' + getCommissionRate(price) + '%',
+          commissionRate: getCommissionRate(price, purchases),
+          commissionLabel: commissionLabel(getCommissionRate(price, purchases)),
         };
       });
 
@@ -291,8 +351,8 @@ router.get('/products', async (req, res) => {
           categories: [],
           models: null,
           colors: [],
-          commissionRate: getCommissionRate(price),
-          commissionLabel: 'Komisi ' + getCommissionRate(price) + '%',
+          commissionRate: getCommissionRate(price, purchases),
+          commissionLabel: commissionLabel(getCommissionRate(price, purchases)),
         };
       }).concat(localProducts)
     });
@@ -350,7 +410,226 @@ router.get('/check', async (req, res) => {
   }
 });
 
+const TAGLINE_MAX = 140;
+const BIO_MAX = 500;
+
+function cleanText(value, max) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const s = String(value).replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  return s.slice(0, max);
+}
+
+function cleanBio(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const s = String(value).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if (!s) return null;
+  return s.slice(0, BIO_MAX);
+}
+
+router.get('/profile/mine', verifyToken, async (req, res) => {
+  try {
+    const code = await ensureAffiliateCode(req.user.id);
+    if (!code) return res.status(400).json({ success: false, message: 'Program affiliate dinonaktifkan' });
+
+    const [[row]] = await db.execute(
+      `SELECT affiliate_tagline, affiliate_bio, affiliate_profile_visible
+       FROM user_northline WHERE id = ?`,
+      [req.user.id]
+    );
+
+    res.json({
+      success: true,
+      code,
+      tagline: (row && row.affiliate_tagline) || '',
+      bio: (row && row.affiliate_bio) || '',
+      profileVisible: !!(row && row.affiliate_profile_visible),
+      profilePath: '/affiliate/' + code
+    });
+  } catch (err) {
+    console.error('affiliate profile/mine error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/profile', verifyToken, async (req, res) => {
+  try {
+    const code = await ensureAffiliateCode(req.user.id);
+    if (!code) return res.status(400).json({ success: false, message: 'Program affiliate dinonaktifkan' });
+
+    const tagline = cleanText(req.body.tagline, TAGLINE_MAX);
+    const bio = cleanBio(req.body.bio);
+    const visible = req.body.profileVisible;
+
+    if (tagline !== undefined && tagline !== null && String(tagline).length > TAGLINE_MAX) {
+      return res.status(400).json({ success: false, message: 'Tagline maksimal ' + TAGLINE_MAX + ' karakter' });
+    }
+
+    const sets = [];
+    const params = [];
+    if (tagline !== undefined) { sets.push('affiliate_tagline = ?'); params.push(tagline); }
+    if (bio !== undefined) { sets.push('affiliate_bio = ?'); params.push(bio); }
+    if (visible !== undefined) {
+      sets.push('affiliate_profile_visible = ?');
+      params.push(visible ? 1 : 0);
+    }
+
+    if (sets.length > 0) {
+      params.push(req.user.id);
+      await db.execute(
+        'UPDATE user_northline SET ' + sets.join(', ') + ' WHERE id = ?',
+        params
+      );
+    }
+
+    res.json({ success: true, profilePath: '/affiliate/' + code });
+  } catch (err) {
+    console.error('affiliate profile update error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+function stockProducts(purchases) {
+  return catalogRoutes.NORTHLINE_CATALOG
+    .filter((p) => (p.stock || 0) > 0)
+    .map((p) => {
+      const price = p.price || p.priceShort || 0;
+      return {
+        id: p.id,
+        code: catalogRoutes.getProductCode(p.id),
+        name: p.name,
+        price: Number(price) || 0,
+        stock: Number(p.stock) || 0,
+        image: (p.images && p.images[0]) || '/public/icons/default.png',
+        categories: catalogRoutes.getCategories(p),
+        commissionRate: getCommissionRate(price, purchases)
+      };
+    })
+    .sort((a, b) => b.id - a.id);
+}
+
+router.get('/avatar/:code', async (req, res) => {
+  const FALLBACK_AVATAR = path.join(__dirname, "../../frontend/public/icons/Favicon.png");
+  try {
+    const code = String(req.params.code || '').trim();
+    if (!/^nrt[a-z0-9]{2,}$/i.test(code)) {
+      return res.status(404).end();
+    }
+
+    const [rows] = await db.execute(
+      `SELECT avatar FROM user_northline
+       WHERE affiliate_code = ? AND affiliate_enabled = 1 AND affiliate_profile_visible = 1
+       LIMIT 1`,
+      [code]
+    );
+
+    if (rows.length === 0) return res.status(404).end();
+
+    const raw = rows[0].avatar;
+    res.set('Cache-Control', 'public, max-age=300');
+
+    // tanpa avatar -> pakai logo toko supaya preview tidak rusak
+    if (!raw) return res.sendFile(FALLBACK_AVATAR);
+
+    // avatar berupa http(s) URL -> arahkan saja
+    if (/^https?:\/\//i.test(raw)) return res.redirect(302, raw);
+
+    // avatar disimpan sebagai data URI base64 (lihat /api/auth/upload-avatar)
+    const m = /^data:([\w.+/-]+);base64,([\s\S]+)$/i.exec(raw);
+    if (!m) return res.sendFile(FALLBACK_AVATAR);
+
+    const buf = Buffer.from(m[2], 'base64');
+    if (!buf.length) return res.sendFile(FALLBACK_AVATAR);
+
+    res.set('Content-Type', m[1].toLowerCase());
+    res.set('Content-Length', buf.length);
+    return res.end(buf);
+  } catch (e) {
+    console.error('Error affiliate avatar:', e);
+    return res.status(500).end();
+  }
+});
+
+router.get('/profile/:code', async (req, res) => {
+  try {
+    const code = String(req.params.code || '').trim();
+    if (!/^nrt[a-z0-9]{2,}$/i.test(code)) {
+      return res.status(404).json({ success: false, available: false });
+    }
+
+    const [rows] = await db.execute(
+      `SELECT id, username, name, avatar, created_at, affiliate_tagline, affiliate_bio
+       FROM user_northline
+       WHERE affiliate_code = ? AND affiliate_enabled = 1 AND affiliate_profile_visible = 1
+       LIMIT 1`,
+      [code]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, available: false });
+    }
+
+    const aff = rows[0];
+
+    const [[clickAgg]] = await db.execute(
+      `SELECT COUNT(*) AS total FROM affiliate_clicks WHERE affiliate_code = ?`,
+      [code]
+    );
+    const [[orderAgg]] = await db.execute(
+      `SELECT COUNT(*) AS totalOrders,
+              COALESCE(SUM(commission_amount), 0) AS totalCommission
+       FROM affiliate_commissions WHERE affiliate_user_id = ?`,
+      [aff.id]
+    );
+    const [[buyerAgg]] = await db.execute(
+      `SELECT COUNT(DISTINCT t.user_id) AS total
+       FROM transactions t
+       INNER JOIN affiliate_commissions ac ON ac.order_id = t.order_id
+       WHERE ac.affiliate_user_id = ?`,
+      [aff.id]
+    );
+
+    const clicks = parseInt(clickAgg?.total || 0);
+    const buyers = parseInt(buyerAgg?.total || 0);
+    const purchaseCount = await countAffiliatePurchases(aff.id);
+
+    res.json({
+      success: true,
+      available: true,
+      profile: {
+        code,
+        purchaseCount,
+        username: aff.username,
+        name: aff.name || aff.username,
+        avatar: aff.avatar || null,
+        tagline: aff.affiliate_tagline || null,
+        bio: aff.affiliate_bio || null,
+        joinedAt: aff.created_at,
+        stats: {
+          clicks,
+          buyers,
+          orders: parseInt(orderAgg?.totalOrders || 0),
+          totalCommission: parseInt(orderAgg?.totalCommission || 0),
+          conversion: clicks > 0 ? Math.round((buyers / clicks) * 1000) / 10 : 0
+        }
+      },
+      products: stockProducts(purchaseCount)
+    });
+  } catch (err) {
+    console.error('affiliate profile error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
 module.exports.grantCommission = grantCommission;
 module.exports.verifyAffCookie = verifyAffCookie;
 module.exports.getCommissionRate = getCommissionRate;
+module.exports.countAffiliatePurchases = countAffiliatePurchases;
+module.exports.COMMISSION_STARTER_AFTER = COMMISSION_STARTER_AFTER;
+module.exports.COMMISSION_STARTER_RATE = COMMISSION_STARTER_RATE;
+module.exports.COMMISSION_AFTER_RATE = COMMISSION_AFTER_RATE;
+module.exports.COMMISSION_FULL_AFTER = COMMISSION_STARTER_AFTER;
+module.exports.commissionLabel = commissionLabel;

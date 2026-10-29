@@ -80,36 +80,7 @@ details[open] .faq-icon{transform:rotate(45deg);}
                             <img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">
                             Bahasa Indonesia
                         </span>
-                        <div id="lang-dropdown"
-                            class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
-                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
-                            <div class="py-2">
-                                <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Indonesia
-                                </button>
-                                <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Malaysia
-                                </button>
-                                <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full object-cover">
-                                    English (Singapore)
-                                </button>
-                                <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full object-cover">
-                                    ไทย
-                                </button>
-                                <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full object-cover">
-                                    Tiếng Việt
-                                </button>
-                                <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full object-cover">
-                                    English
-                                </button>
-                            </div>
-                        </div>
+                        
                     </div>
                     <div class="relative group cursor-pointer">
                         <a href="/AppNorthAuth" id="auth-menu-btn" class="font-bold hover:opacity-90">
@@ -478,6 +449,8 @@ details[open] .faq-icon{transform:rotate(45deg);}
                         Pengiriman
                     </h3>
                     <div class="grid grid-cols-3 gap-1">
+                        <img src="https://nl.hostinesia.my.id/public/image/kiriminaja-logo-png_seeklogo-482458.png"
+                            class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
                         <img src="https://nl.hostinesia.my.id/public/image/20260608_170722.png"
                             class="h-7 md:h-8 w-full object-contain bg-white shadow-md rounded p-1" loading="lazy">
                         <img src="https://nl.hostinesia.my.id/public/image/20260608_170607.png"
@@ -682,7 +655,7 @@ details[open] .faq-icon{transform:rotate(45deg);}
                     </div>
                     <div>
                         <div class="font-medium text-sm">
-                            Northline Support
+                            MiNorth
                         </div>
                         <div id="chat-header-status" class="text-[11px] text-white/80 flex items-center gap-1">
                             24/7 Support Center
@@ -795,16 +768,17 @@ details[open] .faq-icon{transform:rotate(45deg);}
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
     <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthPayment.js?v=0000v14pay"></script>
+    <script src="/java/AppNorthPayment.js?v=0000v18guestorders"></script>
     <script src="/java/AppNorthSlide.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthCatalog.js?v=0000v40cat"></script>
+    <script src="/java/AppNorthCatalog.js?v=0000v58productreport"></script>
     <script src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
     <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
-    <script src="/src/services/AppNorthSearch.js?v=0000v15cat"></script>
-    <script src="/src/services/AppNorthOrders.js?v=0000v14sec"></script>
-    <script src="/src/services/AppNorthWishlist.js?v=0000v19wl"></script>
+    <script src="/src/services/AppNorthSearch.js?v=0000v18visualsearchbounce"></script>
+    <script src="/src/services/AppNorthOrders.js?v=0000v24guestorders"></script>
+    <script src="/src/services/AppNorthWishlist.js?v=0000v20wl"></script>
     <script src="/seller-products/AppNorthSellerCard.js?v=0000v11sec"></script>
     <script src="/seller-products/AppNorthSellerProductDetail.js?v=0000v11sec"></script>
     <script src="/src/services/AppNorthAiService.js?v=0000v11ai"></script>

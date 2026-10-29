@@ -207,8 +207,15 @@ window.WishlistManager = {
   togglePopup: function () {
     const popup = document.getElementById("wishlist-popup");
     if (!popup) return;
+    const isOpen = !popup.classList.contains("hidden");
     popup.classList.toggle("hidden");
-    if (!popup.classList.contains("hidden")) this.renderPopupItems();
+    if (!popup.classList.contains("hidden")) {
+      openWishlistUrl();
+      this.renderPopupItems();
+    } else {
+      window._wlClosing = true;
+      closeWishlistUrl();
+    }
   },
 
   renderPopupItems: async function () {
@@ -696,7 +703,19 @@ function updateWishlistCheckoutBar() {
     totalDisc += d;
     count += qty;
   });
-  const total = totalSub - totalDisc;
+
+  const COMBO_IDS = ['13', '37'];
+  const selectedProductIds = selected.map(i => String(i.product_id || i.productId || ''));
+  const isComboPromo = false;
+
+  let total = totalSub - totalDisc;
+  let comboDiscount = 0;
+  if (isComboPromo) {
+    comboDiscount = total - 200000;
+    if (comboDiscount < 0) comboDiscount = 0;
+    total = 200000;
+  }
+
   const voucher = (window.VOUCHERS || WL_VOUCHERS_FALLBACK).find(v => v.id === window.WL_VOUCHER_SELECTED);
   const fmt = (n) => 'IDR ' + parseInt(n).toLocaleString('id-ID');
 
@@ -704,20 +723,22 @@ function updateWishlistCheckoutBar() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div>
         <p style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Total (${count} item)</p>
-        <p style="font-size:15px;font-weight:700;color:#DF414F;">${fmt(total)}</p>
+        <p style="font-size:12px;font-weight:700;color:#DF414F;">${fmt(total)}</p>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button type="button" onclick="WishlistManager.openWishlistVoucher()"
-          style="height:34px;padding:0 12px;border:1px solid ${window.WL_VOUCHER_SELECTED ? '#DF414F' : '#d1d5db'};background:#fff;color:${window.WL_VOUCHER_SELECTED ? '#DF414F' : '#4b5563'};font-size:11px;font-weight:600;cursor:pointer;">
-          ${window.WL_VOUCHER_SELECTED ? (voucher ? voucher.label : 'Voucher') : 'Pilih Voucher'}
+        <button type="button" onclick="${isComboPromo ? '' : 'WishlistManager.openWishlistVoucher()'}"
+          style="height:34px;padding:0 12px;border:1px solid ${isComboPromo ? '#d1d5db' : (window.WL_VOUCHER_SELECTED ? '#DF414F' : '#d1d5db')};background:${isComboPromo ? '#f3f4f6' : '#fff'};color:${isComboPromo ? '#9ca3af' : (window.WL_VOUCHER_SELECTED ? '#DF414F' : '#4b5563')};font-size:11px;font-weight:600;cursor:${isComboPromo ? 'not-allowed' : 'pointer'};">
+          ${isComboPromo ? 'Disabled' : (window.WL_VOUCHER_SELECTED ? (voucher ? voucher.label : 'Voucher') : 'Pilih Voucher')}
         </button>
         <button type="button" onclick="wishlistCheckoutSelected()" ${selected.length === 0 ? 'disabled' : ''}
-          style="height:34px;padding:0 14px;border:none;background:#DF414F;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.05em;cursor:pointer;${selected.length === 0 ? 'opacity:0.4;cursor:not-allowed;' : ''}">
+          style="height:34px;padding:0 14px;border:none;background:#DF414F;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.05em;cursor:pointer;${selected.length === 0 ? 'opacity:0.4;cursor:not-allowed;' : ''}">
           CHECKOUT (${selected.length})
         </button>
       </div>
     </div>
-    ${totalDisc > 0 ? `<p style="font-size:11px;color:#DF414F;">Diskon voucher: -${fmt(totalDisc)}</p>` : ''}
+    ${comboDiscount > 0 ? `<p style="font-size:11px;color:#DF414F;">Combo Promo: -${fmt(comboDiscount)}</p>` : ''}
+    ${!isComboPromo && totalDisc > 0 ? `<p style="font-size:11px;color:#DF414F;">Diskon voucher: -${fmt(totalDisc)}</p>` : ''}
+    ${isComboPromo ? '<p style="font-size:10px;color:#6b7280;margin-top:4px;">Pembelian pertama: Heritage Archive + Iconic Logo Rp200.000</p>' : ''}
   `;
 }
 
@@ -750,9 +771,32 @@ async function wishlistCheckoutSelected() {
     showIosModal('Isi dulu alamat pengiriman di profile, Ya! Masa bajunya mau dikirim ke kuburan.');
     return;
   }
+  let shippingFee = 0;
+  let shippingLabel = '';
+  try {
+    const quoteRes = await fetch('/api/shipping/quote', { credentials: 'include' });
+    if (quoteRes.ok) {
+      const quoteData = await quoteRes.json();
+      if (quoteData && quoteData.success === false) {
+        showIosModal(quoteData.reason || 'Pengiriman ke luar Indonesia belum tersedia');
+        return;
+      }
+      if (quoteData && quoteData.canShip) {
+        shippingFee = quoteData.fee || 0;
+        shippingLabel = quoteData.label || '';
+      }
+    }
+  } catch (e) {
+    console.log('Shipping quote gagal:', e);
+  }
   const now = Date.now();
   const items = [];
   let totalSub = 0, totalDisc = 0, fixedApplied = false;
+
+  const COMBO_IDS = ['13', '37'];
+  const selectedProductIds = selected.map(i => String(i.product_id || i.productId || ''));
+  const isComboPromo = selected.length === 2 && selectedProductIds.includes('13') && selectedProductIds.includes('37');
+
   for (let idx = 0; idx < selected.length; idx++) {
     const it = selected[idx];
     const price = wlParsePrice(it.price);
@@ -767,7 +811,10 @@ async function wishlistCheckoutSelected() {
     }
     const qty = it.quantity || 1;
     const subtotal = price * qty;
-    const discount = wlVoucherDiscountFor(it, subtotal, fixedApplied);
+    let discount = 0;
+    if (!isComboPromo) {
+      discount = wlVoucherDiscountFor(it, subtotal, fixedApplied);
+    }
     if (discount > 0) fixedApplied = true;
     totalSub += subtotal;
     totalDisc += discount;
@@ -787,15 +834,25 @@ async function wishlistCheckoutSelected() {
       orderId: 'NL-' + now + '-' + idx,
     });
   }
+
+  if (isComboPromo) {
+    totalDisc = totalSub - 200000;
+    if (totalDisc < 0) totalDisc = 0;
+    totalSub = 200000;
+  }
+
   window.__wlCheckoutItemKeys = selected.map(i => String(i.id));
   window.__wlSelected.clear();
   updateWishlistCheckoutBar();
   window.bukaModalPembayaran({
     items: items,
-    voucherId: window.WL_VOUCHER_SELECTED || '',
-    totalPrice: totalSub - totalDisc,
-    subtotal: totalSub,
+    voucherId: isComboPromo ? '' : (window.WL_VOUCHER_SELECTED || ''),
+    totalPrice: totalSub + shippingFee,
+    subtotal: isComboPromo ? totalSub + totalDisc : totalSub,
     discountAmount: totalDisc,
+    shippingFee: shippingFee,
+    shippingLabel: shippingLabel,
+    isComboPromo: isComboPromo,
   });
 }
 
@@ -821,8 +878,62 @@ window.__onWishlistCheckoutSuccess = async function (orderIds) {
   if (typeof window.__wlPageRender === 'function') window.__wlPageRender();
 };
 
+function generateWLCode() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function openWishlistUrl() {
+  const code = generateWLCode();
+  const url = '/AppNorthWishlist?code=' + code;
+  history.pushState({ spa: 'wishlist', code: code }, '', url);
+  document.title = 'Wishlist - Northline';
+}
+
+function closeWishlistUrl() {
+  const sp = history.state;
+  if (sp && sp.spa === 'wishlist') {
+    history.pushState(null, '', '/');
+  }
+  document.title = 'Northline Indonesia';
+}
+
+function isWishlistUrlActive() {
+  return window.location.pathname === '/AppNorthWishlist' && window.location.search.includes('code=');
+}
+
+window.handlePopStateWishlist = function(e) {
+  const popup = document.getElementById('wishlist-popup');
+  if (!popup) return;
+  if (e.state && e.state.spa === 'wishlist') {
+    if (popup.classList.contains('hidden') && !window._wlClosing) {
+      popup.classList.remove('hidden');
+      if (typeof WishlistManager.renderPopupItems === 'function') WishlistManager.renderPopupItems();
+      if (typeof renderChatSuggestion === 'function') renderChatSuggestion();
+      updateWishlistCheckoutBar();
+    }
+    window._wlClosing = false;
+  } else {
+    if (!popup.classList.contains('hidden') && !window._wlClosing) {
+      popup.classList.add('hidden');
+      if (typeof renderChatSuggestion === 'function') renderChatSuggestion();
+      updateWishlistCheckoutBar();
+    }
+    window._wlClosing = false;
+  }
+};
+
+window.addEventListener('popstate', window.handlePopStateWishlist);
+
 (function initWishlist() {
   WishlistManager.updateNavbarBadge();
+
+  if (isWishlistUrlActive()) {
+    const popup = document.getElementById('wishlist-popup');
+    if (popup && popup.classList.contains('hidden')) {
+      popup.classList.remove('hidden');
+    }
+    document.title = 'Wishlist - Northline';
+  }
 
   if (isLoggedIn()) {
     const localItems = getLocalItems();

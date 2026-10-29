@@ -66,36 +66,7 @@
                             <img src="https://img.icons8.com/ios/20/ffffff/globe.png" class="w-3 h-3">
                             Bahasa Indonesia
                         </span>
-                        <div id="lang-dropdown"
-                            class="fixed mt-2 w-44 bg-white border border-gray-300 text-black text-xs shadow-xl rounded-sm hidden z-[9999]">
-                            <div class="absolute -top-1.5 left-6 w-3 h-3 bg-white border-l border-t border-gray-300 rotate-45"></div>
-                            <div class="py-2">
-                                <button data-lang="id" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/indonesia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Indonesia
-                                </button>
-                                <button data-lang="ms" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/malaysia.png" class="w-4 h-4 rounded-full object-cover">
-                                    Bahasa Malaysia
-                                </button>
-                                <button data-lang="en" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/singapore.png" class="w-4 h-4 rounded-full object-cover">
-                                    English (Singapore)
-                                </button>
-                                <button data-lang="th" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/thailand.png" class="w-4 h-4 rounded-full object-cover">
-                                    ไทย
-                                </button>
-                                <button data-lang="vn" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/vietnam.png" class="w-4 h-4 rounded-full object-cover">
-                                    Tiếng Việt
-                                </button>
-                                <button data-lang="en-global" class="lang-btn w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                                    <img src="https://img.icons8.com/color/24/usa.png" class="w-4 h-4 rounded-full object-cover">
-                                    English
-                                </button>
-                            </div>
-                        </div>
+                        
                     </div>
                     <div class="relative group cursor-pointer">
                         <a href="/AppNorthAuth" id="auth-menu-btn" class="font-bold hover:opacity-90">
@@ -765,12 +736,12 @@
     });
     </script>
 
-    <div id="FTORNRT"></div>
+    <div id="AppNorthFooter"></div>
     <script>
         fetch("https://nl.hostinesia.my.id/html/AppNorthFooter")
             .then(res => res.text())
             .then(data => {
-                document.getElementById("FTORNRT").innerHTML = data;
+                document.getElementById("AppNorthFooter").innerHTML = data;
             });
     </script>
 
@@ -882,7 +853,7 @@
                     </div>
                     <div>
                         <div class="font-medium text-sm">
-                            Northline Support
+                            MiNorth
                         </div>
                         <div id="chat-header-status" class="text-[11px] text-white/80 flex items-center gap-1">
                             24/7 Support Center
@@ -930,7 +901,7 @@
             class="flex-1 overflow-y-auto bg-[#f6f6f6] px-4 py-3 space-y-3">
             <div class="flex items-start gap-1.5 md:gap-2">
                 <div class="max-w-[85%] md:max-w-[80%]">
-                    <div class="overflow-hidden h-[35px] md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
+                    <div class="overflow-hidden h-[35px] minorth md:h-[40px] bg-white border px-2.5 md:px-3 py-1.5 md:py-2 text-sm text-gray-800">
                         <div id="welcome-text-page">
                             Hi 👋 Selamat datang di Northline!
                         </div>
@@ -942,25 +913,25 @@
             </div>
         </div>
 
-        <div class="border-t bg-white p-2">
+        <div id="keyboard-target" class="border-t bg-white p-2 transition-all duration-200">
             <div id="quick-questions" class="flex gap-2 overflow-x-auto mb-2">
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Produk apa aja?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Harga berapa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ada size apa?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Cara order gimana?
                 </button>
 
-                <button class="q-btn border px-2 py-1 text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
+                <button class="q-btn border px-2 py-1 md:rounded-none rounded-full text-[12px] md:text-[13px] whitespace-nowrap hover:bg-gray-50">
                     Ready stock?
                 </button>
             </div>
@@ -969,10 +940,10 @@
                     id="chat-input"
                     type="text"
                     placeholder="Type a message..."
-                    class="flex-1 h-8 md:h-10 border border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
+                    class="flex-1 h-8 border md:rounded-none rounded-full border-gray-300 px-2.5 md:px-3 text-sm outline-none focus:border-gray-300">
                 <button
                     id="send-message"
-                    class="px-3 md:px-5 h-8 md:h-10 bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
+                    class="px-3 md:px-5 h-8 md:rounded-none rounded-full bg-[#DF414F] text-white text-sm font-medium hover:brightness-95">
                     <img src="https://img.icons8.com/?size=100&id=bmqaSU1DN4QP&format=png&color=ffffff" class="h-6 w-6">
                 </button>
             </div>
@@ -989,14 +960,14 @@
     </div>
 
     <script src="/src/services/AppNorthStorageConfig.js?v=0000v11sec"></script>
-    <script src="/java/AppNorthPayment.js?v=0000v14pay"></script>
+    <script src="/java/AppNorthPayment.js?v=0000v18guestorders"></script>
     <script src="/java/AppNorthScript.js?v=0000v12sec"></script>
     
     <script src="/java/AppNorthLanguage.js?v=0000v11sec"></script>
     <script src="/java/AppNorthGlobalLoader.js?v=0000v11sec"></script>
-    <script src="/src/services/AppNorthSearch.js?v=0000v15cat"></script>
-    <script src="/src/services/AppNorthOrders.js?v=0000v14sec" defer></script>
-    <script src="/src/services/AppNorthWishlist.js?v=0000v19wl" defer></script>
+    <script src="/src/services/AppNorthSearch.js?v=0000v18visualsearchbounce"></script>
+    <script src="/src/services/AppNorthOrders.js?v=0000v24guestorders" defer></script>
+    <script src="/src/services/AppNorthWishlist.js?v=0000v20wl" defer></script>
     <script src="/src/services/AppNorthGlobal.js?v=0000v11sec"></script>
     <script src="/src/services/AppNorthAiService.js?v=0000v11ai"></script>
     <script src="/src/services/AppNorthNotification.js?v=0000v11sec"></script>

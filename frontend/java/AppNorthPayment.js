@@ -1,5 +1,42 @@
 function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.charCodeAt(i)-32-10+95)%95)+32);}return r;}
 
+const GUEST_ORDER_ACCESS_KEY = 'northline_guest_order_access_v1';
+
+function getGuestOrderAccessEntries() {
+  try {
+    const entries = JSON.parse(localStorage.getItem(GUEST_ORDER_ACCESS_KEY) || '[]');
+    return Array.isArray(entries) ? entries.filter(entry =>
+      entry && /^[a-f0-9]{64}$/i.test(entry.token || '') &&
+      Array.isArray(entry.orderIds)
+    ) : [];
+  } catch (error) {
+    console.error('Gagal membaca akses pesanan guest:', error);
+    return [];
+  }
+}
+
+window.getGuestOrderAccessEntries = getGuestOrderAccessEntries;
+
+window.getGuestOrderTokenForOrder = function(orderId) {
+  const entry = getGuestOrderAccessEntries().find(item =>
+    item.orderIds.includes(String(orderId))
+  );
+  return entry ? entry.token : null;
+};
+
+function rememberGuestOrderAccess(token, orderIds) {
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) return;
+  const ids = [...new Set((orderIds || []).filter(Boolean).map(String))];
+  if (ids.length === 0) return;
+  const entries = getGuestOrderAccessEntries().filter(entry => entry.token !== token);
+  entries.push({ token, orderIds: ids, savedAt: Date.now() });
+  try {
+    localStorage.setItem(GUEST_ORDER_ACCESS_KEY, JSON.stringify(entries.slice(-20)));
+  } catch (error) {
+    console.error('Gagal menyimpan akses pesanan guest:', error);
+  }
+}
+
 async function getPaymentCsrfToken() {
   try {
     const res = await fetch(_d('9kzs9m}|p7~yuox'), { credentials: 'include' });
@@ -50,10 +87,204 @@ function paymentHeader() {
   `;
 }
 
+function paymentEscapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+}
+
+let checkoutAddressMap;
+let checkoutAddressMarker;
+let checkoutLeafletPromise;
+
+function ensureCheckoutLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (checkoutLeafletPromise) return checkoutLeafletPromise;
+
+  checkoutLeafletPromise = new Promise((resolve, reject) => {
+    if (!document.getElementById('checkout-leaflet-css')) {
+      const stylesheet = document.createElement('link');
+      stylesheet.id = 'checkout-leaflet-css';
+      stylesheet.rel = 'stylesheet';
+      stylesheet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(stylesheet);
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = resolve;
+    script.onerror = () => {
+      checkoutLeafletPromise = null;
+      reject(new Error('Gagal memuat peta alamat'));
+    };
+    document.head.appendChild(script);
+  });
+  return checkoutLeafletPromise;
+}
+
+function parseCheckoutAddress(address) {
+  const value = String(address || '');
+  const [withoutCoordinates, coordinates] = value.split(' @Coordinates:');
+  const parts = withoutCoordinates.split(' | ');
+  const [latitude, longitude] = String(coordinates || '').split(',');
+  return {
+    detail: parts[0] || '',
+    district: parts[1] || '',
+    city: parts[2] || '',
+    province: parts[3] || '',
+    postalCode: parts[4] || '',
+    latitude: latitude || '',
+    longitude: longitude || '',
+  };
+}
+
+function getCheckoutAddressFields() {
+  const field = (id) => document.getElementById(id);
+  return {
+    detail: field('checkout-address-detail'),
+    district: field('checkout-address-district'),
+    city: field('checkout-address-city'),
+    province: field('checkout-address-province'),
+    postalCode: field('checkout-address-postal'),
+    latitude: field('checkout-address-latitude'),
+    longitude: field('checkout-address-longitude'),
+  };
+}
+
+function fillCheckoutAddress(address) {
+  const parts = parseCheckoutAddress(address);
+  const fields = getCheckoutAddressFields();
+  if (!fields.detail) return;
+  fields.detail.value = parts.detail;
+  fields.district.value = parts.district;
+  fields.city.value = parts.city;
+  fields.province.value = parts.province;
+  fields.postalCode.value = parts.postalCode;
+  fields.latitude.value = parts.latitude;
+  fields.longitude.value = parts.longitude;
+
+  if (checkoutAddressMap && checkoutAddressMarker && parts.latitude && parts.longitude) {
+    const lat = Number(parts.latitude);
+    const lng = Number(parts.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      checkoutAddressMap.setView([lat, lng], 15);
+      checkoutAddressMarker.setLatLng([lat, lng]);
+    }
+  }
+}
+
+async function initCheckoutAddressMap() {
+  const mapElement = document.getElementById('checkout-address-map');
+  const fields = getCheckoutAddressFields();
+  if (!mapElement || !fields.latitude || !fields.longitude) return;
+
+  try {
+    await ensureCheckoutLeaflet();
+    if (!mapElement.isConnected) return;
+    if (checkoutAddressMap) checkoutAddressMap.remove();
+
+    const initialLat = Number(fields.latitude.value) || -6.4194;
+    const initialLng = Number(fields.longitude.value) || 107.4589;
+    fields.latitude.value = initialLat;
+    fields.longitude.value = initialLng;
+    checkoutAddressMap = L.map(mapElement, { zoomControl: false }).setView(
+      [initialLat, initialLng],
+      15,
+    );
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps',
+    }).addTo(checkoutAddressMap);
+    L.control.zoom({ position: 'bottomright' }).addTo(checkoutAddressMap);
+    checkoutAddressMarker = L.marker([initialLat, initialLng], { draggable: true }).addTo(checkoutAddressMap);
+    const updateCoordinates = (position) => {
+      fields.latitude.value = position.lat;
+      fields.longitude.value = position.lng;
+    };
+    checkoutAddressMap.on('click', (event) => {
+      checkoutAddressMarker.setLatLng(event.latlng);
+      updateCoordinates(event.latlng);
+    });
+    checkoutAddressMarker.on('dragend', () => updateCoordinates(checkoutAddressMarker.getLatLng()));
+    setTimeout(() => checkoutAddressMap && checkoutAddressMap.invalidateSize(), 100);
+  } catch (error) {
+    console.error('Gagal menyiapkan peta alamat checkout:', error);
+    showIosModal('Peta alamat gagal dimuat. Periksa koneksi, lalu coba lagi.');
+  }
+}
+
+async function useCheckoutCurrentLocation() {
+  if (!navigator.geolocation) {
+    showIosModal('Perangkatmu tidak mendukung GPS. Aktifkan lokasi perangkat dan coba lagi.');
+    return;
+  }
+
+  const button = document.getElementById('checkout-use-location');
+  if (button) button.disabled = true;
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000,
+      });
+    });
+    const { latitude, longitude } = position.coords;
+    const fields = getCheckoutAddressFields();
+    fields.latitude.value = latitude;
+    fields.longitude.value = longitude;
+    if (checkoutAddressMap && checkoutAddressMarker) {
+      checkoutAddressMap.setView([latitude, longitude], 17);
+      checkoutAddressMarker.setLatLng([latitude, longitude]);
+    }
+
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=id&addressdetails=1&lat=${latitude}&lon=${longitude}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!response.ok) throw new Error(`Reverse geocode gagal (${response.status})`);
+    const result = await response.json();
+    const address = result.address || {};
+    const setValue = (input, value) => {
+      if (input && value) input.value = value;
+    };
+    setValue(fields.province, address.state || address.region);
+    setValue(fields.city, address.city || address.town || address.village || address.county);
+    setValue(fields.district, address.suburb || address.city_district || address.district || address.town);
+    setValue(fields.postalCode, address.postcode);
+    const road = [address.road, address.house_number].filter(Boolean).join(' No. ');
+    const detail = [road, address.neighbourhood || address.quarter || address.hamlet]
+      .filter(Boolean)
+      .join(', ');
+    setValue(fields.detail, detail);
+  } catch (error) {
+    if (error && error.code === 1) {
+      showIosModal('Izin lokasi ditolak. Aktifkan lokasi di pengaturan browser/HP, lalu coba lagi.');
+    } else if (error && error.code === 2) {
+      showIosModal('Lokasi tidak tersedia. Pastikan GPS perangkat aktif, lalu coba lagi.');
+    } else if (error && error.code === 3) {
+      showIosModal('Waktu mendeteksi lokasi habis. Pastikan GPS aktif dan coba lagi.');
+    } else {
+      console.error('Gagal mengisi alamat dari lokasi:', error);
+      showIosModal('Gagal mendapatkan alamat dari lokasi. Isi alamat secara manual.');
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 window.bukaModalPembayaran = async (data) => {
   const mode = data.mode || 'order';
   const existingOverlay = document.getElementById('payment-modal-overlay');
-  if (existingOverlay) existingOverlay.remove();
+  if (existingOverlay) {
+    existingOverlay.remove();
+    if (checkoutAddressMap) checkoutAddressMap.remove();
+    checkoutAddressMap = null;
+    checkoutAddressMarker = null;
+  }
 
   const qrPreload = new Image();
   qrPreload.src = "https://nl.hostinesia.my.id/public/image/file_000000003c1881fab7655f4a8369bf5cqr.png";
@@ -69,6 +300,8 @@ window.bukaModalPembayaran = async (data) => {
 
   if (mode === 'topup') {
     showTopupQRIS(data, overlay, modal);
+  } else if (data.retryOrderId) {
+    tampilkanQRIS({ ...data, orderId: data.retryOrderId }, overlay, modal);
   } else {
     showPaymentMethodScreen(data, overlay, modal);
   }
@@ -81,6 +314,9 @@ window.bukaModalPembayaran = async (data) => {
     history.pushState({}, '', window.location.pathname);
     window.removeEventListener('popstate', popstateHandler);
     overlay.remove();
+    if (checkoutAddressMap) checkoutAddressMap.remove();
+    checkoutAddressMap = null;
+    checkoutAddressMarker = null;
   }
 
   const popstateHandler = () => {
@@ -777,6 +1013,7 @@ function showPaymentMethodScreen(data, overlay, modal) {
   let northpayTargetPrice = data.totalPrice || 0;
 
   const rupiah = (n) => 'Rp ' + parseInt(n).toLocaleString('id-ID');
+  const addressParts = parseCheckoutAddress(data.shippingAddress);
 
   modal.innerHTML = `
     ${paymentHeader()}
@@ -785,6 +1022,49 @@ function showPaymentMethodScreen(data, overlay, modal) {
       <div class="px-4 py-2 text-[10px] text-gray-400 uppercase font-semibold flex items-center gap-1">
         Northline Guarantee
         <img src="https://img.icons8.com/?size=100&id=z6L43qWhEasn&format=png&color=000000" class="w-3 h-3" />
+      </div>
+
+      <div class="bg-white border-t border-b border-gray-100 px-4 py-3">
+        <p class="text-[12px] font-semibold text-gray-800 mb-2">Informasi Penerima</p>
+        <div class="space-y-2">
+          <input id="checkout-shipping-name" type="text" maxlength="255" autocomplete="name"
+            value="${paymentEscapeHtml(data.shippingName)}" placeholder="Nama penerima"
+            class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+          <input id="checkout-shipping-phone" type="tel" maxlength="20" autocomplete="tel"
+            value="${paymentEscapeHtml(data.shippingPhone)}" placeholder="Nomor HP penerima"
+            class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input id="checkout-address-province" type="text" required maxlength="100"
+              value="${paymentEscapeHtml(addressParts.province)}"
+              placeholder="Provinsi" autocomplete="address-level1"
+              class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+            <input id="checkout-address-city" type="text" required maxlength="100"
+              value="${paymentEscapeHtml(addressParts.city)}"
+              placeholder="Kota / Kabupaten" autocomplete="address-level2"
+              class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+            <input id="checkout-address-district" type="text" required maxlength="100"
+              value="${paymentEscapeHtml(addressParts.district)}"
+              placeholder="Kecamatan" autocomplete="address-level3"
+              class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+            <input id="checkout-address-postal" type="text" required maxlength="5" pattern="[0-9]{5}" inputmode="numeric"
+              value="${paymentEscapeHtml(addressParts.postalCode)}"
+              placeholder="Kode Pos" autocomplete="postal-code"
+              class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F]">
+          </div>
+          <textarea id="checkout-address-detail" maxlength="1000" autocomplete="street-address" rows="3" required
+            placeholder="Nama jalan, RT/RW, nomor rumah/blok"
+            class="w-full border border-gray-200 px-3 py-2 text-[12px] text-gray-800 outline-none focus:border-[#DF414F] resize-y">${paymentEscapeHtml(addressParts.detail)}</textarea>
+          <span id="checkout-address-error" class="hidden text-[10px] text-red-500"></span>
+          <p class="text-[10px] text-gray-500">Geser pin ke lokasi pengiriman yang tepat atau gunakan lokasi perangkat untuk mengisi alamat otomatis.</p>
+          <div id="checkout-address-map" class="w-full h-[240px] bg-neutral-100 border border-gray-200 overflow-hidden relative z-0"></div>
+          <button type="button" id="checkout-use-location"
+            class="w-full flex items-center justify-center gap-2 bg-[#DF414F] hover:bg-red-700 text-white px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-all disabled:opacity-60">
+            <img src="https://img.icons8.com/?size=100&id=7880&format=png&color=ffffff" class="w-4 h-4" alt="">
+            Gunakan Lokasi Sekarang
+          </button>
+          <input type="hidden" id="checkout-address-latitude" value="${paymentEscapeHtml(addressParts.latitude)}">
+          <input type="hidden" id="checkout-address-longitude" value="${paymentEscapeHtml(addressParts.longitude)}">
+        </div>
       </div>
 
       <div class="bg-white border-t border-b border-gray-100" id="northpay-row">
@@ -884,8 +1164,33 @@ function showPaymentMethodScreen(data, overlay, modal) {
     </div>
   `;
 
+  modal.querySelector('#checkout-use-location').addEventListener('click', useCheckoutCurrentLocation);
+  setTimeout(initCheckoutAddressMap, 0);
+
+  const northpayRow = document.getElementById('northpay-row');
+  if (!data.userId && northpayRow) northpayRow.classList.add('hidden');
+
   (async () => {
     try {
+      const meRes = await fetch('/api/me', { credentials: 'include' });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const user = meData.success && meData.user;
+        if (user) {
+          data.userId = data.userId || user.id;
+          if (northpayRow) northpayRow.classList.remove('hidden');
+          const nameInput = document.getElementById('checkout-shipping-name');
+          const phoneInput = document.getElementById('checkout-shipping-phone');
+          if (nameInput && !nameInput.value) nameInput.value = user.name || '';
+          if (phoneInput && !phoneInput.value) phoneInput.value = user.phone || '';
+          if (!getCheckoutAddressFields().detail.value) fillCheckoutAddress(user.address || '');
+        }
+      }
+      if (!data.userId) {
+        const row = document.getElementById('northpay-row');
+        if (row) row.classList.add('hidden');
+        return;
+      }
       const balRes = await fetch(_d('9kzs9xy|~rzk$9lkvkxmo'), { credentials: 'include' });
       const balData = await balRes.json();
       if (balData.success) {
@@ -972,6 +1277,32 @@ function showPaymentMethodScreen(data, overlay, modal) {
       showIosModal('Pilih metode pembayaran terlebih dahulu');
       return;
     }
+    data.shippingName = modal.querySelector('#checkout-shipping-name')?.value.trim() || '';
+    data.shippingPhone = modal.querySelector('#checkout-shipping-phone')?.value.trim() || '';
+    const addressFields = getCheckoutAddressFields();
+    const addressError = modal.querySelector('#checkout-address-error');
+    const addressDetail = addressFields.detail?.value.trim() || '';
+    const addressDistrict = addressFields.district?.value.trim() || '';
+    const addressCity = addressFields.city?.value.trim() || '';
+    const addressProvince = addressFields.province?.value.trim() || '';
+    const addressPostal = addressFields.postalCode?.value.trim() || '';
+    const missingAddressPart = !addressDistrict || !addressCity || !addressProvince || !/^\d{5}$/.test(addressPostal);
+    const incompleteAddressDetail = addressDetail.length < 10 || !/\d/.test(addressDetail);
+    if (!data.shippingName || !data.shippingPhone || missingAddressPart || incompleteAddressDetail) {
+      if (addressError) {
+        addressError.textContent = incompleteAddressDetail
+          ? 'Detail alamat harus mencantumkan nama jalan dan nomor rumah/RT/RW.'
+          : 'Lengkapi kecamatan, kota/kabupaten, provinsi, dan kode pos 5 digit.';
+        addressError.classList.remove('hidden');
+      }
+      showIosModal('Lengkapi nama, nomor HP, dan semua bagian alamat penerima terlebih dahulu');
+      return;
+    }
+    addressError?.classList.add('hidden');
+    const latitude = addressFields.latitude?.value.trim();
+    const longitude = addressFields.longitude?.value.trim();
+    const coordinates = latitude && longitude ? ` @Coordinates:${latitude},${longitude}` : '';
+    data.shippingAddress = `${addressDetail} | ${addressDistrict} | ${addressCity} | ${addressProvince} | ${addressPostal}${coordinates}`;
     btn.disabled = true;
     btn.innerHTML = `
       <div class="flex items-center justify-center gap-2">
@@ -1040,11 +1371,17 @@ function showPaymentMethodScreen(data, overlay, modal) {
               items: data.items,
               totalPrice: data.totalPrice,
               voucherId: data.voucherId || '',
+              shippingName: data.shippingName,
+              shippingPhone: data.shippingPhone,
+              shippingAddress: data.shippingAddress,
               status: 'success',
               paymentMethod: 'northpay'
           });
           const result = await res.json();
           if (result.success) {
+            rememberGuestOrderAccess(result.guestOrderToken, result.orders.map(o => o.orderId));
+            data.totalPrice = result.totalPrice;
+            data.shippingFee = result.shippingFee;
             tampilkanInvoiceSuccessBulk(data, result, overlay, modal, 'northpay');
           } else {
             showIosModal(result.message || 'Pembayaran gagal');
@@ -1057,6 +1394,9 @@ function showPaymentMethodScreen(data, overlay, modal) {
         const res = await postOrderJson(_d('9kzs9}k!o7y|no|'), { ...orderData, status: 'success', paymentMethod: 'northpay' });
         const result = await res.json();
         if (result.success) {
+          rememberGuestOrderAccess(result.guestOrderToken, [result.orderId]);
+          orderData.totalPrice = result.totalPrice;
+          orderData.shippingFee = result.shippingFee;
           tampilkanInvoiceSuccess({ ...orderData, orderId: result.orderId, totalPrice: orderData.totalPrice, color: orderData.chosenColor, size: orderData.chosenSize, model: orderData.chosenModel }, overlay, modal);
         } else {
           showIosModal(result.message || 'Pembayaran gagal');
@@ -1071,17 +1411,33 @@ function showPaymentMethodScreen(data, overlay, modal) {
       }
     } else {
       try {
+        if (data.retryOrderId) {
+          tampilkanQRIS({ ...data, orderId: data.retryOrderId }, overlay, modal);
+          return;
+        }
         if (data.items && data.items.length > 0) {
           const res = await postOrderJson(_d('9kzs9}k!o7y|no|9l vu'), {
               items: data.items,
               totalPrice: data.totalPrice,
               voucherId: data.voucherId || '',
+              shippingName: data.shippingName,
+              shippingPhone: data.shippingPhone,
+              shippingAddress: data.shippingAddress,
               status: 'pending',
               paymentMethod: 'qris'
           });
           const result = await res.json();
           if (result.success) {
-            tampilkanQRISMulti({ ...data, orderIds: result.orders.map(o => o.orderId), subtotal: result.subtotal, discountAmount: result.discountAmount, totalPrice: result.totalPrice }, overlay, modal);
+            rememberGuestOrderAccess(result.guestOrderToken, result.orders.map(o => o.orderId));
+            tampilkanQRISMulti({
+              ...data,
+              orderIds: result.orders.map(o => o.orderId),
+              subtotal: result.subtotal,
+              discountAmount: result.discountAmount,
+              shippingFee: result.shippingFee,
+              totalPrice: result.totalPrice,
+              guestOrderToken: result.guestOrderToken,
+            }, overlay, modal);
           } else {
             showIosModal(result.message || 'Gagal membuat pesanan');
             btn.disabled = false;
@@ -1092,7 +1448,17 @@ function showPaymentMethodScreen(data, overlay, modal) {
         const res = await postOrderJson(_d('9kzs9}k!o7y|no|'), { ...data, status: 'pending', paymentMethod: 'qris' });
         const result = await res.json();
         if (result.success) {
-          tampilkanQRIS({ ...data, orderId: result.orderId }, overlay, modal);
+          rememberGuestOrderAccess(result.guestOrderToken, [result.orderId]);
+          tampilkanQRIS({
+            ...data,
+            orderId: result.orderId,
+            totalPrice: result.totalPrice,
+            subtotal: result.subtotal,
+            discountAmount: result.discountAmount,
+            shippingFee: result.shippingFee,
+            isDiscounted: result.isDiscounted,
+            guestOrderToken: result.guestOrderToken,
+          }, overlay, modal);
         }
       } catch (e) {
         showIosModal('Server sedang sibuk');
@@ -1113,7 +1479,11 @@ async function tampilkanQRIS(data, overlay, modal) {
 
   window.handleCancel = async (id) => {
     try {
-      const res = await fetch(_d('9kzs9mkxmov7y|no|9') + id, { method: 'DELETE' });
+      const res = await fetch(_d('9kzs9mkxmov7y|no|9') + id, {
+        method: 'DELETE',
+        headers: data.guestOrderToken ? { 'X-Guest-Order-Token': data.guestOrderToken } : {},
+        credentials: 'include',
+      });
       const result = await res.json();
       if (result.success) {
         showIosModal('Pesanan dibatalkan.');
@@ -1169,6 +1539,12 @@ async function tampilkanQRIS(data, overlay, modal) {
             <div class="flex items-center justify-between">
               <span class="text-gray-600">Diskon 5%</span>
               <span class="font-semibold text-gray-600">- IDR ${fmt.format(data.discountAmount)}</span>
+            </div>
+            ` : ''}
+            ${data.shippingFee > 0 ? `
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400">Ongkir</span>
+              <span class="font-medium text-gray-700">IDR ${fmt.format(data.shippingFee)}</span>
             </div>
             ` : ''}
             <div class="flex items-center justify-between pt-2 border-t mt-2">
@@ -1274,7 +1650,10 @@ async function tampilkanQRIS(data, overlay, modal) {
 
   pollInterval = setInterval(async () => {
     try {
-      const res = await fetch(_d('9kzs9mromu7y|no|9') + orderId + _d('I~G') + Date.now());
+      const res = await fetch(_d('9kzs9mromu7y|no|9') + orderId + _d('I~G') + Date.now(), {
+        headers: data.guestOrderToken ? { 'X-Guest-Order-Token': data.guestOrderToken } : {},
+        credentials: 'include',
+      });
       const result = await res.json();
       if (result.status === 'success') {
         clearInterval(timerInterval);
@@ -1290,6 +1669,7 @@ async function tampilkanQRIS(data, overlay, modal) {
           productImage: result.order?.product_image || data.productImage || document.getElementById('main-preview')?.src || '/public/icons/default.png',
           subtotal: data.subtotal,
           discountAmount: data.discountAmount || 0,
+          shippingFee: data.shippingFee || 0,
           isDiscounted: data.isDiscounted || false,
           paymentMethod: 'qris',
           createdAt: result.order?.created_at || new Date()
@@ -1313,7 +1693,11 @@ async function tampilkanQRISMulti(data, overlay, modal) {
     let anyCancelled = false;
     for (const id of orderIds) {
       try {
-        const res = await fetch(_d('9kzs9mkxmov7y|no|9') + id, { method: 'DELETE' });
+        const res = await fetch(_d('9kzs9mkxmov7y|no|9') + id, {
+          method: 'DELETE',
+          headers: data.guestOrderToken ? { 'X-Guest-Order-Token': data.guestOrderToken } : {},
+          credentials: 'include',
+        });
         const r = await res.json();
         if (r.success) anyCancelled = true;
       } catch (e) {}
@@ -1379,15 +1763,29 @@ async function tampilkanQRISMulti(data, overlay, modal) {
               <span class="text-gray-600">Diskon Voucher</span>
               <span class="font-semibold text-gray-600">- IDR ${fmt(data.discountAmount)}</span>
             </div>
+            ${data.shippingFee > 0 ? `
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400">Ongkir</span>
+              <span class="font-medium text-gray-700">IDR ${fmt(data.shippingFee)}</span>
+            </div>
+            ` : ''}
             <div class="flex items-center justify-between pt-2 border-t">
               <span class="text-gray-500 font-medium">Total Bayar</span>
               <span class="text-[16px] font-bold text-gray-500">IDR ${fmt(data.totalPrice)}</span>
             </div>
           </div>
           ` : `
-          <div class="pt-2 border-t mt-2 flex items-center justify-between">
-            <span class="text-gray-500 font-medium">Total Bayar</span>
-            <span class="text-[16px] font-bold text-gray-500">IDR ${fmt(data.totalPrice)}</span>
+          <div class="pt-2 border-t mt-2 space-y-2 text-[12px]">
+            ${data.shippingFee > 0 ? `
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400">Ongkir</span>
+              <span class="font-medium text-gray-700">IDR ${fmt(data.shippingFee)}</span>
+            </div>
+            ` : ''}
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 font-medium">Total Bayar</span>
+              <span class="text-[16px] font-bold text-gray-500">IDR ${fmt(data.totalPrice)}</span>
+            </div>
           </div>
           `}
         </div>
@@ -1478,7 +1876,10 @@ async function tampilkanQRISMulti(data, overlay, modal) {
     try {
       const statuses = await Promise.all(orderIds.map(async (id) => {
         try {
-          const res = await fetch(_d('9kzs9mromu7y|no|9') + id + _d('I~G') + Date.now());
+          const res = await fetch(_d('9kzs9mromu7y|no|9') + id + _d('I~G') + Date.now(), {
+            headers: data.guestOrderToken ? { 'X-Guest-Order-Token': data.guestOrderToken } : {},
+            credentials: 'include',
+          });
           const r = await res.json();
           return r.status;
         } catch (e) { return 'unknown'; }
@@ -1490,7 +1891,8 @@ async function tampilkanQRISMulti(data, overlay, modal) {
           orders: items.map((it, i) => ({ orderId: orderIds[i], totalPrice: it.totalPrice, subtotal: it.subtotal, discountAmount: it.discountAmount })),
           totalPrice: data.totalPrice,
           subtotal: data.subtotal,
-          discountAmount: data.discountAmount
+          discountAmount: data.discountAmount,
+          shippingFee: data.shippingFee || 0
         }, overlay, modal, 'qris');
       } else if (statuses.some(s => s === 'cancelled')) {
         clearInterval(timerInterval);
@@ -1512,7 +1914,7 @@ function tampilkanInvoiceSuccessBulk(data, result, overlay, modal, method) {
   const items = (data.items || []).map((it, i) => ({
     ...it,
     orderId: (result.orders && result.orders[i] && result.orders[i].orderId) || it.orderId,
-    totalPrice: (result.orders && result.orders[i] && result.orders[i].totalPrice) || it.totalPrice,
+    totalPrice: it.totalPrice,
   }));
 
   modal.innerHTML = `
@@ -1577,6 +1979,12 @@ function tampilkanInvoiceSuccessBulk(data, result, overlay, modal, method) {
             <div class="flex items-center justify-between">
               <span class="text-[13px] text-gray-500">Diskon Voucher</span>
               <span class="text-[13px] font-semibold text-gray-700">- IDR ${fmt(result.discountAmount)}</span>
+            </div>
+            ` : ''}
+            ${result.shippingFee > 0 ? `
+            <div class="flex items-center justify-between">
+              <span class="text-[13px] text-gray-500">Ongkir</span>
+              <span class="text-[13px] font-medium text-gray-700">IDR ${fmt(result.shippingFee)}</span>
             </div>
             ` : ''}
             <div class="flex items-center justify-between pt-3 border-t">
@@ -1674,6 +2082,12 @@ function tampilkanInvoiceSuccess(invoice, overlay, modal) {
               <span class="text-[13px] font-semibold text-gray-700">- IDR ${new Intl.NumberFormat('id-ID').format(invoice.discountAmount)}</span>
             </div>
             ` : ''}
+            ${invoice.shippingFee > 0 ? `
+            <div class="flex items-center justify-between">
+              <span class="text-[13px] text-gray-500">Ongkir</span>
+              <span class="text-[13px] font-medium text-gray-700">IDR ${new Intl.NumberFormat('id-ID').format(invoice.shippingFee)}</span>
+            </div>
+            ` : ''}
             <div class="flex items-center justify-between pt-3 border-t">
               <span class="text-[14px] font-semibold text-gray-800">Total Pembayaran</span>
               <span class="text-[18px] font-bold text-gray-700">IDR ${formatPrice}</span>
@@ -1759,3 +2173,53 @@ async function handleShare(btn, invoice, formatPrice) {
     showIosModal('Share gagal');
   }
 }
+
+window.retryPayment = async function(orderId) {
+  if (!orderId) return;
+  try {
+    const guestOrderToken = window.getGuestOrderTokenForOrder(orderId);
+    const meRes = await fetch(_d('9kzs9k ~r9wo'), { credentials: 'include' });
+    if (!meRes.ok && !guestOrderToken) { showIosModal('Silakan login terlebih dahulu'); return; }
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      const me = meData.data || meData.user || meData;
+      if ((!me || !me.id) && !guestOrderToken) { showIosModal('Silakan login terlebih dahulu'); return; }
+    }
+
+    const orderRes = await fetch('/api/check-order/' + encodeURIComponent(orderId), {
+      credentials: 'include',
+      headers: guestOrderToken ? { 'X-Guest-Order-Token': guestOrderToken } : {},
+    });
+    const orderData = await orderRes.json();
+    if (!orderData.success || !orderData.order) { showIosModal('Pesanan tidak ditemukan'); return; }
+
+    const o = orderData.order;
+    if (o.payment_status === 'success') { showIosModal('Pesanan ini sudah dibayar'); return; }
+    if (o.payment_status === 'cancelled') { showIosModal('Pesanan ini sudah dibatalkan'); return; }
+
+    const payload = {
+      productId: o.product_id,
+      code: '',
+      productName: o.product_name,
+      productImage: o.product_image,
+      quantity: o.quantity,
+      chosenColor: o.chosen_color,
+      chosenSize: o.chosen_size,
+      chosenModel: o.chosen_model,
+      orderId: o.order_id,
+      subtotal: o.subtotal,
+      discountAmount: o.discount_amount,
+      totalPrice: o.total_price,
+      shippingFee: o.shipping_cost || 0,
+      shippingLabel: '',
+      isDiscounted: o.is_discounted,
+      retryOrderId: o.order_id,
+      guestOrderToken,
+    };
+
+    window.bukaModalPembayaran(payload);
+  } catch (e) {
+    console.error('retryPayment error:', e);
+    showIosModal('Gagal memuat data pesanan');
+  }
+};

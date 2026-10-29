@@ -150,10 +150,45 @@ window.OrderManager = {
                 if (me && me.id) userId = me.id;
             }
         } catch (e) {}
-        if (!userId) return;
 
         try {
             container.innerHTML = '<div class="text-center text-gray-400 text-xs py-12">Loading...</div>';
+            if (!userId) {
+                const entries = typeof window.getGuestOrderAccessEntries === 'function'
+                    ? window.getGuestOrderAccessEntries()
+                    : [];
+                if (entries.length === 0) {
+                    container.innerHTML = '<div class="bg-white border border-gray-200 rounded-sm p-6 text-center"><div class="text-gray-400 text-xs">Belum ada pesanan</div></div>';
+                    return;
+                }
+
+                const results = await Promise.all(entries.map(async entry => {
+                    const response = await fetch('/api/guest-orders', {
+                        headers: { 'X-Guest-Order-Token': entry.token },
+                    });
+                    const data = await response.json();
+                    return { entry, response, data };
+                }));
+                const successfulResults = results.filter(result => result.response.ok && result.data.success);
+                if (successfulResults.length === 0) {
+                    container.innerHTML = '<div class="bg-white border border-red-100 rounded-sm p-6 text-center"><div class="text-red-500 text-xs">Gagal memuat pesanan guest. Muat ulang halaman dan coba lagi.</div></div>';
+                    return;
+                }
+                const ordersById = new Map();
+                successfulResults.forEach(result => {
+                    (result.data.orders || []).forEach(order => {
+                        ordersById.set(order.order_id, { ...order, is_guest: true });
+                    });
+                });
+                const orders = [...ordersById.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                if (orders.length === 0) {
+                    container.innerHTML = '<div class="bg-white border border-gray-200 rounded-sm p-6 text-center"><div class="text-gray-400 text-xs">Belum ada pesanan</div></div>';
+                    return;
+                }
+                container.innerHTML = orders.map(o => this.renderOrderCard(o)).join('');
+                return;
+            }
+
             const response = await fetch(`/api/user-orders/${userId}`, { credentials: 'include' });
             const data = await response.json();
 
@@ -181,7 +216,9 @@ window.OrderManager = {
 
         const hasTrackingMap = typeof window.openTrackingMap === 'function';
         const hasReview = typeof window.openReviewSpa === 'function';
-        const hasReceipt = typeof window.confirmOrderReceipt === 'function';
+        const hasReceipt = o.is_guest
+            ? typeof window.OrderManager.confirmGuestOrderReceipt === 'function' && !!window.getGuestOrderTokenForOrder(o.order_id)
+            : typeof window.confirmOrderReceipt === 'function';
         const userAddr = (o.shipping_address || '').split(' @Coordinates:')[0].trim();
 
         return '<div class="bg-white border border-gray-200 rounded-sm">' +
@@ -198,7 +235,7 @@ window.OrderManager = {
             '<div class="flex items-center gap-2 mb-2' + (hasTrackingMap ? ' cursor-pointer select-none' : '') + '"' + (hasTrackingMap ? ' onclick="openTrackingMap(\'' + orderEscapeHtml(o.order_id) + '\')"' : '') + '>' +
               '<img src="https://img.icons8.com/?size=100&id=7880&format=png&color=DF414F" class="w-3.5 h-3.5">' +
               '<span class="text-[10px] font-semibold text-gray-700 uppercase tracking-wide">Tracking Pengiriman</span>' +
-              (hasTrackingMap ? '<span class="text-[#DF414F] text-[10px] font-semibold ml-auto">Lacak di Peta ›</span>' : '') +
+              (hasTrackingMap ? '<span class="text-[#DF414F] text-[10px] font-semibold ml-auto">Lacak di Peta</span>' : '') +
             '</div>' +
             '<div class="text-[10px] text-gray-500 leading-relaxed">' +
               (userAddr ? orderEscapeHtml(userAddr) + '<br>' : '') +
@@ -237,13 +274,13 @@ window.OrderManager = {
           '</div>' +
 
           (o.payment_status === 'pending' ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
-            '<button class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Bayar Sekarang</button>' +
+            '<button onclick="window.retryPayment(\'' + orderEscapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Bayar Sekarang</button>' +
           '</div>' : '') +
           (o.payment_status === 'cancelled' ? '<div class="px-3 py-2 border-t border-gray-100 text-center text-[10px] text-red-400">Pesanan dibatalkan</div>' : '') +
           (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('dikirim') && hasReceipt ? '<div class="px-3 py-2 border-t border-gray-100 flex justify-end">' +
-            '<button onclick="confirmOrderReceipt(\'' + orderEscapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Pesanan Selesai</button>' +
+            '<button onclick="' + (o.is_guest ? 'window.OrderManager.confirmGuestOrderReceipt' : 'confirmOrderReceipt') + '(\'' + orderEscapeHtml(o.order_id) + '\')" class="text-[11px] font-semibold bg-[#DF414F] text-white px-4 py-1.5">Pesanan Selesai</button>' +
           '</div>' : '') +
-          (o.payment_status === 'success' && o.delivery_status && o.delivery_status.toLowerCase().includes('selesai') ? '<div class="px-3 py-2.5 border-t border-gray-100 flex items-center justify-between gap-3">' +
+          (o.payment_status === 'success' && !o.is_guest && o.delivery_status && o.delivery_status.toLowerCase().includes('selesai') ? '<div class="px-3 py-2.5 border-t border-gray-100 flex items-center justify-between gap-3">' +
                   '<span class="text-[11px] leading-4 text-gray-500 max-w-[65%] line-clamp-2">' + (o.reviewed ? 'Terima kasih! Ulasanmu sudah terkirim.' : 'Bagikan pengalamanmu dengan produk ini dan bantu pembeli lainnya:') + '</span>' +
                   (o.reviewed
                     ? '<span class="shrink-0 text-[11px] font-semibold bg-gray-100 text-gray-400 px-4 py-1.5 cursor-not-allowed">Selesai</span>'
@@ -255,13 +292,78 @@ window.OrderManager = {
         '</div>';
     },
 
+    confirmGuestOrderReceipt: async function(orderId) {
+        const notify = typeof window.showIosModal === 'function' ? window.showIosModal : window.alert;
+        const token = window.getGuestOrderTokenForOrder(orderId);
+        if (!token) {
+            notify('Akses pesanan guest tidak ditemukan');
+            return;
+        }
+        try {
+            const response = await fetch('/api/guest-orders/confirm-receipt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Guest-Order-Token': token,
+                },
+                body: JSON.stringify({ orderId }),
+            });
+            const data = await response.json();
+            notify(data.message || (data.success ? 'Pesanan diterima' : 'Gagal konfirmasi'));
+            if (data.success) this.renderSpaOrdersContent();
+        } catch (error) {
+            console.error('Gagal konfirmasi pesanan guest:', error);
+            notify('Gagal konfirmasi pesanan');
+        }
+    },
+
     closeSpaOrders: function() {
         const wrapper = document.getElementById('spa-orders-popup-wrapper');
         if (!wrapper) return;
         wrapper.classList.remove('translate-y-0');
         wrapper.classList.add('translate-y-full');
+        window._spaClosing = true;
         setTimeout(() => { wrapper.classList.add('hidden'); }, 300);
+        closeSpaUrl();
     }
+};
+
+function generateSpaCode() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function isSpaOrdersActive() {
+  return window.location.pathname === '/AppNorthOrders' && window.location.search.includes('code=');
+}
+
+function openSpaUrl(title) {
+  const code = generateSpaCode();
+  const url = '/AppNorthOrders?code=' + code;
+  history.pushState({ spa: 'orders', code: code }, '', url);
+  document.title = title || 'MY ORDERS - Northline';
+}
+
+function closeSpaUrl() {
+  const sp = history.state;
+  if (sp && sp.spa === 'orders') {
+    history.pushState(null, '', '/');
+  }
+  document.title = 'Northline Indonesia';
+}
+
+window.handlePopStateSpaOrders = function(e) {
+  const wrapper = document.getElementById('spa-orders-popup-wrapper');
+  if (e.state && e.state.spa === 'orders') {
+    if ((!wrapper || wrapper.classList.contains('hidden')) && !window._spaClosing) {
+      window.OrderManager.openSpaOrders();
+    }
+    window._spaClosing = false;
+  } else {
+    if (wrapper && !wrapper.classList.contains('hidden') && !window._spaClosing) {
+      window.OrderManager.closeSpaOrders();
+    }
+    window._spaClosing = false;
+  }
 };
 
 window.handleHeaderClose = function() {
@@ -272,6 +374,8 @@ window.handleHeaderClose = function() {
         window.OrderManager.closeSpaOrders();
     }
 };
+
+window.addEventListener('popstate', window.handlePopStateSpaOrders);
 
 if (typeof window.openTrackingMap !== 'function') {
 
@@ -371,13 +475,46 @@ if (typeof window.openTrackingMap !== 'function') {
             '</div></div>';
     };
 
-    window.drawTrackingMap = function (order, events, origin) {
+    const TRACK_OSRM = 'https://router.project-osrm.org/route/v1/driving/';
+    window.__TRACK_ROUTE_CACHE = window.__TRACK_ROUTE_CACHE || {};
+    const TRACK_TRUCK_ICON = 'https://img.icons8.com/?size=100&id=t5k8wbKOBK1J&format=png&color=DF414F';
+
+    function trackingRouteKey(coords) {
+        return coords.map(function (c) { return c[0].toFixed(5) + ',' + c[1].toFixed(5); }).join(';');
+    }
+
+    async function fetchTrackingRoadRoute(coords) {
+        if (!coords || coords.length < 2) return null;
+        const key = trackingRouteKey(coords);
+        if (window.__TRACK_ROUTE_CACHE[key]) return window.__TRACK_ROUTE_CACHE[key];
+        const url = TRACK_OSRM + coords.map(function (c) { return c[1].toFixed(6) + ',' + c[0].toFixed(6); }).join(';')
+            + '?overview=full&geometries=geojson';
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (!data.routes || !data.routes.length) return null;
+            const line = (data.routes[0].geometry || {}).coordinates;
+            if (!line || line.length < 2) return null;
+            const path = line.map(function (c) { return [c[1], c[0]]; });
+            window.__TRACK_ROUTE_CACHE[key] = path;
+            return path;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function truckIconHtml() {
+    return '<div style="background:white;border:2px solid #DF414F;border-radius:50px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;padding:2px;"><img src="' + TRACK_TRUCK_ICON + '"style="display:block;width:20px;height:20px;" alt="truk pengiriman"></div>';
+    }
+
+    window.drawTrackingMap = async function (order, events, origin) {
         const container = document.getElementById('tracking-map-container');
         const dest = window.parseCoordinatesFromAddress(order.shipping_address);
         const points = [];
         if (origin) points.push({ lat: origin.lat, lng: origin.lng, kind: 'origin', label: 'Toko Northline' });
         (events || []).forEach(function (e, i) {
-            if (e.lat != null && e.lng != null) points.push({ lat: Number(e.lat), lng: Number(e.lng), kind: 'event', index: i + 1, label: e.status });
+            if (e.lat != null && e.lng != null) points.push({ lat: Number(e.lat), lng: Number(e.lng), kind: 'event', index: i + 1, label: e.status, location: e.location, time: e.created_at });
         });
         if (dest) points.push({ lat: dest.lat, lng: dest.lng, kind: 'dest', label: 'Alamat Penerima' });
 
@@ -393,7 +530,19 @@ if (typeof window.openTrackingMap !== 'function') {
 
         const coordPoints = points.map(function (p) { return [p.lat, p.lng]; });
 
-        points.forEach(function (p) {
+        let lastEventIdx = -1;
+        points.forEach(function (p, i) { if (p.kind === 'event') lastEventIdx = i; });
+
+        points.forEach(function (p, i) {
+            if (p.kind === 'event' && i === lastEventIdx) {
+                const icon = L.divIcon({ html: truckIconHtml(), className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+                L.marker([p.lat, p.lng], { icon, zIndexOffset: 1000 }).addTo(map).bindPopup(
+                    '<b>' + orderEscapeHtml(p.label) + '</b>' +
+                    (p.location ? '<br>' + orderEscapeHtml(p.location) : '') +
+                    (p.time ? '<br><span style="font-size:11px;color:#6b7280">' + new Date(p.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</span>' : '')
+                );
+                return;
+            }
             let iconHtml = null;
             if (p.kind === 'origin') {
                 iconHtml = '<div style="background:#16a34a;border:2px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>';
@@ -403,20 +552,45 @@ if (typeof window.openTrackingMap !== 'function') {
                 iconHtml = '<div style="background:#DF414F;border:2px solid #fff;border-radius:50%;width:18px;height:18px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)">' + p.index + '</div>';
             }
             const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
-            L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup('<b>' + orderEscapeHtml(p.label) + '</b>');
+            L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(
+                '<b>' + orderEscapeHtml(p.label) + '</b>' + (p.location ? '<br>' + orderEscapeHtml(p.location) : '')
+            );
         });
 
-        if (coordPoints.length >= 2) {
-            L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.85, dashArray: '1,8' }).addTo(map);
-            L.polyline(coordPoints, { color: '#DF414F', weight: 3, opacity: 0.9 }).addTo(map);
+            let routeLayers = [];
+        function drawRoute(path) {
+            routeLayers.forEach(function (l) { map.removeLayer(l); });
+            routeLayers = [
+                L.polyline(path, { color: '#DF414F', weight: 4, opacity: 1, lineJoin: 'round' })
+            ];
+            routeLayers.forEach(function (l) { l.addTo(map); });
         }
 
-        map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
+        if (coordPoints.length >= 2) {
+            map.fitBounds(L.latLngBounds(coordPoints).pad(0.25));
+            drawRoute(coordPoints);
+            const road = await fetchTrackingRoadRoute(coordPoints);
+            if (road && trackingMapInstance === map) {
+                drawRoute(road);
+                map.fitBounds(L.latLngBounds(road).pad(0.2));
+            }
+        } else {
+            map.fitBounds(L.latLngBounds(coordPoints).pad(0.6));
+        }
+
+        map.whenReady(function () {
+            setTimeout(function () { map.invalidateSize(); }, 60);
+            setTimeout(function () { map.invalidateSize(); }, 300);
+        });
     };
 
     window.openTrackingMap = async function (orderId) {
         try {
-            const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), { credentials: 'include' });
+            const guestOrderToken = window.getGuestOrderTokenForOrder?.(orderId);
+            const res = await fetch(_d('9kzs9k ~r9~|kmusxq9') + encodeURIComponent(orderId), {
+                credentials: 'include',
+                headers: guestOrderToken ? { 'X-Guest-Order-Token': guestOrderToken } : {},
+            });
             const data = await res.json();
             if (!data.success) {
                 spaToast(data.message || 'Gagal memuat tracking');

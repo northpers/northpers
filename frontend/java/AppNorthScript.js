@@ -1,30 +1,38 @@
-function _d(s){let r="";for(let i=0;i<s.length;i++){r+=String.fromCharCode(((s.charCodeAt(i)-32-10+95)%95)+32);}return r;}
+function _d(s) {
+  let r = "";
+  for (let i = 0; i < s.length; i++) {
+    r += String.fromCharCode(((s.charCodeAt(i) - 32 - 10 + 95) % 95) + 32);
+  }
+  return r;
+}
 
-window.getCookie = function(name) {
+window.getCookie = function (name) {
   const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
+  const ca = document.cookie.split(";");
   for (let i = 0; i < ca.length; i++) {
     let c = ca[i].trim();
-    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length));
+    if (c.indexOf(nameEQ) === 0)
+      return decodeURIComponent(c.substring(nameEQ.length));
   }
   return null;
 };
 
-window.setCookie = function(name, value, days = 1) {
+window.setCookie = function (name, value, days = 1) {
   let expires = "";
   if (days) {
     const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
     expires = "; expires=" + date.toUTCString();
   }
-  document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; SameSite=Lax";
+  document.cookie =
+    name + "=" + encodeURIComponent(value) + expires + "; path=/; SameSite=Lax";
 };
 
-window.eraseCookie = function(name) {
-  document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+window.eraseCookie = function (name) {
+  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
 };
 
-window.getUserSession = function() {
+window.getUserSession = function () {
   return null;
 };
 
@@ -64,7 +72,10 @@ window.handleLogout = async (e) => {
     console.log("[Logout] Memulai proses pembersihan total storage...");
 
     try {
-      await fetch(_d('9kzs9k ~r9vyqy ~'), { method: "POST", credentials: "include" });
+      await fetch(_d("9kzs9k ~r9vyqy ~"), {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (e) {}
 
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
@@ -78,14 +89,15 @@ window.handleLogout = async (e) => {
 };
 
 function initCookieConsent() {
-  if (getCookie('nl_cookie_consent')) {
+  if (getCookie("nl_cookie_consent")) {
     return;
   }
 
-  const consentBanner = document.createElement('div');
-  consentBanner.id = 'nl-cookie-consent';
-  consentBanner.className = 'fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 z-[99999] p-4 md:p-6 transform transition-transform duration-500 translate-y-full';
-  
+  const consentBanner = document.createElement("div");
+  consentBanner.id = "nl-cookie-consent";
+  consentBanner.className =
+    "fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 z-[99999] p-4 md:p-6 transform transition-transform duration-500 translate-y-full";
+
   consentBanner.innerHTML = `
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex-1">
@@ -109,57 +121,61 @@ function initCookieConsent() {
 
   requestAnimationFrame(() => {
     setTimeout(() => {
-      consentBanner.classList.remove('translate-y-full');
+      consentBanner.classList.remove("translate-y-full");
     }, 100);
   });
 
   const closeBanner = (status) => {
-    setCookie('nl_cookie_consent', status, 365);
-    consentBanner.classList.add('translate-y-full');
+    setCookie("nl_cookie_consent", status, 365);
+    consentBanner.classList.add("translate-y-full");
     setTimeout(() => {
       consentBanner.remove();
     }, 500);
   };
 
-  document.getElementById('btn-accept-cookie')?.addEventListener('click', () => closeBanner('accepted'));
-  document.getElementById('btn-reject-cookie')?.addEventListener('click', () => closeBanner('rejected'));
+  document
+    .getElementById("btn-accept-cookie")
+    ?.addEventListener("click", () => closeBanner("accepted"));
+  document
+    .getElementById("btn-reject-cookie")
+    ?.addEventListener("click", () => closeBanner("rejected"));
 }
 
 function initChatWidget() {
-  const chatToggleMobile = document.getElementById('chat-toggle-mobile');
-  const chatToggleDekstop = document.getElementById('chat-toggle-dekstop');
-  const chatWidget = document.getElementById('chat-widget');
-  const chatClose = document.getElementById('chat-close');
+  const chatToggleMobile = document.getElementById("chat-toggle-mobile");
+  const chatToggleDekstop = document.getElementById("chat-toggle-dekstop");
+  const chatWidget = document.getElementById("chat-widget");
+  const chatClose = document.getElementById("chat-close");
 
   const chatOriginalTitle = document.title;
 
   const openChat = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!chatWidget) return;
-    if (typeof hideChatNotification === 'function') {
+    if (typeof hideChatNotification === "function") {
       hideChatNotification();
     }
     document.title = "Northline Assistant Support";
-    chatWidget.classList.remove('scale-0', 'opacity-0', 'pointer-events-none');
-    chatWidget.classList.add('scale-100', 'opacity-100');
+    chatWidget.classList.remove("scale-0", "opacity-0", "pointer-events-none");
+    chatWidget.classList.add("scale-100", "opacity-100");
   };
 
   const closeChat = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!chatWidget) return;
     document.title = chatOriginalTitle;
-    chatWidget.classList.remove('scale-100', 'opacity-100');
-    chatWidget.classList.add('scale-0', 'opacity-0', 'pointer-events-none');
+    chatWidget.classList.remove("scale-100", "opacity-100");
+    chatWidget.classList.add("scale-0", "opacity-0", "pointer-events-none");
   };
 
   if (chatToggleMobile) {
-    chatToggleMobile.addEventListener('click', openChat);
+    chatToggleMobile.addEventListener("click", openChat);
   }
   if (chatToggleDekstop) {
-    chatToggleDekstop.addEventListener('click', openChat);
+    chatToggleDekstop.addEventListener("click", openChat);
   }
   if (chatClose) {
-    chatClose.addEventListener('click', closeChat);
+    chatClose.addEventListener("click", closeChat);
   }
 }
 
@@ -168,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initChatWidget();
   let user = null;
   try {
-    const meRes = await fetch(_d('9kzs9k ~r9wo'), { credentials: "include" });
+    const meRes = await fetch(_d("9kzs9k ~r9wo"), { credentials: "include" });
     if (meRes.ok) {
       const meData = await meRes.json();
       user = meData.data || meData.user || meData;
@@ -283,7 +299,7 @@ function startPreOrderCountdown(targetDateString) {
 
 window.addEventListener("load", async () => {
   try {
-    const response = await fetch(_d('9kzs9}o~~sxq}9zy7nk~o'));
+    const response = await fetch(_d("9kzs9}o~~sxq}9zy7nk~o"));
 
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
@@ -297,13 +313,18 @@ window.addEventListener("load", async () => {
   }
 });
 
-
 window.WishlistManager = window.WishlistManager || {
-    save: function() { if (window.WishlistManager && window.WishlistManager.save) window.WishlistManager.save(); }
+  save: function () {
+    if (window.WishlistManager && window.WishlistManager.save)
+      window.WishlistManager.save();
+  },
 };
 
 function updateNavbarWishlistBadge() {
-  if (window.WishlistManager && typeof WishlistManager.updateNavbarBadge === 'function') {
+  if (
+    window.WishlistManager &&
+    typeof WishlistManager.updateNavbarBadge === "function"
+  ) {
     WishlistManager.updateNavbarBadge();
   }
 }
@@ -313,7 +334,7 @@ function updateWishlistBadgeOnly() {
 }
 
 function saveToWishlist(idOrEvent, name, price, img) {
-  if (window.WishlistManager && typeof WishlistManager.save === 'function') {
+  if (window.WishlistManager && typeof WishlistManager.save === "function") {
     WishlistManager.save(idOrEvent, name, price, img);
   }
 }
@@ -321,19 +342,28 @@ function saveToWishlist(idOrEvent, name, price, img) {
 document.addEventListener("DOMContentLoaded", updateNavbarWishlistBadge);
 
 function toggleWishlistPopup() {
-  if (window.WishlistManager && typeof WishlistManager.togglePopup === 'function') {
+  if (
+    window.WishlistManager &&
+    typeof WishlistManager.togglePopup === "function"
+  ) {
     WishlistManager.togglePopup();
   }
 }
 
 function renderPopupItems() {
-  if (window.WishlistManager && typeof WishlistManager.renderPopupItems === 'function') {
+  if (
+    window.WishlistManager &&
+    typeof WishlistManager.renderPopupItems === "function"
+  ) {
     WishlistManager.renderPopupItems();
   }
 }
 
 function removeProductFromPopup(id) {
-  if (window.WishlistManager && typeof WishlistManager.removeProduct === 'function') {
+  if (
+    window.WishlistManager &&
+    typeof WishlistManager.removeProduct === "function"
+  ) {
     WishlistManager.removeProduct(id);
   }
 }
@@ -365,7 +395,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let userId = null;
   try {
-    const meRes = await fetch(_d('9kzs9k ~r9wo'), { credentials: "include" });
+    const meRes = await fetch(_d("9kzs9k ~r9wo"), { credentials: "include" });
     if (meRes.ok) {
       const meData = await meRes.json();
       const me = meData.data || meData.user || meData;
@@ -376,7 +406,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!userId) return;
 
   try {
-    const response = await fetch(_d('9kzs9 }o|7y|no|}9') + userId);
+    const response = await fetch(_d("9kzs9 }o|7y|no|}9") + userId);
     const data = await response.json();
 
     if (data.success && data.orders.length > 0) {
@@ -405,7 +435,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function checkGlobalNotifications() {
   try {
-    const response = await fetch(_d('9kzs9k ~r9xy~spsmk~syx}'), {
+    const response = await fetch(_d("9kzs9k ~r9xy~spsmk~syx}"), {
       credentials: "include",
     });
     if (!response.ok) return;
@@ -417,8 +447,10 @@ async function checkGlobalNotifications() {
       const seenNotifId = localStorage.getItem(STORAGE_KEYS.GLOBAL(notif.id));
 
       if (!seenNotifId) {
-        if (typeof showIosModal === 'function') {
-          const msg = (notif.title ? notif.title + ': ' : '') + (notif.message || 'Anda memiliki notifikasi baru');
+        if (typeof showIosModal === "function") {
+          const msg =
+            (notif.title ? notif.title + ": " : "") +
+            (notif.message || "Anda memiliki notifikasi baru");
           showIosModal(msg);
         }
         localStorage.setItem(STORAGE_KEYS.GLOBAL(notif.id), "true");
@@ -444,7 +476,11 @@ function formatNotifTime(dt) {
   const date = new Date(dt || "");
   if (isNaN(date.getTime())) return "";
   return (
-    date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) +
+    date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }) +
     " " +
     date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
   );
@@ -462,11 +498,13 @@ async function loadHeaderNotifications(force) {
     return;
   }
 
-  list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Memuat notifikasi...</p>';
+  list.innerHTML =
+    '<p class="text-xs text-gray-400 text-center py-4">Memuat notifikasi...</p>';
   try {
     const res = await fetch("/api/notifications", { credentials: "include" });
     if (res.status === 401) {
-      list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Masuk untuk melihat notifikasi</p>';
+      list.innerHTML =
+        '<p class="text-xs text-gray-400 text-center py-4">Masuk untuk melihat notifikasi</p>';
       return;
     }
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -475,13 +513,15 @@ async function loadHeaderNotifications(force) {
     _headerNotifCacheAt = Date.now();
     renderHeaderNotifications(list, _headerNotifCache);
   } catch (err) {
-    list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Gagal memuat notifikasi</p>';
+    list.innerHTML =
+      '<p class="text-xs text-gray-400 text-center py-4">Gagal memuat notifikasi</p>';
   }
 }
 
 function renderHeaderNotifications(list, notifs) {
   if (notifs.length === 0) {
-    list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Tidak ada notifikasi</p>';
+    list.innerHTML =
+      '<p class="text-xs text-gray-400 text-center py-4">Tidak ada notifikasi</p>';
     return;
   }
   list.innerHTML = notifs
@@ -490,9 +530,15 @@ function renderHeaderNotifications(list, notifs) {
       const timeStr = formatNotifTime(n.created_at || n.createdAt);
       return (
         '<div class="border-b border-gray-100 py-2 last:border-0">' +
-        '<p class="text-xs font-medium text-gray-800">' + escNotifText(n.title) + "</p>" +
-        '<p class="text-[10px] text-gray-500 leading-tight">' + escNotifText(n.message) + "</p>" +
-        (timeStr ? '<p class="text-[10px] text-gray-400 mt-1">' + timeStr + "</p>" : "") +
+        '<p class="text-xs font-medium text-gray-800">' +
+        escNotifText(n.title) +
+        "</p>" +
+        '<p class="text-[10px] text-gray-500 leading-tight">' +
+        escNotifText(n.message) +
+        "</p>" +
+        (timeStr
+          ? '<p class="text-[10px] text-gray-400 mt-1">' + timeStr + "</p>"
+          : "") +
         "</div>"
       );
     })
@@ -504,16 +550,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!listEl) return;
   loadHeaderNotifications();
   const wrap = listEl.closest(".relative.group");
-  if (wrap) wrap.addEventListener("mouseenter", () => loadHeaderNotifications(true));
+  if (wrap)
+    wrap.addEventListener("mouseenter", () => loadHeaderNotifications(true));
 });
 
 window.openSellerRegistration = function () {
-  const isMobile =
-    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   if (isMobile) {
     showIosModal(
-      "Pendaftaran Seller hanya tersedia di Desktop atau Mode Desktop Browser."
+      "Pendaftaran Seller hanya tersedia di Desktop atau Mode Desktop Browser.",
     );
     return;
   }
@@ -613,8 +659,21 @@ if (toggleMenuBtn) {
 (function initDarkMode() {
   if (localStorage.getItem("dark_mode_enabled") === "true") {
     document.documentElement.classList.add("dark-mode");
-    if (typeof window.applyDarkModeToFixed === 'function') {
+    if (typeof window.applyDarkModeToFixed === "function") {
       window.applyDarkModeToFixed(true);
     }
   }
 })();
+
+if (window.visualViewport) {
+  const target = document.getElementById("keyboard-target");
+
+  window.visualViewport.addEventListener("resize", () => {
+    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+    if (keyboardHeight > 0) {
+      target.style.transform = `translateY(-${keyboardHeight}px)`;
+    } else {
+      target.style.transform = "translateY(0)";
+    }
+  });
+}

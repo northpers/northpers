@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="shortcut icon" href="https://nl.hostinesia.my.id/public/icons/Favicon.png?v=2" type="image/x-icon">
     <title>Northline - Autentikasi</title>
     <link rel="stylesheet" href="/css/tailwind.css?v=0000v1css">
@@ -10,6 +10,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         *{ font-family: 'DM Sans', sans-serif; }
+        input[type="text"], input[type="password"], input[type="tel"], input[type="email"], select, textarea {
+            font-size: 16px !important;
+        }
+        @supports (-webkit-touch-callout: none) {
+            input[type="text"], input[type="password"], input[type="tel"], input[type="email"], select, textarea {
+                font-size: max(16px, 1em) !important;
+            }
+        }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .loader-dots {
             display: flex;
@@ -79,8 +87,11 @@
             <div id="carousel-dots" class="absolute bottom-6 flex gap-2 z-20"></div>
         </div>
 
-        <div class="w-full md:w-2/5 bg-gray-100 flex items-center justify-center p-2 md:p-10 py-12 md:h-screen order-2 overflow-y-auto">
-            
+        <a href="/" class="md:hidden pt-5" style="opacity: 75%; margin-bottom: -2rem;">
+            <img src="public/icons/nrtFaviconBlack.png" class="w-[80px] h-[80px] block">
+        </a>
+
+        <div class="w-full md:w-2/5 bg-gray-100 flex items-center justify-center p-2 md:p-10 py-12 md:h-screen order-2 overflow-y-auto">        
 
         <div id="panel-login-classic" class="bg-white p-5 md:w-[400px] shadow-md">
             <div class="flex items-start justify-between mb-8">
@@ -256,29 +267,51 @@
             <div class="grid grid-cols-2 gap-3">
                 <button 
                     type="button"
-                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    disabled
+                    class="border cursor-not-allowed border-gray-300 h-[42px] flex items-center justify-center gap-2 opacity-60">
                     
                     <img 
                         src="https://img.icons8.com/color/48/facebook-new.png"
                         class="w-5 h-5"
-                     loading="lazy">
+                        loading="lazy">
 
                     <span class="text-[14px] text-gray-700">
                         Facebook
                     </span>
                 </button>
+
                 <button
-                    id="googleLogin1"
                     type="button"
-                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    disabled
+                    class="border cursor-not-allowed border-gray-300 h-[42px] flex items-center justify-center gap-2 opacity-60">
+                    
                     <img 
                         src="https://img.icons8.com/color/48/google-logo.png"
-                        class="w-5 h-5"
-                    >
+                        class="w-5 h-5">
+
                     <span class="text-[14px] text-gray-700">
                         Google
                     </span>
                 </button>
+            </div>
+
+            <!-- Peringatan Maintenance -->
+            <div class="mt-2 flex items-center justify-center gap-1 text-center">
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    class="w-4 h-4 text-amber-500 flex-shrink-0"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor">
+                    <path 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M12 9v2m0 4h.01M10.29 3.86l-7.82 13a2 2 0 001.71 3h15.64a2 2 0 001.71-3l-7.82-13a2 2 0 00-3.42 0z" />
+                </svg>
+                <span class="text-[12px] text-gray-500">
+                    Login dengan Facebook & Google sedang dalam maintenance.
+                </span>
             </div>
             <p class="text-[12px] text-center text-gray-500 leading-5 mt-7 px-4">
                 Dengan login, kamu menyetujui 
@@ -341,29 +374,51 @@
             <div class="grid grid-cols-2 gap-3">
                 <button 
                     type="button"
-                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    disabled
+                    class="border cursor-not-allowed border-gray-300 h-[42px] flex items-center justify-center gap-2 opacity-60">
                     
                     <img 
                         src="https://img.icons8.com/color/48/facebook-new.png"
                         class="w-5 h-5"
-                     loading="lazy">
+                        loading="lazy">
 
                     <span class="text-[14px] text-gray-700">
                         Facebook
                     </span>
                 </button>
+
                 <button
-                    id="googleLogin2"
                     type="button"
-                    class="border border-gray-300 h-[42px] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
+                    disabled
+                    class="border cursor-not-allowed border-gray-300 h-[42px] flex items-center justify-center gap-2 opacity-60">
+                    
                     <img 
                         src="https://img.icons8.com/color/48/google-logo.png"
-                        class="w-5 h-5"
-                    >
+                        class="w-5 h-5">
+
                     <span class="text-[14px] text-gray-700">
                         Google
                     </span>
                 </button>
+            </div>
+
+            <!-- Peringatan Maintenance -->
+            <div class="mt-2 flex items-center justify-center gap-1 text-center">
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    class="w-4 h-4 text-amber-500 flex-shrink-0"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor">
+                    <path 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M12 9v2m0 4h.01M10.29 3.86l-7.82 13a2 2 0 001.71 3h15.64a2 2 0 001.71-3l-7.82-13a2 2 0 00-3.42 0z" />
+                </svg>
+                <span class="text-[12px] text-gray-500">
+                    Daftar dengan Facebook & Google sedang dalam maintenance.
+                </span>
             </div>
             <p class="text-[12px] text-center text-gray-500 leading-5 mt-7 px-4">
                 Dengan login, kamu menyetujui 
@@ -582,12 +637,12 @@
 </div>
 </div>
 
-    <div id="FTORNRT"></div>
+    <div id="AppNorthFooter"></div>
     <script>
         fetch("https://nl.hostinesia.my.id/html/AppNorthFooter")
             .then(res => res.text())
             .then(data => {
-                document.getElementById("FTORNRT").innerHTML = data;
+                document.getElementById("AppNorthFooter").innerHTML = data;
             });
     </script>
 
@@ -639,7 +694,7 @@
            loading="lazy" />
         </button>
         <img
-          src="https://nl.hostinesia.my.id/public/icons/nrtFaviconWhiteblack.png"
+          src="https://nl.hostinesia.my.id/public/icons/nrtFaviconBlack.png"
           class="h-10 mr-2"
           alt="Northline"
          loading="lazy" />

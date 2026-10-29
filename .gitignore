@@ -30,6 +30,7 @@ yarn-error.log*
 
 # Database dump
 *.sql
+!backend/migrations/guest_order_customer.sql
 
 # Aider
 .aider*

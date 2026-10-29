@@ -1046,10 +1046,8 @@ async function submitApplication(e) {
   if (ktpBlob) formData.append('ktp_front', ktpBlob, 'ktp_front.jpg');
   if (selfieBlob) formData.append('ktp_selfie', selfieBlob, 'selfie.jpg');
 
-  const faceMatchInput = document.querySelector('[name="face_match_score"]');
-  const livenessInput = document.querySelector('[name="liveness_passed"]');
-  formData.append('face_match_score', faceMatchInput ? faceMatchInput.value : '0');
-  formData.append('liveness_passed', livenessInput ? livenessInput.value : 'true');
+  // face_match_score / liveness_passed tidak lagi dikirim. Server menghitung
+  // ulang sendiri dengan InsightFace dan mengabaikan nilai dari browser.
 
   try {
     const res = await fetch(_d('9kzs9xzsxtkw9kzzv$'), { method: 'POST', credentials: 'include', body: formData });
@@ -1059,6 +1057,12 @@ async function submitApplication(e) {
       closeApplyModal();
       loadStatus();
     } else {
+      if (data.code === 'FACE_MISMATCH') {
+        // Server menolak karena wajah tidak cocok. Buka kembali alur selfie
+        // supaya user bisa mengulangnya tanpa menutup modal.
+        await retakeSelfie();
+        await startSelfieVerify();
+      }
       errorEl.textContent = data.message || 'Gagal mengirim pengajuan';
       errorEl.classList.remove('hidden');
     }
@@ -1903,30 +1907,47 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-function appendHiddenInput(name, value) {
-  let input = document.querySelector(`input[name="${name}"]`);
-  if (!input) {
-    input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    document.getElementById('apply-form').appendChild(input);
-  }
-  input.value = value;
-}
+// Ambang untuk pre-check di browser. Sengaja lebih ketat dari ambang server
+// (FACE_MATCH_THRESHOLD = 0.5 di backend/routes/npinjam.js) karena modelnya
+// berbeda - face-api TinyFaceDetector di sini bukan InsightFace buffalo_l.
+// Kalau pre-check gagal kita menahan user di sini agar tidak unggah file yang
+// pasti ditolak server. Pre-check yang tidak bisa jalan TIDAK menahan: di
+// situ server yang memutuskan.
+const CLIENT_FACE_THRESHOLD = 0.6;
 
 function verifyFaceMatch() {
-  // Face match verified, enable form submission
-  document.getElementById('apply-footer').classList.remove('hidden');
+  const badge = document.getElementById('match-badge');
+  const result = document.getElementById('match-result');
+  const footer = document.getElementById('apply-footer');
+
+  const bothFacesKnown = !!(ktpFaceDescriptor && selfieFaceDescriptor);
+  let similarity = NaN;
+  if (bothFacesKnown) similarity = cosineSimilarity(ktpFaceDescriptor, selfieFaceDescriptor);
+
+  if (bothFacesKnown && !isNaN(similarity) && similarity < CLIENT_FACE_THRESHOLD) {
+    // Jangan buka footer. Server akan menolak dengan FACE_MISMATCH, jadi
+    // lebih baik user ambil ulang selfie sekarang daripada mengunggah file
+    // yang pasti ditolak.
+    document.getElementById('face-match-section').classList.remove('hidden');
+    document.getElementById('rematch-btn').classList.remove('hidden');
+    footer.classList.add('hidden');
+    badge.textContent = 'TIDAK COCOK';
+    badge.className = 'px-3 py-1 text-[10px] font-bold no-rounded bg-red-100 text-red-700';
+    result.textContent =
+      'Wajah pada selfie tidak cocok dengan foto KTP (' +
+      (similarity * 100).toFixed(1) +
+      '%). Silakan ulangi selfie dengan wajah menghadap kamera dan pencahayaan cukup.';
+    result.className = 'text-center text-[10px] font-bold p-2 no-rounded bg-red-50 text-red-700';
+    return;
+  }
+
+  footer.classList.remove('hidden');
   document.getElementById('face-match-section').classList.add('hidden');
 
-  // Store face match score in form (0 if unavailable)
-  let score = 0;
-  if (ktpFaceDescriptor && selfieFaceDescriptor) {
-    const s = cosineSimilarity(ktpFaceDescriptor, selfieFaceDescriptor);
-    if (!isNaN(s)) score = s;
-  }
-  appendHiddenInput('face_match_score', score.toFixed(4));
-  appendHiddenInput('liveness_passed', 'true');
+  // Catatan: pre-check di browser ini hanya untuk UX. Nilai Similarity yang
+  // yang ditampilkan di sini TIDAK dikirim ke server dan tidak dipakai untuk
+  // persetujuan - server menghitung ulang sendiri dengan InsightFace dan
+  // field face_match_score / liveness_passed tidak lagi dikirim sama sekali.
 }
 
 function rematchFace() {
@@ -2395,13 +2416,19 @@ async function runLoanFaceMatch() {
   setResult('Membandingkan wajah dengan KTP...', 'bg-yellow-50 text-yellow-700');
   try {
     const app = npinjamState.application;
-    if (!app || !app.ktp_selfie_url || !loanSelfieBlob) {
+    // Acuan harus FOTO KTP (ktp_front_url), bukan selfie saat pendaftaran
+    // (ktp_selfie_url). Membandingkan selfie baru dengan selfie lama hanya
+    // membuktikan "orang yang sama lagi", bukan identitas KTP. Backend di
+    // routes/npinjam.js juga memakai ktp_front_url - kalau ini beda, user
+    // bisa lolos pre-check tapi ditolak server, atau sebaliknya.
+    if (!app || !app.ktp_front_url || !loanSelfieBlob) {
       loanMatchScore = null;
-      setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+      setResult('Verifikasi wajah tidak tersedia di perangkat ini. Server akan memeriksa saat pengajuan dikirim.', 'bg-yellow-50 text-yellow-700');
       return;
     }
     if (!faceApiLoaded) { try { await loadFaceApiModels(); } catch (e) {} }
-    const ktpResp = await fetch('/uploads/npinjam/' + app.ktp_selfie_url);
+    const ktpResp = await fetch('/uploads/npinjam/' + app.ktp_front_url);
+    if (!ktpResp.ok) throw new Error('Gagal memuat foto KTP (' + ktpResp.status + ')');
     const ktpBlob = await ktpResp.blob();
     const ktpImg = await loadImageFromBlob(ktpBlob);
     const selfieImg = await loadImageFromBlob(loanSelfieBlob);
@@ -2416,16 +2443,18 @@ async function runLoanFaceMatch() {
       if (!isNaN(s) && s >= 0.5) {
         setResult('Verifikasi wajah berhasil (' + (s * 100).toFixed(1) + '%)', 'bg-green-50 text-green-700');
       } else {
-        setResult('Kemiripan rendah (' + (isNaN(s) ? '-' : (s * 100).toFixed(1)) + '%). Akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+        // Server akan menolak dengan FACE_MISMATCH, jadi jangan menjanjikan
+        // review admin di sini.
+        setResult('Wajah tidak cocok dengan foto KTP (' + (isNaN(s) ? '-' : (s * 100).toFixed(1)) + '%). Silakan ulangi selfie.', 'bg-red-50 text-red-700');
       }
     } else {
       loanMatchScore = null;
-      setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+      setResult('Wajah tidak dapat dideteksi di perangkat ini. Server akan memeriksa saat pengajuan dikirim.', 'bg-yellow-50 text-yellow-700');
     }
   } catch (e) {
     console.error('Loan face match error:', e);
     loanMatchScore = null;
-    setResult('Verifikasi wajah selesai. Hasil akan ditinjau admin.', 'bg-yellow-50 text-yellow-700');
+    setResult('Verifikasi wajah tidak tersedia di perangkat ini. Server akan memeriksa saat pengajuan dikirim.', 'bg-yellow-50 text-yellow-700');
   }
 }
 
@@ -2480,27 +2509,41 @@ async function submitLoan(e) {
   btn.disabled = true;
   btn.textContent = 'Memproses...';
   try {
+    // Multipart, bukan JSON: server sekarang mewajibkan file selfie untuk
+    // membandingkan wajah dengan foto KTP. face_verify_score TIDAK lagi
+    // dikirim - nilainya dihitung browser dan bisa dipalsukan;
+    // server memakai verifyFaces() sendiri.
+    const fd = new FormData();
+    fd.append('loan_amount', String(amount));
+    fd.append('tenure_months', String(tenor));
+    fd.append('purpose', purpose);
+    fd.append('bank_name', bankName);
+    fd.append('bank_account_number', bankAccount);
+    fd.append('bank_account_name', bankAccountName);
+    fd.append('selfie', loanSelfieBlob, 'loan_selfie.jpg');
+
     const res = await fetch(_d('9kzs9xzsxtkw9vykx}'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        loan_amount: amount,
-        tenure_months: tenor,
-        purpose,
-        bank_name: bankName,
-        bank_account_number: bankAccount,
-        bank_account_name: bankAccountName,
-        face_verify_score: loanMatchScore == null ? null : loanMatchScore
-      })
+      body: fd
     });
-    const data = await res.json();
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* response bukan JSON */ }
     if (data.success) {
       alert('Pengajuan pinjaman berhasil dikirim! Mohon tunggu verifikasi admin (maksimal 1x24 jam kerja).');
       closeLoanModal();
       loadStatus();
     } else {
-      errorEl.textContent = data.message || 'Gagal mengajukan pinjaman';
+      let msg = data.message || 'Gagal mengajukan pinjaman';
+      if (data.code === 'FACE_MISMATCH') {
+        // Wajah ditolak server. Buka lagi alur selfie supaya user bisa
+        // langsung mengulangnya tanpa menutup modal.
+        msg = msg + ' Silakan ulangi verifikasi wajah.';
+        retakeLoanVerify();
+      } else if (data.code === 'FACE_SELFIE_REQUIRED') {
+        retakeLoanVerify();
+      }
+      errorEl.textContent = msg;
       errorEl.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = 'Ajukan Pinjaman';

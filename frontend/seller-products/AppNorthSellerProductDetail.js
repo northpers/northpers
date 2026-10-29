@@ -277,6 +277,35 @@ window.shareProduct = async function () {
   }
 };
 
+function openImageZoom() {
+    const box = document.getElementById("preview-box");
+    const img = document.getElementById("main-preview");
+    if (!box || !img || !img.src || img.src.endsWith("...")) return;
+    box.classList.add("zoomed");
+}
+
+function closeImageZoom() {
+    const box = document.getElementById("preview-box");
+    if (box) box.classList.remove("zoomed");
+}
+
+function toggleImageZoom() {
+    const box = document.getElementById("preview-box");
+    if (!box) return;
+    if (box.classList.contains("zoomed")) {
+        closeImageZoom();
+    } else {
+        openImageZoom();
+    }
+}
+
+if (!window.__nlFsImageViewerListener) {
+    window.__nlFsImageViewerListener = true;
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeImageZoom();
+    });
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   await loadModalStructure();
 
